@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
-from horizon.monitor import FidelityMonitor
 from horizon.models import TurnResult
+from horizon.monitor import FidelityMonitor
 
 
 class HorizonWrappedAnthropic:
@@ -34,17 +34,17 @@ class HorizonWrappedAnthropic:
         monitor: FidelityMonitor,
         session_id: str,
         include_timestamps: bool = True,
-        client_context: Optional[dict] = None,
+        client_context: dict | None = None,
     ) -> None:
         self._client = client
         self._monitor = monitor
         self._session_id = session_id
         self._include_timestamps = include_timestamps
         self._client_context = client_context
-        self.last_result: Optional[TurnResult] = None
+        self.last_result: TurnResult | None = None
 
     @property
-    def messages(self) -> "_WrappedMessages":
+    def messages(self) -> _WrappedMessages:
         return _WrappedMessages(
             self._client.messages, self._monitor, self._session_id,
             self._include_timestamps, self._client_context, self,
@@ -56,7 +56,7 @@ class HorizonWrappedAnthropic:
 
 class _WrappedMessages:
     def __init__(self, messages: Any, monitor: FidelityMonitor, session_id: str,
-                 include_timestamps: bool, client_context: Optional[dict],
+                 include_timestamps: bool, client_context: dict | None,
                  wrapper: HorizonWrappedAnthropic) -> None:
         self._messages = messages
         self._monitor = monitor

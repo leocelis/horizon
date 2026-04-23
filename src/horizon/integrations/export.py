@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-import json
-from typing import Any, Optional
+from typing import Any
 
 from horizon.models import ExportResult
 from horizon.session import Session
@@ -13,7 +12,7 @@ from horizon.session import Session
 def export_session(
     session: Session,
     target: str,
-    connection: Optional[Any] = None,
+    connection: Any | None = None,
 ) -> ExportResult:
     """Export all turn data and events for a session.
 
@@ -52,7 +51,7 @@ def export_session(
 def _build_payload(session: Session) -> list[dict]:
     """Serialise all turn states to JSON-compatible dicts."""
     records = []
-    for i, turn in enumerate(session.turns):
+    for turn in session.turns:
         events = [dataclasses.asdict(e) for e in session.event_log if e.turn == turn.turn_number]
         records.append({
             "turn_number": turn.turn_number,
@@ -92,7 +91,7 @@ def get_json_data(session: Session) -> dict:
     }
 
 
-def _export_langsmith(session: Session, connection: Optional[dict]) -> ExportResult:
+def _export_langsmith(session: Session, connection: dict | None) -> ExportResult:
     """Push turns to LangSmith as run records."""
     if not connection or "api_key" not in connection:
         return ExportResult(
@@ -126,7 +125,7 @@ def _export_langsmith(session: Session, connection: Optional[dict]) -> ExportRes
         )
 
 
-def _export_langfuse(session: Session, connection: Optional[dict]) -> ExportResult:
+def _export_langfuse(session: Session, connection: dict | None) -> ExportResult:
     """Push turns to Langfuse as traces."""
     if not connection or "public_key" not in connection or "secret_key" not in connection:
         return ExportResult(
@@ -162,7 +161,7 @@ def _export_langfuse(session: Session, connection: Optional[dict]) -> ExportResu
         )
 
 
-def _export_otel(session: Session, connection: Optional[dict]) -> ExportResult:
+def _export_otel(session: Session, connection: dict | None) -> ExportResult:
     """Emit OpenTelemetry spans for each turn."""
     if not connection or "endpoint" not in connection:
         return ExportResult(
@@ -173,9 +172,9 @@ def _export_otel(session: Session, connection: Optional[dict]) -> ExportResult:
         )
     try:
         from opentelemetry import trace
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
         provider = TracerProvider()
         exporter = OTLPSpanExporter(endpoint=connection["endpoint"])
@@ -205,7 +204,7 @@ def _export_otel(session: Session, connection: Optional[dict]) -> ExportResult:
         )
 
 
-def _export_arize(session: Session, connection: Optional[dict]) -> ExportResult:
+def _export_arize(session: Session, connection: dict | None) -> ExportResult:
     """Log per-turn Horizon metrics to Arize AX as production inference records.
 
     Requires ``pip install horizon-monitor[arize]``.
@@ -227,10 +226,9 @@ def _export_arize(session: Session, connection: Optional[dict]) -> ExportResult:
             errors=[f"connection must include {missing}"],
         )
     try:
+        import pandas as pd
         from arize.pandas.logger import Client, Schema
         from arize.utils.types import Environments, ModelTypes
-
-        import pandas as pd
 
         records = _build_payload(session)
         if not records:

@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any, Callable, Optional
+from typing import Any
 
-from horizon.monitor import FidelityMonitor
 from horizon.models import TurnResult
+from horizon.monitor import FidelityMonitor
 
-
-TimestampProvider = Callable[[], Optional[str]]
+TimestampProvider = Callable[[], str | None]
 """Callable returning an ISO 8601 timestamp (or None to disable temporal signals)."""
 
-ContextProvider = Callable[[], Optional[dict]]
+ContextProvider = Callable[[], dict | None]
 """Callable returning a client_context dict (or None) for the next turn."""
 
 
@@ -52,18 +52,18 @@ class HorizonWrappedOpenAI:
         monitor: FidelityMonitor,
         session_id: str,
         include_timestamps: bool = True,
-        client_context: Optional[dict] = None,
+        client_context: dict | None = None,
     ) -> None:
         self._client = client
         self._monitor = monitor
         self._session_id = session_id
         self._include_timestamps = include_timestamps
         self._client_context = client_context
-        self._timestamp_provider: Optional[TimestampProvider] = None
-        self._context_provider: Optional[ContextProvider] = None
-        self.last_result: Optional[TurnResult] = None
+        self._timestamp_provider: TimestampProvider | None = None
+        self._context_provider: ContextProvider | None = None
+        self.last_result: TurnResult | None = None
 
-    def set_timestamp_provider(self, provider: Optional[TimestampProvider]) -> None:
+    def set_timestamp_provider(self, provider: TimestampProvider | None) -> None:
         """Override the wall-clock timestamp used for each turn.
 
         Useful for replaying historical conversations or simulating temporal
@@ -71,16 +71,16 @@ class HorizonWrappedOpenAI:
         """
         self._timestamp_provider = provider
 
-    def set_context_provider(self, provider: Optional[ContextProvider]) -> None:
+    def set_context_provider(self, provider: ContextProvider | None) -> None:
         """Supply a fresh client_context dict for each turn."""
         self._context_provider = provider
 
-    def set_client_context(self, ctx: Optional[dict]) -> None:
+    def set_client_context(self, ctx: dict | None) -> None:
         """Set a static client_context applied to every subsequent turn."""
         self._client_context = ctx
 
     @property
-    def chat(self) -> "_WrappedChat":
+    def chat(self) -> _WrappedChat:
         return _WrappedChat(self._client.chat, self._monitor, self._session_id,
                             self._include_timestamps, self)
 
@@ -99,7 +99,7 @@ class _WrappedChat:
         self._wrapper = wrapper
 
     @property
-    def completions(self) -> "_WrappedCompletions":
+    def completions(self) -> _WrappedCompletions:
         return _WrappedCompletions(
             self._chat.completions, self._monitor, self._session_id,
             self._include_timestamps, self._wrapper,
@@ -131,7 +131,7 @@ class _WrappedCompletions:
                 return str(msg.get("content", ""))
         return ""
 
-    def _resolve_timestamp(self) -> Optional[str]:
+    def _resolve_timestamp(self) -> str | None:
         if not self._include_timestamps:
             return None
         provider = self._wrapper._timestamp_provider
@@ -139,7 +139,7 @@ class _WrappedCompletions:
             return provider()
         return datetime.now(timezone.utc).isoformat()
 
-    def _resolve_client_context(self) -> Optional[dict]:
+    def _resolve_client_context(self) -> dict | None:
         provider = self._wrapper._context_provider
         if provider is not None:
             return provider()

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from horizon.engines.coherence import compute_bipredictability
 

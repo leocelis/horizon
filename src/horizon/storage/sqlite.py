@@ -12,11 +12,10 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Generator, Optional
-
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS sessions (
@@ -104,10 +103,10 @@ class PersistentDynamicsStore:
     def save_session(
         self,
         session_id: str,
-        user_id: Optional[str] = None,
-        agent_name: Optional[str] = None,
+        user_id: str | None = None,
+        agent_name: str | None = None,
         domain: str = "general",
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> None:
         """Upsert a session record."""
         now = datetime.now(timezone.utc).isoformat()
@@ -135,7 +134,7 @@ class PersistentDynamicsStore:
         self,
         session_id: str,
         turn_number: int,
-        timestamp: Optional[str],
+        timestamp: str | None,
         fidelity_score: float,
         igt_value: float,
         divergence_score: float,
@@ -246,7 +245,7 @@ class PersistentDynamicsStore:
                     (user_id, fidelity_score, epsilon_t, json.dumps([domain]), now, now),
                 )
 
-    def get_user_profile(self, user_id: str) -> Optional[dict]:
+    def get_user_profile(self, user_id: str) -> dict | None:
         """Return user's long-term fidelity profile, or None if new user."""
         with self._get_conn() as conn:
             row = conn.execute(

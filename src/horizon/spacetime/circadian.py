@@ -7,12 +7,11 @@ Schmidt et al. (2007) — dual-peak model with post-lunch dip.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 
 def compute_circadian_factor(
     timestamp: str,
-    timezone_str: Optional[str],
+    timezone_str: str | None,
     chronotype_offset: float = 0.0,
 ) -> float:
     """Estimate the human's cognitive capacity at the given wall-clock time.

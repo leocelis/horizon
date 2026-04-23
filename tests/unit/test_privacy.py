@@ -9,8 +9,6 @@ from __future__ import annotations
 import socket
 from unittest.mock import patch
 
-import pytest
-
 from horizon import FidelityMonitor
 
 

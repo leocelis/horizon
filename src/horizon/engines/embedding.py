@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 from numpy import ndarray
 
@@ -23,11 +21,11 @@ class EmbeddingEngine:
     """
 
     def __init__(self, model_name: str = "all-MiniLM-L6-v2",
-                 model_path: Optional[str] = None) -> None:
+                 model_path: str | None = None) -> None:
         self._model_name = model_name
         self._model_path = model_path
         self._model = None
-        self._dim: Optional[int] = None
+        self._dim: int | None = None
 
     def _ensure_loaded(self) -> None:
         if self._model is not None:

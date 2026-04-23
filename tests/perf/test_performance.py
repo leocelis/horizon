@@ -20,8 +20,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from horizon import Config, FidelityMonitor
-
+from horizon import FidelityMonitor
 
 CORE_BUDGET_MS = 50.0
 DEEP_BUDGET_MS = 500.0

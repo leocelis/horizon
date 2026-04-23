@@ -37,8 +37,10 @@ def main() -> None:
     def serve(transport: str, port: int, host: str) -> None:
         """Start the Horizon MCP server."""
         try:
-            from mcp.server.stdio import stdio_server
             import asyncio
+
+            from mcp.server.stdio import stdio_server
+
             from horizon.mcp.server import create_app
 
             app = create_app()
@@ -55,10 +57,10 @@ def main() -> None:
                 asyncio.run(_run())
             else:
                 try:
-                    from mcp.server.sse import SseServerTransport
                     import uvicorn
+                    from mcp.server.sse import SseServerTransport
                     from starlette.applications import Starlette
-                    from starlette.routing import Route, Mount
+                    from starlette.routing import Mount, Route
 
                     sse_transport = SseServerTransport("/messages/")
 

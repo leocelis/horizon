@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 from numpy import ndarray
 
@@ -11,7 +9,7 @@ from numpy import ndarray
 def compute_bipredictability(
     human_embedding: ndarray,
     agent_embedding: ndarray,
-    history_embedding: Optional[ndarray],
+    history_embedding: ndarray | None,
 ) -> float:
     """Tier 1 coherence: structural consistency via bipredictability triangle.
 

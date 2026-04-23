@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import numpy as np
 from numpy import ndarray
 
 from horizon.session import Session

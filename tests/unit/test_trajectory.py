@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-import pytest
-
 from horizon import FidelityMonitor, FidelityTrajectory
 from tests.conftest import (
-    TIMESTAMP_1, TIMESTAMP_2, TIMESTAMP_3,
-    TURN_1_AGENT, TURN_1_HUMAN,
-    TURN_2_AGENT, TURN_2_HUMAN,
-    TURN_3_AGENT, TURN_3_HUMAN,
+    TIMESTAMP_1,
+    TIMESTAMP_2,
+    TIMESTAMP_3,
+    TURN_1_AGENT,
+    TURN_1_HUMAN,
+    TURN_2_AGENT,
+    TURN_2_HUMAN,
+    TURN_3_AGENT,
+    TURN_3_HUMAN,
 )
 
 

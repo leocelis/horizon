@@ -116,7 +116,7 @@ class Config:
         """Return True if the event type is in active mode."""
         return self.event_modes.get(event_type, "observe") == "active"
 
-    def merge(self, **overrides: object) -> "Config":
+    def merge(self, **overrides: object) -> Config:
         """Return a new Config with the given fields overridden."""
         import dataclasses
 

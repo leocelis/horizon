@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import math
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal
 
 
 def compute_temporal_gap(
     current_ts: str,
-    prev_ts: Optional[str],
+    prev_ts: str | None,
 ) -> tuple[float, str]:
     """Compute seconds between two ISO 8601 timestamps and classify the gap.
 

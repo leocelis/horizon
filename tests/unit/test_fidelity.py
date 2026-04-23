@@ -5,7 +5,11 @@ from __future__ import annotations
 import pytest
 
 from horizon import Config
-from horizon.engines.fidelity import compute_dynamic_fidelity, compute_health, compute_snapshot_fidelity
+from horizon.engines.fidelity import (
+    compute_dynamic_fidelity,
+    compute_health,
+    compute_snapshot_fidelity,
+)
 from horizon.session import Session
 
 

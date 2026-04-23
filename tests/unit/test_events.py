@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from horizon import Config, FidelityMonitor
 from tests.conftest import TIMESTAMP_1, TIMESTAMP_DAYS_LATER, TURN_1_AGENT, TURN_1_HUMAN
 

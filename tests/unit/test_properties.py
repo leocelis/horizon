@@ -48,14 +48,14 @@ def test_deterministic() -> None:
     results_a = _run_conversation(monitor_a, sid_a, turns)
     results_b = _run_conversation(monitor_b, sid_b, turns)
 
-    for a, b in zip(results_a, results_b):
+    for a, b in zip(results_a, results_b, strict=True):
         assert abs(a.fidelity_score - b.fidelity_score) < 1e-6
         assert abs(a.igt_value - b.igt_value) < 1e-6
         assert abs(a.divergence_score - b.divergence_score) < 1e-6
         assert abs(a.twr_value - b.twr_value) < 1e-6
         assert abs(a.consistency_score - b.consistency_score) < 1e-6
         assert len(a.events) == len(b.events)
-        for ea, eb in zip(a.events, b.events):
+        for ea, eb in zip(a.events, b.events, strict=True):
             assert ea.type == eb.type
             assert ea.active == eb.active
 

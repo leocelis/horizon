@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-import numpy as np
 from numpy import ndarray
 
 from horizon.config import Config
@@ -25,9 +24,9 @@ class TurnState:
     agent_embedding: ndarray
     combined_embedding: ndarray
 
-    timestamp: Optional[str] = None
-    timestamp_epoch: Optional[float] = None
-    client_context: Optional[dict] = None
+    timestamp: str | None = None
+    timestamp_epoch: float | None = None
+    client_context: dict | None = None
 
     igt_value: float = 0.0
     divergence_score: float = 0.0
@@ -35,7 +34,7 @@ class TurnState:
     consistency_score: float = 1.0
     fidelity_score: float = 0.0
     epsilon_t: float = 0.0
-    velocity: Optional[float] = None
+    velocity: float | None = None
     in_context: bool = True
 
 
@@ -49,10 +48,10 @@ class Session:
     turns: list[TurnState] = field(default_factory=list)
     fidelity_trajectory: list[float] = field(default_factory=list)
     event_log: list[Event] = field(default_factory=list)
-    history_embedding: Optional[ndarray] = None
+    history_embedding: ndarray | None = None
     """Exponentially weighted running mean of all turn embeddings."""
 
-    detected_mode: Optional[str] = None
+    detected_mode: str | None = None
     context_window_tokens: int = 0
     max_context_tokens: int = 128_000
 

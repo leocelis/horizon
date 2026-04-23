@@ -12,7 +12,6 @@ import pytest
 from horizon import FidelityMonitor
 from tests.validation._helpers import load_jsonl, require_dataset
 
-
 EVENT_TYPES = (
     "checkpoint.clarification",
     "checkpoint.comprehension",

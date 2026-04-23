@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Literal
 
 
 @dataclass(frozen=True)
@@ -14,7 +14,7 @@ class TemporalReference:
     expression: str
     """Original expression, e.g. 'yesterday', 'next Monday'."""
 
-    resolved: Optional[str]
+    resolved: str | None
     """ISO 8601 datetime string, or None if unresolvable."""
 
     type: Literal["DATE", "TIME", "DURATION", "SET", "UNKNOWN"] = "UNKNOWN"
@@ -47,7 +47,7 @@ class Event:
 
     turn: int
     suggested_behavior: str
-    mode: Optional[str] = None
+    mode: str | None = None
     """Conversation mode at time of emission."""
 
     metadata: dict = field(default_factory=dict)
@@ -86,30 +86,30 @@ class TurnResult:
     conversation_mode: str
 
     # ── Temporal (None when timestamp not provided) ──────────────────────────
-    gap_seconds: Optional[float] = None
-    gap_class: Optional[Literal["realtime", "seconds", "minutes", "hours", "days"]] = None
-    estimated_retention: Optional[float] = None
-    temporal_asymmetry: Optional[float] = None
-    resumption_cost: Optional[Literal["none", "low", "medium", "high", "extreme"]] = None
-    circadian_factor: Optional[float] = None
-    temporal_references: Optional[list[TemporalReference]] = None
+    gap_seconds: float | None = None
+    gap_class: Literal["realtime", "seconds", "minutes", "hours", "days"] | None = None
+    estimated_retention: float | None = None
+    temporal_asymmetry: float | None = None
+    resumption_cost: Literal["none", "low", "medium", "high", "extreme"] | None = None
+    circadian_factor: float | None = None
+    temporal_references: list[TemporalReference] | None = None
 
     # ── Pace (None when timestamp not provided or turn < 2) ──────────────────
-    conversation_velocity: Optional[float] = None
-    conversation_acceleration: Optional[float] = None
+    conversation_velocity: float | None = None
+    conversation_acceleration: float | None = None
 
     # ── Spacetime (None when timestamp not provided or turn < 2) ─────────────
-    spacetime_interval: Optional[float] = None
-    interval_class: Optional[Literal["timelike", "spacelike", "lightlike"]] = None
+    spacetime_interval: float | None = None
+    interval_class: Literal["timelike", "spacelike", "lightlike"] | None = None
 
     # ── Causal (None when timestamp not provided) ────────────────────────────
-    reachable_turns: Optional[int] = None
-    reachable_fraction: Optional[float] = None
+    reachable_turns: int | None = None
+    reachable_fraction: float | None = None
 
     # ── Spatial (None when client_context not provided) ──────────────────────
-    location_class: Optional[str] = None
-    spatial_constraint: Optional[SpatialConstraint] = None
-    spatial_frame_shift: Optional[float] = None
+    location_class: str | None = None
+    spatial_constraint: SpatialConstraint | None = None
+    spatial_frame_shift: float | None = None
 
     def to_dict(self) -> dict:
         """Serialize to JSON-compatible dict."""
@@ -125,15 +125,15 @@ class FidelityTrajectory:
     scores: list[float]
     """Fidelity score per turn, index 0 = turn 1."""
 
-    timestamps: list[Optional[str]]
-    gap_durations: list[Optional[float]]
+    timestamps: list[str | None]
+    gap_durations: list[float | None]
     """Seconds between consecutive turns, None for turn 1."""
 
     igt_trend: float
     """Slope over entire trajectory."""
 
     health_status: Literal["healthy", "degrading", "critical", "converged"]
-    estimated_t_star: Optional[int]
+    estimated_t_star: int | None
     """Estimated optimal conversation length (None if not yet detectable)."""
 
     peak_fidelity: float
@@ -164,5 +164,5 @@ class ExportResult:
     status: Literal["success", "partial", "failed"]
     records_exported: int
     target: str
-    target_url: Optional[str] = None
+    target_url: str | None = None
     errors: list[str] = field(default_factory=list)

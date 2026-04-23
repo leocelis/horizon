@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from horizon.spacetime.circadian import compute_circadian_factor
 
 

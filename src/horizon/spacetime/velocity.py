@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 from numpy import ndarray
 
@@ -12,7 +10,7 @@ def compute_velocity(
     current_embedding: ndarray,
     prev_embedding: ndarray,
     gap_seconds: float,
-) -> Optional[float]:
+) -> float | None:
     """Semantic displacement per second of proper time.
 
     High velocity: rapid topic changes (engagement surge or frustration).
@@ -30,9 +28,9 @@ def compute_velocity(
 
 
 def compute_acceleration(
-    current_velocity: Optional[float],
-    prev_velocity: Optional[float],
-) -> Optional[float]:
+    current_velocity: float | None,
+    prev_velocity: float | None,
+) -> float | None:
     """Change in velocity between consecutive turns.
 
     Positive acceleration = conversation speeding up.

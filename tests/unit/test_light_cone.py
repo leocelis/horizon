@@ -8,12 +8,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-import numpy as np
-import pytest
-
-from horizon import Config, FidelityMonitor
+from horizon import FidelityMonitor
 from tests.conftest import TIMESTAMP_1, TIMESTAMP_DAYS_LATER, TURN_1_AGENT, TURN_1_HUMAN
-
 
 BASE_TIME = datetime(2026, 4, 22, 10, 0, 0, tzinfo=timezone.utc)
 

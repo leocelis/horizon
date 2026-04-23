@@ -6,10 +6,16 @@ import pytest
 
 from horizon import Config, FidelityMonitor
 from tests.conftest import (
-    TIMESTAMP_1, TIMESTAMP_2, TIMESTAMP_3, TIMESTAMP_DAYS_LATER,
-    TURN_1_AGENT, TURN_1_HUMAN,
-    TURN_2_AGENT, TURN_2_HUMAN,
-    TURN_3_AGENT, TURN_3_HUMAN,
+    TIMESTAMP_1,
+    TIMESTAMP_2,
+    TIMESTAMP_3,
+    TIMESTAMP_DAYS_LATER,
+    TURN_1_AGENT,
+    TURN_1_HUMAN,
+    TURN_2_AGENT,
+    TURN_2_HUMAN,
+    TURN_3_AGENT,
+    TURN_3_HUMAN,
 )
 
 
@@ -97,8 +103,9 @@ def test_configure_changes_threshold() -> None:
 
 def test_sqlite_persistence() -> None:
     """PersistentDynamicsStore records turns and can be queried."""
-    import tempfile
     import os
+    import tempfile
+
     from horizon.storage.sqlite import PersistentDynamicsStore
 
     with tempfile.TemporaryDirectory() as tmpdir:

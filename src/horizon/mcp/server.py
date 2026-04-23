@@ -33,7 +33,7 @@ import dataclasses
 import json
 from typing import Any
 
-from horizon import FidelityMonitor, Config
+from horizon import Config, FidelityMonitor
 from horizon.monitor import SessionNotFoundError
 
 
@@ -43,9 +43,8 @@ def create_app(config: Config | None = None) -> Any:
     Returns the server object. Transport (stdio/SSE) is applied in cli.py.
     """
     try:
-        from mcp.server import Server
-        from mcp.server.models import InitializationOptions
         import mcp.types as types
+        from mcp.server import Server
     except ImportError as exc:
         raise ImportError(
             "MCP support requires: pip install horizon-monitor[mcp]"

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
-from horizon.monitor import FidelityMonitor
 from horizon.models import TurnResult
+from horizon.monitor import FidelityMonitor
 
 
 class HorizonCallback:
@@ -33,14 +33,14 @@ class HorizonCallback:
         monitor: FidelityMonitor,
         session_id: str,
         include_timestamps: bool = True,
-        client_context: Optional[dict] = None,
+        client_context: dict | None = None,
     ) -> None:
         self._monitor = monitor
         self._session_id = session_id
         self._include_timestamps = include_timestamps
         self._client_context = client_context
-        self._pending_human_message: Optional[str] = None
-        self.last_result: Optional[TurnResult] = None
+        self._pending_human_message: str | None = None
+        self.last_result: TurnResult | None = None
         self.results: list[TurnResult] = []
 
     def on_llm_start(

@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
 from horizon.spacetime.deictic import resolve_deictic_expressions
-
 
 REF_TS = "2026-04-22T10:00:00+00:00"
 
@@ -68,7 +65,7 @@ def test_resolution_idempotent() -> None:
     b = resolve_deictic_expressions(text, REF_TS)
 
     assert len(a) == len(b)
-    for ra, rb in zip(a, b):
+    for ra, rb in zip(a, b, strict=True):
         assert ra.expression == rb.expression
         assert ra.resolved == rb.resolved
         assert ra.type == rb.type

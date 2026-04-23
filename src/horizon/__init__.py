@@ -17,6 +17,7 @@ Public API::
 """
 
 from horizon.config import Config
+from horizon.engines.embedding import EmbeddingModelError
 from horizon.models import (
     ConfigResult,
     ConfigWarning,
@@ -28,7 +29,6 @@ from horizon.models import (
     TurnResult,
 )
 from horizon.monitor import FidelityMonitor, SessionNotFoundError
-from horizon.engines.embedding import EmbeddingModelError
 
 __version__ = "0.1.0"
 

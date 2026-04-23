@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from horizon import FidelityMonitor
 from horizon.integrations.export import get_json_data
 from tests.conftest import TURN_1_AGENT, TURN_1_HUMAN

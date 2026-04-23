@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import dataclasses
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import datetime
+from typing import Any
 
 import numpy as np
 
@@ -15,7 +15,11 @@ from horizon.engines.coherence import compute_bipredictability
 from horizon.engines.divergence import compute_divergence
 from horizon.engines.embedding import EmbeddingEngine, update_history
 from horizon.engines.epsilon import estimate_epsilon
-from horizon.engines.fidelity import compute_dynamic_fidelity, compute_health, compute_snapshot_fidelity
+from horizon.engines.fidelity import (
+    compute_dynamic_fidelity,
+    compute_health,
+    compute_snapshot_fidelity,
+)
 from horizon.engines.igt import compute_igt, compute_igt_trend
 from horizon.engines.mode import detect_conversation_mode
 from horizon.engines.twr import compute_twr
@@ -64,8 +68,8 @@ class FidelityMonitor:
 
     def __init__(
         self,
-        config: Optional[Config] = None,
-        store: Optional[Any] = None,
+        config: Config | None = None,
+        store: Any | None = None,
     ) -> None:
         """Initialise the monitor.
 
@@ -85,8 +89,8 @@ class FidelityMonitor:
 
     def new_conversation(
         self,
-        metadata: Optional[dict] = None,
-        session_id: Optional[str] = None,
+        metadata: dict | None = None,
+        session_id: str | None = None,
     ) -> str:
         """Initialise a new conversation session and return its UUID.
 
@@ -127,10 +131,10 @@ class FidelityMonitor:
         session_id: str,
         human_message: str,
         agent_response: str,
-        timestamp: Optional[str] = None,
-        client_context: Optional[dict] = None,
-        logprobs: Optional[list] = None,
-        human_latency_ms: Optional[float] = None,
+        timestamp: str | None = None,
+        client_context: dict | None = None,
+        logprobs: list | None = None,
+        human_latency_ms: float | None = None,
     ) -> TurnResult:
         """Process one conversation turn and return full fidelity metrics.
 
@@ -167,10 +171,10 @@ class FidelityMonitor:
         session: Session,
         human_message: str,
         agent_response: str,
-        timestamp: Optional[str],
-        client_context: Optional[dict],
-        logprobs: Optional[list],
-        human_latency_ms: Optional[float],
+        timestamp: str | None,
+        client_context: dict | None,
+        logprobs: list | None,
+        human_latency_ms: float | None,
     ) -> TurnResult:
         """Full process_turn pipeline (called with session lock held)."""
         config = session.config
@@ -193,15 +197,15 @@ class FidelityMonitor:
         epsilon = estimate_epsilon(session, c_emb, djs)
 
         # ── Step 3: Temporal signals ──────────────────────────────────────
-        gap_seconds: Optional[float] = None
+        gap_seconds: float | None = None
         gap_class = None
-        retention: Optional[float] = None
+        retention: float | None = None
         delta_tau_penalty: float = 0.0
         kappa: float = 1.0
-        circadian: Optional[float] = None
+        circadian: float | None = None
         temporal_refs = None
         resumption = None
-        ts_epoch: Optional[float] = None
+        ts_epoch: float | None = None
 
         if timestamp:
             ts_epoch = datetime.fromisoformat(timestamp).timestamp()
@@ -247,15 +251,15 @@ class FidelityMonitor:
             degradation = "recoverable_drift"
 
         # ── Step 6: Pace ──────────────────────────────────────────────────
-        velocity: Optional[float] = None
-        acceleration: Optional[float] = None
+        velocity: float | None = None
+        acceleration: float | None = None
         if timestamp and session.turns and gap_seconds and gap_seconds > 0:
             velocity = compute_velocity(c_emb, session.turns[-1].combined_embedding, gap_seconds)
             prev_vel = session.turns[-1].velocity
             acceleration = compute_acceleration(velocity, prev_vel)
 
         # ── Step 7: Spacetime interval ────────────────────────────────────
-        ds2: Optional[float] = None
+        ds2: float | None = None
         interval_class = None
         if timestamp and session.turns and gap_seconds:
             prev_turn = session.turns[-1]
@@ -271,8 +275,8 @@ class FidelityMonitor:
         # eviction, and semantic dissimilarity. Without a timestamp we cannot
         # compute the temporal-decay term, so we treat the whole signal as
         # opt-in (matches horizon_intent.yaml::temporal_signals_optional).
-        reachable_count: Optional[int]
-        reachable_frac: Optional[float]
+        reachable_count: int | None
+        reachable_frac: float | None
         if timestamp is not None:
             reachable_count, reachable_frac = compute_reachability(
                 session, turn_number, c_emb, gap_seconds or 0.0, kappa, config
@@ -281,9 +285,9 @@ class FidelityMonitor:
             reachable_count, reachable_frac = None, None
 
         # ── Step 9: Spatial ───────────────────────────────────────────────
-        loc_class: Optional[str] = None
+        loc_class: str | None = None
         spatial = None
-        spatial_shift: Optional[float] = None
+        spatial_shift: float | None = None
         if client_context:
             loc_class = infer_location_class(client_context)
             spatial = compute_spatial_constraint(client_context)
@@ -380,7 +384,7 @@ class FidelityMonitor:
 
         scores = list(session.fidelity_trajectory)
         timestamps = [t.timestamp for t in session.turns]
-        gaps: list[Optional[float]] = [None]
+        gaps: list[float | None] = [None]
         for i in range(1, len(session.turns)):
             ts_curr = session.turns[i].timestamp
             ts_prev = session.turns[i - 1].timestamp
@@ -401,7 +405,7 @@ class FidelityMonitor:
             igt_trend = 0.0
 
         # T* estimate
-        t_star: Optional[int] = None
+        t_star: int | None = None
         if len(session.turns) >= 5 and igt_trend < 0:
             t_star = max(5, int(len(session.turns) / max(0.01, -igt_trend)))
 
@@ -431,7 +435,7 @@ class FidelityMonitor:
 
     def configure(
         self,
-        session_id: Optional[str] = None,
+        session_id: str | None = None,
         **kwargs: object,
     ) -> ConfigResult:
         """Override config parameters for a session or globally.
@@ -490,7 +494,7 @@ class FidelityMonitor:
         self,
         session_id: str,
         target: str = "json",
-        connection: Optional[Any] = None,
+        connection: Any | None = None,
     ) -> ExportResult:
         """Export session data to the specified target.
 

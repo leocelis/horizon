@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from horizon.spacetime.spatial import compute_spatial_constraint, infer_location_class
 
 

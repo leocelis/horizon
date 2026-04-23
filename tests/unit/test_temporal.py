@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from horizon.spacetime.temporal import (
     classify_gap,
     compute_resumption_cost,
@@ -128,7 +126,7 @@ def test_retention_monotonic() -> None:
     """
     gaps = [0, 60, 600, 3600, 86_400, 3 * 86_400, 7 * 86_400]
     retentions = [compute_retention(g, 24.0, 1.0) for g in gaps]
-    for prev, curr in zip(retentions, retentions[1:]):
+    for prev, curr in zip(retentions, retentions[1:]):  # noqa: B905 — intentionally different lengths
         assert curr <= prev + 1e-9, (
             f"Retention must be non-increasing: got {retentions}"
         )

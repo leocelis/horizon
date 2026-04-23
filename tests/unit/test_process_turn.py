@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-import pytest
-
 from horizon import FidelityMonitor, TurnResult
 from tests.conftest import (
-    TIMESTAMP_1, TIMESTAMP_2,
-    TURN_1_AGENT, TURN_1_HUMAN,
-    TURN_2_AGENT, TURN_2_HUMAN,
+    TIMESTAMP_1,
+    TIMESTAMP_2,
+    TURN_1_AGENT,
+    TURN_1_HUMAN,
+    TURN_2_AGENT,
+    TURN_2_HUMAN,
 )
 
 
