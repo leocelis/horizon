@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "horizon-monitor"
+version = "0.1.0"
+description = "THCP Fidelity Monitor — 4D conversation dynamics for AI agents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Leo Celis"}]
+keywords = ["ai", "conversation", "fidelity", "monitoring", "nlp", "spacetime"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "sentence-transformers>=2.2.0",
+    "numpy>=1.24",
+    "dateparser>=1.2.0",
+    "tzlocal>=5.0",
+]
+
+[project.optional-dependencies]
+geoip = ["geoip2>=4.0"]
+nli = ["torch>=2.0", "transformers>=4.30"]
+mcp = [
+    "mcp>=1.0",
+    "click>=8.0",
+    "uvicorn>=0.27",
+    "starlette>=0.37",
+]
+langsmith = ["langsmith>=0.1"]
+langfuse = ["langfuse>=2.0"]
+otel = [
+    "opentelemetry-api>=1.20",
+    "opentelemetry-sdk>=1.20",
+    "opentelemetry-exporter-otlp-proto-http>=1.20",
+]
+arize = ["arize>=7.0"]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+    "black>=24",
+]
+full = ["horizon-monitor[geoip,nli,mcp,langsmith,langfuse,otel,arize]"]
+
+[project.scripts]
+horizon = "horizon.mcp.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["horizon*"]
+
+[tool.setuptools.package-data]
+horizon = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]

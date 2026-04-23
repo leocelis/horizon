@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  horizon:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    ports:
+      - "3847:3847"
+    volumes:
+      - horizon-data:/data
+    environment:
+      - HORIZON_DB_PATH=/data/horizon.db
+      # Optional: path to MaxMind GeoLite2 database for IP geolocation
+      # - HORIZON_GEOIP_DB=/data/GeoLite2-City.mmdb
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import horizon; print('ok')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  horizon-data:
