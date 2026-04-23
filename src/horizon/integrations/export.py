@@ -53,18 +53,20 @@ def _build_payload(session: Session) -> list[dict]:
     records = []
     for turn in session.turns:
         events = [dataclasses.asdict(e) for e in session.event_log if e.turn == turn.turn_number]
-        records.append({
-            "turn_number": turn.turn_number,
-            "timestamp": turn.timestamp,
-            "fidelity_score": turn.fidelity_score,
-            "igt_value": turn.igt_value,
-            "divergence_score": turn.divergence_score,
-            "twr_value": turn.twr_value,
-            "consistency_score": turn.consistency_score,
-            "epsilon_t": turn.epsilon_t,
-            "in_context": turn.in_context,
-            "events": events,
-        })
+        records.append(
+            {
+                "turn_number": turn.turn_number,
+                "timestamp": turn.timestamp,
+                "fidelity_score": turn.fidelity_score,
+                "igt_value": turn.igt_value,
+                "divergence_score": turn.divergence_score,
+                "twr_value": turn.twr_value,
+                "consistency_score": turn.consistency_score,
+                "epsilon_t": turn.epsilon_t,
+                "in_context": turn.in_context,
+                "events": events,
+            }
+        )
     return records
 
 
@@ -243,20 +245,22 @@ def _export_arize(session: Session, connection: dict | None) -> ExportResult:
 
         rows = []
         for rec in records:
-            rows.append({
-                "prediction_id": f"{session.session_id}:{rec['turn_number']}",
-                "prediction_ts": rec["timestamp"],
-                "session_id": session.session_id,
-                "turn_number": rec["turn_number"],
-                "fidelity_score": rec["fidelity_score"],
-                "igt_value": rec["igt_value"],
-                "divergence_score": rec["divergence_score"],
-                "twr_value": rec["twr_value"],
-                "consistency_score": rec["consistency_score"],
-                "epsilon_t": rec["epsilon_t"],
-                "in_context": bool(rec["in_context"]),
-                "event_count": len(rec["events"]),
-            })
+            rows.append(
+                {
+                    "prediction_id": f"{session.session_id}:{rec['turn_number']}",
+                    "prediction_ts": rec["timestamp"],
+                    "session_id": session.session_id,
+                    "turn_number": rec["turn_number"],
+                    "fidelity_score": rec["fidelity_score"],
+                    "igt_value": rec["igt_value"],
+                    "divergence_score": rec["divergence_score"],
+                    "twr_value": rec["twr_value"],
+                    "consistency_score": rec["consistency_score"],
+                    "epsilon_t": rec["epsilon_t"],
+                    "in_context": bool(rec["in_context"]),
+                    "event_count": len(rec["events"]),
+                }
+            )
         df = pd.DataFrame(rows)
 
         schema = Schema(

@@ -46,8 +46,12 @@ class HorizonWrappedAnthropic:
     @property
     def messages(self) -> _WrappedMessages:
         return _WrappedMessages(
-            self._client.messages, self._monitor, self._session_id,
-            self._include_timestamps, self._client_context, self,
+            self._client.messages,
+            self._monitor,
+            self._session_id,
+            self._include_timestamps,
+            self._client_context,
+            self,
         )
 
     def __getattr__(self, name: str) -> Any:
@@ -55,9 +59,15 @@ class HorizonWrappedAnthropic:
 
 
 class _WrappedMessages:
-    def __init__(self, messages: Any, monitor: FidelityMonitor, session_id: str,
-                 include_timestamps: bool, client_context: dict | None,
-                 wrapper: HorizonWrappedAnthropic) -> None:
+    def __init__(
+        self,
+        messages: Any,
+        monitor: FidelityMonitor,
+        session_id: str,
+        include_timestamps: bool,
+        client_context: dict | None,
+        wrapper: HorizonWrappedAnthropic,
+    ) -> None:
         self._messages = messages
         self._monitor = monitor
         self._session_id = session_id
@@ -78,7 +88,8 @@ class _WrappedMessages:
                 if isinstance(content, list):
                     # content blocks
                     return " ".join(
-                        block.get("text", "") for block in content
+                        block.get("text", "")
+                        for block in content
                         if isinstance(block, dict) and block.get("type") == "text"
                     )
                 return str(content)

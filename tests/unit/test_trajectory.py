@@ -51,7 +51,9 @@ def test_trajectory_peak_and_current(monitor: FidelityMonitor, session_id: str) 
     traj = monitor.get_trajectory(session_id)
     assert traj.peak_fidelity >= 0.0
     assert traj.current_fidelity >= 0.0
-    assert traj.peak_fidelity >= traj.current_fidelity or traj.peak_fidelity == traj.current_fidelity
+    assert (
+        traj.peak_fidelity >= traj.current_fidelity or traj.peak_fidelity == traj.current_fidelity
+    )
 
 
 def test_trajectory_health_status_valid(monitor: FidelityMonitor, session_id: str) -> None:

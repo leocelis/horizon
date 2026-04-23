@@ -67,18 +67,26 @@ def test_agents_sdk_multi_turn_session(monitor: FidelityMonitor) -> None:
 
     clock = datetime(2026, 4, 22, 10, 0, tzinfo=timezone.utc)
     script = [
-        ("Research the top 3 commercial fusion startups.",
-         "Commonwealth Fusion, Helion, TAE — all targeting net electricity by 2030.",
-         timedelta(seconds=0)),
-        ("Which of them is closest to a working demonstrator?",
-         "Commonwealth Fusion's SPARC is furthest along; first plasma targeted 2027.",
-         timedelta(seconds=120)),
-        ("What are the main engineering risks for SPARC?",
-         "High-temp superconductor magnet stability and tritium handling are the top risks.",
-         timedelta(seconds=90)),
-        ("Summarise the landscape in one paragraph.",
-         "Three credible startups pursue different approaches (tokamak, FRC, beam-driven).",
-         timedelta(seconds=150)),
+        (
+            "Research the top 3 commercial fusion startups.",
+            "Commonwealth Fusion, Helion, TAE — all targeting net electricity by 2030.",
+            timedelta(seconds=0),
+        ),
+        (
+            "Which of them is closest to a working demonstrator?",
+            "Commonwealth Fusion's SPARC is furthest along; first plasma targeted 2027.",
+            timedelta(seconds=120),
+        ),
+        (
+            "What are the main engineering risks for SPARC?",
+            "High-temp superconductor magnet stability and tritium handling are the top risks.",
+            timedelta(seconds=90),
+        ),
+        (
+            "Summarise the landscape in one paragraph.",
+            "Three credible startups pursue different approaches (tokamak, FRC, beam-driven).",
+            timedelta(seconds=150),
+        ),
     ]
 
     for prompt, reply, delta in script:

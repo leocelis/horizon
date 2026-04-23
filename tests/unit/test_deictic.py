@@ -30,6 +30,7 @@ def test_resolved_is_iso_string_or_none() -> None:
         if ref.resolved is not None:
             # Should parse as ISO 8601 without error
             from datetime import datetime
+
             datetime.fromisoformat(ref.resolved)
 
 

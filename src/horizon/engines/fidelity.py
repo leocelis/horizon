@@ -66,10 +66,7 @@ def compute_health(
     Returns one of: healthy | degrading | critical | converged.
     """
     # Convergence: IGT trend negative and all recent IGT values are low
-    if (
-        igt_trend < config.convergence_threshold
-        and session.turn_count >= config.convergence_window
-    ):
+    if igt_trend < config.convergence_threshold and session.turn_count >= config.convergence_window:
         recent_igt = [t.igt_value for t in session.turns[-config.convergence_window :]]
         if all(v < config.convergence_threshold for v in recent_igt):
             return "converged"
@@ -78,9 +75,7 @@ def compute_health(
     trajectory = session.fidelity_trajectory
     if len(trajectory) >= config.drift_window:
         recent = trajectory[-config.drift_window :]
-        monotone_decline = all(
-            recent[i] > recent[i + 1] for i in range(len(recent) - 1)
-        )
+        monotone_decline = all(recent[i] > recent[i + 1] for i in range(len(recent) - 1))
         if monotone_decline:
             return "critical" if fidelity < 0.3 else "degrading"
 

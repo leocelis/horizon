@@ -35,9 +35,7 @@ def test_fidelity_correlation() -> None:
 
     monitor = FidelityMonitor()
     conversations = list(load_jsonl(dataset_path))
-    assert len(conversations) >= 200, (
-        f"V1 requires >= 200 conversations, have {len(conversations)}"
-    )
+    assert len(conversations) >= 200, f"V1 requires >= 200 conversations, have {len(conversations)}"
 
     for convo in conversations:
         sid = monitor.new_conversation()

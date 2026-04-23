@@ -114,9 +114,9 @@ def test_no_timestamp_no_temporal_signals() -> None:
         "signal.light_cone_collapse",
     }
     for e in result.events:
-        assert e.type not in temporal_event_types, (
-            f"Temporal event {e.type} fired without timestamp"
-        )
+        assert (
+            e.type not in temporal_event_types
+        ), f"Temporal event {e.type} fired without timestamp"
 
 
 def test_retention_monotonic() -> None:
@@ -126,9 +126,7 @@ def test_retention_monotonic() -> None:
     """
     gaps = [0, 60, 600, 3600, 86_400, 3 * 86_400, 7 * 86_400]
     retentions = [compute_retention(g, 24.0, 1.0) for g in gaps]
-    for prev, curr in zip(retentions, retentions[1:]):  # noqa: B905 — intentionally different lengths
-        assert curr <= prev + 1e-9, (
-            f"Retention must be non-increasing: got {retentions}"
-        )
+    for prev, curr in zip(retentions, retentions[1:], strict=False):
+        assert curr <= prev + 1e-9, f"Retention must be non-increasing: got {retentions}"
     for g in [0, 3600, 86_400, 10 * 86_400]:
         assert compute_temporal_asymmetry_penalty(g, 24.0, 1.0) >= 0.0

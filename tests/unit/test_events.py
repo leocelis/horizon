@@ -111,12 +111,19 @@ def test_convergence_detection_observe_mode() -> None:
     monitor = FidelityMonitor(config=config)
     sid = monitor.new_conversation()
 
-    monitor.process_turn(sid, "Explain how public key crypto works.",
-                         "Public key crypto uses asymmetric key pairs for encryption and signatures.")
-    monitor.process_turn(sid, "What is RSA?",
-                         "RSA is based on the difficulty of factoring large semiprime numbers.")
-    monitor.process_turn(sid, "How are primes chosen?",
-                         "Large random primes are generated and tested with Miller-Rabin.")
+    monitor.process_turn(
+        sid,
+        "Explain how public key crypto works.",
+        "Public key crypto uses asymmetric key pairs for encryption and signatures.",
+    )
+    monitor.process_turn(
+        sid, "What is RSA?", "RSA is based on the difficulty of factoring large semiprime numbers."
+    )
+    monitor.process_turn(
+        sid,
+        "How are primes chosen?",
+        "Large random primes are generated and tested with Miller-Rabin.",
+    )
 
     for _ in range(6):
         monitor.process_turn(sid, "ok thanks, got it.", "great, glad it helped.")
@@ -177,8 +184,7 @@ def test_drift_type_classification_structural() -> None:
     )
 
     assert result.reachable_fraction < 1.0, (
-        f"Expected evicted turns to reduce reachable_fraction, got "
-        f"{result.reachable_fraction}"
+        f"Expected evicted turns to reduce reachable_fraction, got " f"{result.reachable_fraction}"
     )
     event_types = {e.type for e in result.events}
     assert "signal.broken_reference" in event_types, (
@@ -201,7 +207,10 @@ def test_all_events_observe_by_default() -> None:
         ("Explain how NATs work.", "A NAT maps private IPs to a public IP via port translation."),
         ("Wait, what about symmetric NATs?", "They map each destination to a unique port."),
         ("What was the first thing I asked?", "You said 'Hello there!'."),
-        ("How about quantum computing now?", "Quantum computing uses qubits instead of classical bits."),
+        (
+            "How about quantum computing now?",
+            "Quantum computing uses qubits instead of classical bits.",
+        ),
         ("Bring it back to the NAT topic.", "Symmetric NATs are stricter than cone NATs."),
     ]
     for human, agent in scripted:

@@ -30,8 +30,12 @@ def main() -> None:
         """Horizon Fidelity Monitor CLI."""
 
     @cli.command()
-    @click.option("--transport", default="stdio", type=click.Choice(["stdio", "sse"]),
-                  help="MCP transport: stdio (Cursor/Claude) or sse (web)")
+    @click.option(
+        "--transport",
+        default="stdio",
+        type=click.Choice(["stdio", "sse"]),
+        help="MCP transport: stdio (Cursor/Claude) or sse (web)",
+    )
     @click.option("--port", default=3847, help="Port for SSE transport")
     @click.option("--host", default="127.0.0.1", help="Host for SSE transport")
     def serve(transport: str, port: int, host: str) -> None:
@@ -46,6 +50,7 @@ def main() -> None:
             app = create_app()
 
             if transport == "stdio":
+
                 async def _run() -> None:
                     async with stdio_server() as (read_stream, write_stream):
                         await app.run(
@@ -69,7 +74,8 @@ def main() -> None:
                             request.scope, request.receive, request._send
                         ) as streams:
                             await app.run(
-                                streams[0], streams[1],
+                                streams[0],
+                                streams[1],
                                 app.create_initialization_options(),
                             )
 
@@ -92,6 +98,7 @@ def main() -> None:
     def version() -> None:
         """Print Horizon version."""
         from horizon import __version__
+
         click.echo(f"horizon-monitor {__version__}")
 
     cli()

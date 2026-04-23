@@ -50,6 +50,7 @@ def test_session_isolation(monitor: FidelityMonitor) -> None:
 
     # Process a second turn in A only
     from tests.conftest import TURN_2_AGENT, TURN_2_HUMAN
+
     monitor.process_turn(sid_a, TURN_2_HUMAN, TURN_2_AGENT)
 
     traj_a = monitor.get_trajectory(sid_a)

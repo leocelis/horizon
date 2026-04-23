@@ -38,22 +38,34 @@ def test_mcp_dispatch_new_conversation_returns_session_id(monitor: FidelityMonit
 
 def test_mcp_dispatch_full_flow(monitor: FidelityMonitor) -> None:
     """Full round-trip: new → process → trajectory → events → configure."""
-    sid = _dispatch(monitor, "new_conversation", {"metadata": {"domain": "technical"}})["session_id"]
+    sid = _dispatch(monitor, "new_conversation", {"metadata": {"domain": "technical"}})[
+        "session_id"
+    ]
 
     clock = datetime(2026, 4, 22, 8, 30, tzinfo=timezone.utc)
     conversation = [
         ("What is a B-tree?", "A balanced tree optimised for block-oriented storage reads."),
-        ("How does it differ from a B+ tree?", "B+ trees store values only in leaves and link leaves together."),
-        ("When would I pick a LSM-tree instead?", "LSM-trees win for write-heavy workloads with bounded read amplification."),
+        (
+            "How does it differ from a B+ tree?",
+            "B+ trees store values only in leaves and link leaves together.",
+        ),
+        (
+            "When would I pick a LSM-tree instead?",
+            "LSM-trees win for write-heavy workloads with bounded read amplification.",
+        ),
     ]
     for human, agent in conversation:
         clock = clock + timedelta(seconds=60)
-        turn = _dispatch(monitor, "process_turn", {
-            "session_id": sid,
-            "human_message": human,
-            "agent_response": agent,
-            "timestamp": clock.isoformat(),
-        })
+        turn = _dispatch(
+            monitor,
+            "process_turn",
+            {
+                "session_id": sid,
+                "human_message": human,
+                "agent_response": agent,
+                "timestamp": clock.isoformat(),
+            },
+        )
         assert "fidelity_score" in turn
         assert "igt_value" in turn
         assert "events" in turn
@@ -67,11 +79,15 @@ def test_mcp_dispatch_full_flow(monitor: FidelityMonitor) -> None:
     assert "events" in events
     assert isinstance(events["events"], list)
 
-    config_result = _dispatch(monitor, "configure", {
-        "session_id": sid,
-        "clarification_threshold": 0.25,
-        "domain": "support",
-    })
+    config_result = _dispatch(
+        monitor,
+        "configure",
+        {
+            "session_id": sid,
+            "clarification_threshold": 0.25,
+            "domain": "support",
+        },
+    )
     assert "applied" in config_result
     assert config_result["applied"]["clarification_threshold"] == 0.25
 
@@ -91,17 +107,25 @@ def test_mcp_dispatch_configure_active_mode_event_flow(monitor: FidelityMonitor)
     emits it with active=True."""
     sid = _dispatch(monitor, "new_conversation", {})["session_id"]
 
-    _dispatch(monitor, "configure", {
-        "session_id": sid,
-        "clarification_threshold": 0.0,
-        "event_modes": {"checkpoint.clarification": "active"},
-    })
+    _dispatch(
+        monitor,
+        "configure",
+        {
+            "session_id": sid,
+            "clarification_threshold": 0.0,
+            "event_modes": {"checkpoint.clarification": "active"},
+        },
+    )
 
-    _dispatch(monitor, "process_turn", {
-        "session_id": sid,
-        "human_message": "What is the event horizon of a black hole?",
-        "agent_response": "A recipe for chocolate cake: flour, sugar, cocoa, eggs.",
-    })
+    _dispatch(
+        monitor,
+        "process_turn",
+        {
+            "session_id": sid,
+            "human_message": "What is the event horizon of a black hole?",
+            "agent_response": "A recipe for chocolate cake: flour, sugar, cocoa, eggs.",
+        },
+    )
 
     events = _dispatch(monitor, "get_events", {"session_id": sid, "active_only": True})
     active_types = {e["type"] for e in events["events"]}

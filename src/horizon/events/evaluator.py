@@ -47,10 +47,7 @@ def evaluate_events(
         )
 
     # 2. checkpoint.comprehension
-    if (
-        result.igt_trend < -0.05
-        and session.turn_count >= config.convergence_window
-    ):
+    if result.igt_trend < -0.05 and session.turn_count >= config.convergence_window:
         emit(
             "checkpoint.comprehension",
             abs(result.igt_trend),
@@ -204,8 +201,7 @@ def evaluate_events(
         emit(
             "signal.light_cone_collapse",
             1.0 - result.reachable_fraction,
-            "Summarise key context before it becomes unreachable; "
-            "do not reference lost turns",
+            "Summarise key context before it becomes unreachable; " "do not reference lost turns",
             reachable_turns=result.reachable_turns,
             reachable_fraction=result.reachable_fraction,
         )

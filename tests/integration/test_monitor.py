@@ -54,8 +54,11 @@ def test_conversation_with_spatial_context() -> None:
         "timezone": "America/Los_Angeles",
     }
     result = monitor.process_turn(
-        sid, TURN_1_HUMAN, TURN_1_AGENT,
-        timestamp=TIMESTAMP_1, client_context=ctx,
+        sid,
+        TURN_1_HUMAN,
+        TURN_1_AGENT,
+        timestamp=TIMESTAMP_1,
+        client_context=ctx,
     )
 
     assert result.location_class == "transit"
@@ -196,7 +199,11 @@ def test_openai_wrap_with_timestamp_and_context_providers() -> None:
     wrapped.set_context_provider(lambda: ctx["current"])
 
     script = [
-        ("How does Python's garbage collector handle reference cycles?", desktop, timedelta(seconds=30)),
+        (
+            "How does Python's garbage collector handle reference cycles?",
+            desktop,
+            timedelta(seconds=30),
+        ),
         ("What about weak references — when would I use them?", desktop, timedelta(seconds=45)),
         ("Can memory leaks still happen despite GC?", desktop, timedelta(seconds=60)),
         ("ok, back to this — where were we with weak references?", mobile, timedelta(days=3)),

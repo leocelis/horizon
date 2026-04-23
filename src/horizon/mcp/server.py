@@ -46,9 +46,7 @@ def create_app(config: Config | None = None) -> Any:
         import mcp.types as types
         from mcp.server import Server
     except ImportError as exc:
-        raise ImportError(
-            "MCP support requires: pip install horizon-monitor[mcp]"
-        ) from exc
+        raise ImportError("MCP support requires: pip install horizon-monitor[mcp]") from exc
 
     monitor = FidelityMonitor(config)
     app = Server("horizon-fidelity-monitor")

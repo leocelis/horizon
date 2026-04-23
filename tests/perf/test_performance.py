@@ -102,9 +102,9 @@ def test_deep_pipeline_latency() -> None:
 
     samples.sort()
     median_ms = samples[len(samples) // 2]
-    assert median_ms < DEEP_BUDGET_MS * 3, (
-        f"Deep pipeline median latency {median_ms:.1f}ms exceeds 3x budget."
-    )
+    assert (
+        median_ms < DEEP_BUDGET_MS * 3
+    ), f"Deep pipeline median latency {median_ms:.1f}ms exceeds 3x budget."
 
 
 def test_memory_100_turns() -> None:
@@ -130,9 +130,9 @@ def test_memory_100_turns() -> None:
     tracemalloc.stop()
 
     delta_mb = delta_bytes / (1024 * 1024)
-    assert delta_mb < MEMORY_BUDGET_MB_100_TURNS, (
-        f"100-turn memory delta {delta_mb:.1f}MB exceeds {MEMORY_BUDGET_MB_100_TURNS}MB budget"
-    )
+    assert (
+        delta_mb < MEMORY_BUDGET_MB_100_TURNS
+    ), f"100-turn memory delta {delta_mb:.1f}MB exceeds {MEMORY_BUDGET_MB_100_TURNS}MB budget"
 
 
 def test_single_turn_metrics_latency() -> None:
@@ -161,6 +161,6 @@ def test_single_turn_metrics_latency() -> None:
     assert isinstance(result.events, list)
     assert result.health_status in {"healthy", "degrading", "critical", "converged"}
 
-    assert elapsed_ms < CORE_BUDGET_MS * 3, (
-        f"Single-turn latency {elapsed_ms:.1f}ms exceeds 3x core budget"
-    )
+    assert (
+        elapsed_ms < CORE_BUDGET_MS * 3
+    ), f"Single-turn latency {elapsed_ms:.1f}ms exceeds 3x core budget"

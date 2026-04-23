@@ -18,11 +18,7 @@ def _run_conversation(
 ) -> list:
     results = []
     for human, agent in turns:
-        results.append(
-            monitor.process_turn(
-                session_id, human_message=human, agent_response=agent
-            )
-        )
+        results.append(monitor.process_turn(session_id, human_message=human, agent_response=agent))
     return results
 
 
@@ -40,7 +36,10 @@ def test_deterministic() -> None:
     sid_b = monitor_b.new_conversation()
 
     turns = [
-        ("What is the fastest sorting algorithm?", "Depends on input; quicksort has good average-case."),
+        (
+            "What is the fastest sorting algorithm?",
+            "Depends on input; quicksort has good average-case.",
+        ),
         ("Why quicksort average-case?", "Because of randomized pivot and partitioning."),
         ("What about worst case?", "O(n^2) with poor pivot selection."),
     ]
@@ -84,16 +83,19 @@ def test_observe_mode_invariant(monitor: FidelityMonitor, session_id: str) -> No
     scenarios = [
         ("hi", "hello"),
         ("x" * 2000, "y" * 2000),
-        ("completely unrelated topic switch: tell me about cooking", "sure, cooking pasta involves boiling water"),
+        (
+            "completely unrelated topic switch: tell me about cooking",
+            "sure, cooking pasta involves boiling water",
+        ),
         ("is that right?", "yes."),
     ]
 
     for h, a in scenarios:
         result = monitor.process_turn(session_id, human_message=h, agent_response=a)
         for event in result.events:
-            assert event.active is False, (
-                f"Event {event.type} should be inactive in default (observe) mode"
-            )
+            assert (
+                event.active is False
+            ), f"Event {event.type} should be inactive in default (observe) mode"
 
 
 def test_session_not_found_raises(monitor: FidelityMonitor) -> None:

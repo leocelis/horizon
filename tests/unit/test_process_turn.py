@@ -59,7 +59,9 @@ def test_temporal_signals_with_timestamp(monitor: FidelityMonitor, session_id: s
     assert r2.resumption_cost is not None
 
 
-def test_temporal_signals_absent_without_timestamp(monitor: FidelityMonitor, session_id: str) -> None:
+def test_temporal_signals_absent_without_timestamp(
+    monitor: FidelityMonitor, session_id: str
+) -> None:
     """Temporal signals must be None when no timestamp is provided."""
     result = monitor.process_turn(session_id, TURN_1_HUMAN, TURN_1_AGENT)
     assert result.gap_seconds is None
@@ -67,7 +69,9 @@ def test_temporal_signals_absent_without_timestamp(monitor: FidelityMonitor, ses
     assert result.estimated_retention is None
 
 
-def test_causal_reachability_opt_in_with_timestamp(monitor: FidelityMonitor, session_id: str) -> None:
+def test_causal_reachability_opt_in_with_timestamp(
+    monitor: FidelityMonitor, session_id: str
+) -> None:
     """Causal reachability (J⁻) is computed only when a timestamp is provided.
 
     Matches horizon_intent.yaml::constraints[temporal_signals_optional], which

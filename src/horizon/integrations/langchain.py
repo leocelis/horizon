@@ -43,16 +43,12 @@ class HorizonCallback:
         self.last_result: TurnResult | None = None
         self.results: list[TurnResult] = []
 
-    def on_llm_start(
-        self, serialized: dict, prompts: list[str], **kwargs: Any
-    ) -> None:
+    def on_llm_start(self, serialized: dict, prompts: list[str], **kwargs: Any) -> None:
         """Capture the last human prompt."""
         if prompts:
             self._pending_human_message = prompts[-1]
 
-    def on_chat_model_start(
-        self, serialized: dict, messages: list, **kwargs: Any
-    ) -> None:
+    def on_chat_model_start(self, serialized: dict, messages: list, **kwargs: Any) -> None:
         """Capture the last human message from a chat prompt."""
         try:
             flat_messages = messages[0] if messages else []

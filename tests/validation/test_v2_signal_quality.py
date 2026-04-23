@@ -43,7 +43,9 @@ def test_per_event_precision_recall() -> None:
 
     labels_by_turn: dict[tuple[str, int, str], bool] = {}
     for rec in load_jsonl(labels_path):
-        labels_by_turn[(rec["conversation_id"], int(rec["turn"]), rec["event_type"])] = bool(rec["label"])
+        labels_by_turn[(rec["conversation_id"], int(rec["turn"]), rec["event_type"])] = bool(
+            rec["label"]
+        )
 
     predictions_by_turn: dict[tuple[str, int, str], bool] = {}
 

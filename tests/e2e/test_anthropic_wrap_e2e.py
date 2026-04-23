@@ -61,7 +61,9 @@ def test_anthropic_wrap_multi_turn_conversation(monitor: FidelityMonitor) -> Non
     sid = monitor.new_conversation(metadata={"example": "anthropic_e2e"})
 
     replies = [
-        ["Quantum entanglement is a correlation between particles that persists beyond classical limits."],
+        [
+            "Quantum entanglement is a correlation between particles that persists beyond classical limits."
+        ],
         ["No FTL signalling — the no-communication theorem holds; only correlations move."],
         ["Bell tests rule out local hidden variables for these correlations."],
     ]
@@ -93,10 +95,18 @@ def test_anthropic_wrap_handles_list_shaped_content(monitor: FidelityMonitor) ->
     text segments into a single agent_response."""
     sid = monitor.new_conversation()
 
-    client = _wrap(monitor, _mock_anthropic_client([[
-        "Paragraph one — establishing context.",
-        "Paragraph two — the actual answer.",
-    ]]), sid)
+    client = _wrap(
+        monitor,
+        _mock_anthropic_client(
+            [
+                [
+                    "Paragraph one — establishing context.",
+                    "Paragraph two — the actual answer.",
+                ]
+            ]
+        ),
+        sid,
+    )
 
     client.messages.create(
         model="claude-opus-4-5",

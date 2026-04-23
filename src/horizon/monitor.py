@@ -156,14 +156,21 @@ class FidelityMonitor:
             SessionNotFoundError: If session_id has not been registered.
         """
         if session_id not in self._sessions:
-            raise SessionNotFoundError(f"Session '{session_id}' not found. Call new_conversation() first.")
+            raise SessionNotFoundError(
+                f"Session '{session_id}' not found. Call new_conversation() first."
+            )
 
         session = self._sessions[session_id]
 
         with session._lock:
             return self._run_pipeline(
-                session, human_message, agent_response,
-                timestamp, client_context, logprobs, human_latency_ms,
+                session,
+                human_message,
+                agent_response,
+                timestamp,
+                client_context,
+                logprobs,
+                human_latency_ms,
             )
 
     def _run_pipeline(
@@ -230,8 +237,14 @@ class FidelityMonitor:
 
         prev_fidelity = session.fidelity_trajectory[-1] if session.fidelity_trajectory else 0.5
         fidelity = compute_dynamic_fidelity(
-            prev_fidelity, igt, djs, delta_recoverable, delta_irreversible,
-            delta_tau_penalty, kappa, config,
+            prev_fidelity,
+            igt,
+            djs,
+            delta_recoverable,
+            delta_irreversible,
+            delta_tau_penalty,
+            kappa,
+            config,
         )
 
         # Turn 1: bootstrap fidelity from snapshot
@@ -390,6 +403,7 @@ class FidelityMonitor:
             ts_prev = session.turns[i - 1].timestamp
             if ts_curr and ts_prev:
                 from horizon.spacetime.temporal import compute_temporal_gap
+
                 gap, _ = compute_temporal_gap(ts_curr, ts_prev)
                 gaps.append(gap)
             else:
@@ -399,6 +413,7 @@ class FidelityMonitor:
         if len(session.turns) >= 2:
             igt_values = [t.igt_value for t in session.turns]
             import numpy as np
+
             x = np.arange(len(igt_values), dtype=float)
             igt_trend = float(np.polyfit(x, igt_values, 1)[0])
         else:
@@ -474,7 +489,9 @@ class FidelityMonitor:
         if "temporal_desync_threshold_seconds" in filtered:
             val = filtered["temporal_desync_threshold_seconds"]
             if not isinstance(val, (int, float)) or val < 0:
-                warnings.append(ConfigWarning("temporal_desync_threshold_seconds", "Must be non-negative float"))
+                warnings.append(
+                    ConfigWarning("temporal_desync_threshold_seconds", "Must be non-negative float")
+                )
                 del filtered["temporal_desync_threshold_seconds"]
 
         if session_id:
@@ -501,6 +518,7 @@ class FidelityMonitor:
         Supported targets: 'json', 'langsmith', 'langfuse', 'otel', 'arize'.
         """
         from horizon.integrations.export import export_session
+
         session = self._get_session(session_id)
         return export_session(session, target, connection)
 
@@ -512,13 +530,17 @@ class FidelityMonitor:
 
         if "openai" in client_module:
             from horizon.integrations.openai import HorizonWrappedOpenAI
+
             return HorizonWrappedOpenAI(client, self, session_id)
         if "anthropic" in client_module:
             from horizon.integrations.anthropic import HorizonWrappedAnthropic
+
             return HorizonWrappedAnthropic(client, self, session_id)
 
-        raise TypeError(f"Cannot wrap client of type '{type(client).__name__}'. "
-                        "Supported: openai.OpenAI, anthropic.Anthropic")
+        raise TypeError(
+            f"Cannot wrap client of type '{type(client).__name__}'. "
+            "Supported: openai.OpenAI, anthropic.Anthropic"
+        )
 
     # ── Internal helpers ────────────────────────────────────────────────────
 

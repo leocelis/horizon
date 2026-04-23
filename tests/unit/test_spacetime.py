@@ -65,7 +65,10 @@ def test_spacetime_signature_negative_time_component(default_config: Config) -> 
     """The time component of ds² must be negative (Minkowski-like signature)."""
     # Isolate: large time, zero semantics → ds² < 0
     ds2, _ = compute_spacetime_interval(
-        d_tau=86400, d_djs=0.0, d_epsilon=0.0, d_coherence=0.0,
+        d_tau=86400,
+        d_djs=0.0,
+        d_epsilon=0.0,
+        d_coherence=0.0,
         config=default_config,
     )
     assert ds2 < 0
@@ -95,9 +98,9 @@ def test_no_client_context_no_spatial_signals() -> None:
     assert 0.0 <= result.fidelity_score <= 1.0
     spatial_event_types = {"signal.frame_shift"}
     for e in result.events:
-        assert e.type not in spatial_event_types, (
-            f"Spatial event {e.type} fired without client_context"
-        )
+        assert (
+            e.type not in spatial_event_types
+        ), f"Spatial event {e.type} fired without client_context"
 
 
 def test_minkowski_signature(default_config: Config) -> None:
@@ -108,14 +111,20 @@ def test_minkowski_signature(default_config: Config) -> None:
       - spacelike (ds² > 0) when semantic terms dominate
     """
     ds2_time, cls_time = compute_spacetime_interval(
-        d_tau=10 * 86400, d_djs=0.0, d_epsilon=0.0, d_coherence=0.0,
+        d_tau=10 * 86400,
+        d_djs=0.0,
+        d_epsilon=0.0,
+        d_coherence=0.0,
         config=default_config,
     )
     assert ds2_time < 0
     assert cls_time == "timelike"
 
     ds2_space, cls_space = compute_spacetime_interval(
-        d_tau=0.0, d_djs=0.9, d_epsilon=0.9, d_coherence=0.9,
+        d_tau=0.0,
+        d_djs=0.9,
+        d_epsilon=0.9,
+        d_coherence=0.9,
         config=default_config,
     )
     assert ds2_space > 0

@@ -24,7 +24,9 @@ def test_reachable_fraction_one_on_first_turn(monitor: FidelityMonitor, session_
     assert result.reachable_fraction == 1.0
 
 
-def test_reachable_fraction_is_none_without_timestamp(monitor: FidelityMonitor, session_id: str) -> None:
+def test_reachable_fraction_is_none_without_timestamp(
+    monitor: FidelityMonitor, session_id: str
+) -> None:
     """Without timestamp, reachability is not computed."""
     result = monitor.process_turn(session_id, TURN_1_HUMAN, TURN_1_AGENT)
     assert result.reachable_turns is None
@@ -37,9 +39,7 @@ def test_reachable_fraction_decreases_after_large_gap(monitor: FidelityMonitor) 
 
     sid = monitor.new_conversation()
     monitor.process_turn(sid, TURN_1_HUMAN, TURN_1_AGENT, timestamp=TIMESTAMP_1)
-    result = monitor.process_turn(
-        sid, TURN_2_HUMAN, TURN_2_AGENT, timestamp=TIMESTAMP_DAYS_LATER
-    )
+    result = monitor.process_turn(sid, TURN_2_HUMAN, TURN_2_AGENT, timestamp=TIMESTAMP_DAYS_LATER)
     assert result.reachable_fraction <= 1.0
 
 

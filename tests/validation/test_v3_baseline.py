@@ -45,7 +45,9 @@ def test_heuristic_rho_comparison() -> None:
         h_scores = []
         for turn in convo["turns"]:
             res = monitor.process_turn(
-                sid, turn["human"], turn["agent"],
+                sid,
+                turn["human"],
+                turn["agent"],
                 timestamp=turn.get("timestamp"),
                 client_context=turn.get("client_context"),
             )
@@ -99,6 +101,6 @@ def test_structural_failure_detection() -> None:
         pytest.skip(f"Structural-failure dataset too small ({labeled}); need >= 50")
 
     precision = tp / max(1, (tp + fp))
-    assert precision >= 0.6, (
-        f"Structural-failure precision {precision:.2f} < 0.6 (tp={tp}, fp={fp})"
-    )
+    assert (
+        precision >= 0.6
+    ), f"Structural-failure precision {precision:.2f} < 0.6 (tp={tp}, fp={fp})"

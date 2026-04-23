@@ -78,14 +78,17 @@ def test_openai_wrap_runs_multi_turn_conversation(monitor: FidelityMonitor) -> N
     client = _wrap(monitor, _mock_openai_client(replies), sid)
 
     simulated = {"now": datetime(2026, 4, 22, 9, 0, tzinfo=timezone.utc)}
-    ctx = {"ctx": {"device_type": "desktop", "timezone": "America/New_York",
-                   "location_class": "office"}}
+    ctx = {
+        "ctx": {
+            "device_type": "desktop",
+            "timezone": "America/New_York",
+            "location_class": "office",
+        }
+    }
     client.set_timestamp_provider(lambda: simulated["now"].isoformat())
     client.set_context_provider(lambda: ctx["ctx"])
 
-    messages: list[dict[str, str]] = [
-        {"role": "system", "content": "Concise technical assistant."}
-    ]
+    messages: list[dict[str, str]] = [{"role": "system", "content": "Concise technical assistant."}]
     script = [
         ("How does Python's GC handle reference cycles?", timedelta(seconds=30)),
         ("What about weak references?", timedelta(seconds=45)),
@@ -96,8 +99,11 @@ def test_openai_wrap_runs_multi_turn_conversation(monitor: FidelityMonitor) -> N
     for i, (human, gap) in enumerate(script):
         simulated["now"] = simulated["now"] + gap
         if i == len(script) - 1:
-            ctx["ctx"] = {"device_type": "mobile", "timezone": "America/New_York",
-                           "location_class": "transit"}
+            ctx["ctx"] = {
+                "device_type": "mobile",
+                "timezone": "America/New_York",
+                "location_class": "transit",
+            }
         messages.append({"role": "user", "content": human})
         response = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
         messages.append({"role": "assistant", "content": response.choices[0].message.content})
@@ -129,7 +135,9 @@ def test_openai_wrap_respects_framework_agnostic_constraint(monitor: FidelityMon
 
     sid = monitor.new_conversation()
     client = _wrap(monitor, _mock_openai_client(["hi there"]), sid)
-    client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": "hi"}])
+    client.chat.completions.create(
+        model="gpt-4o-mini", messages=[{"role": "user", "content": "hi"}]
+    )
 
     after = {m.split(".", 1)[0] for m in sys.modules} & forbidden
     newly_imported = after - before

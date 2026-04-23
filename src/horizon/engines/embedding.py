@@ -20,8 +20,7 @@ class EmbeddingEngine:
     as the only potentially slow operation.
     """
 
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2",
-                 model_path: str | None = None) -> None:
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2", model_path: str | None = None) -> None:
         self._model_name = model_name
         self._model_path = model_path
         self._model = None
@@ -36,8 +35,11 @@ class EmbeddingEngine:
             source = self._model_path or self._model_name
             self._model = SentenceTransformer(source)
             # get_embedding_dimension is the new API; fall back for older versions
-            get_dim = getattr(self._model, "get_embedding_dimension",
-                              getattr(self._model, "get_sentence_embedding_dimension", None))
+            get_dim = getattr(
+                self._model,
+                "get_embedding_dimension",
+                getattr(self._model, "get_sentence_embedding_dimension", None),
+            )
             self._dim = get_dim() if get_dim else self._model.encode("x").shape[-1]
         except Exception as exc:
             raise EmbeddingModelError(
@@ -80,9 +82,7 @@ def update_history(session: Session, new_combined: ndarray, decay: float = 0.9) 
     if session.history_embedding is None:
         session.history_embedding = new_combined.copy()
     else:
-        session.history_embedding = (
-            decay * session.history_embedding + (1.0 - decay) * new_combined
-        )
+        session.history_embedding = decay * session.history_embedding + (1.0 - decay) * new_combined
         norm = np.linalg.norm(session.history_embedding)
         if norm > 1e-8:
             session.history_embedding /= norm

@@ -63,9 +63,13 @@ def test_morning_ramp_increases() -> None:
 def test_chronotype_offset_shifts_peak() -> None:
     """A positive chronotype_offset shifts the curve later (night owl)."""
     # At 10:00 with no offset = peak
-    kappa_standard = compute_circadian_factor("2026-04-22T10:00:00+00:00", None, chronotype_offset=0)
+    kappa_standard = compute_circadian_factor(
+        "2026-04-22T10:00:00+00:00", None, chronotype_offset=0
+    )
     # With +2h offset, 10:00 becomes effective 08:00 = ramp, so lower
-    kappa_shifted = compute_circadian_factor("2026-04-22T10:00:00+00:00", None, chronotype_offset=2.0)
+    kappa_shifted = compute_circadian_factor(
+        "2026-04-22T10:00:00+00:00", None, chronotype_offset=2.0
+    )
     assert kappa_shifted < kappa_standard
 
 

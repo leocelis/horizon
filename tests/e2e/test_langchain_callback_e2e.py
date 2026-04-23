@@ -51,7 +51,10 @@ def test_langchain_callback_captures_multi_turn_conversation(monitor: FidelityMo
     conversation = [
         ("Explain the Kelly criterion.", "Kelly sizes bets so log-wealth growth is maximised."),
         ("When does it fail?", "It fails when edge estimates are wrong or returns fat-tailed."),
-        ("Compare with fixed-fractional.", "Fixed-fractional is simpler but sub-optimal asymptotically."),
+        (
+            "Compare with fixed-fractional.",
+            "Fixed-fractional is simpler but sub-optimal asymptotically.",
+        ),
     ]
     for human, agent in conversation:
         _drive_turn(cb, human, agent)
@@ -69,7 +72,11 @@ def test_langchain_callback_handles_string_prompt_flow(monitor: FidelityMonitor)
     cb = HorizonCallback(monitor, sid)
 
     cb.on_llm_start({"name": "OpenAI"}, ["What is the Nash equilibrium?"])
-    cb.on_llm_end(_llm_result("A Nash equilibrium is a strategy profile where no player gains by unilateral deviation."))
+    cb.on_llm_end(
+        _llm_result(
+            "A Nash equilibrium is a strategy profile where no player gains by unilateral deviation."
+        )
+    )
 
     assert cb.last_result is not None
     assert cb.last_result.turn_number == 1
@@ -104,11 +111,18 @@ def test_langchain_callback_injects_client_context(monitor: FidelityMonitor) -> 
     cb = HorizonCallback(
         monitor,
         sid,
-        client_context={"device_type": "mobile", "timezone": "Europe/Berlin",
-                          "location_class": "transit"},
+        client_context={
+            "device_type": "mobile",
+            "timezone": "Europe/Berlin",
+            "location_class": "transit",
+        },
     )
 
-    _drive_turn(cb, "What's a good Berlin breakfast?", "Berlin breakfast usually means rolls with cheese and cold cuts.")
+    _drive_turn(
+        cb,
+        "What's a good Berlin breakfast?",
+        "Berlin breakfast usually means rolls with cheese and cold cuts.",
+    )
 
     last = cb.last_result
     assert last is not None

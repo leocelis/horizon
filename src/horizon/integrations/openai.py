@@ -81,17 +81,23 @@ class HorizonWrappedOpenAI:
 
     @property
     def chat(self) -> _WrappedChat:
-        return _WrappedChat(self._client.chat, self._monitor, self._session_id,
-                            self._include_timestamps, self)
+        return _WrappedChat(
+            self._client.chat, self._monitor, self._session_id, self._include_timestamps, self
+        )
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._client, name)
 
 
 class _WrappedChat:
-    def __init__(self, chat: Any, monitor: FidelityMonitor, session_id: str,
-                 include_timestamps: bool,
-                 wrapper: HorizonWrappedOpenAI) -> None:
+    def __init__(
+        self,
+        chat: Any,
+        monitor: FidelityMonitor,
+        session_id: str,
+        include_timestamps: bool,
+        wrapper: HorizonWrappedOpenAI,
+    ) -> None:
         self._chat = chat
         self._monitor = monitor
         self._session_id = session_id
@@ -101,8 +107,11 @@ class _WrappedChat:
     @property
     def completions(self) -> _WrappedCompletions:
         return _WrappedCompletions(
-            self._chat.completions, self._monitor, self._session_id,
-            self._include_timestamps, self._wrapper,
+            self._chat.completions,
+            self._monitor,
+            self._session_id,
+            self._include_timestamps,
+            self._wrapper,
         )
 
     def __getattr__(self, name: str) -> Any:
@@ -110,9 +119,14 @@ class _WrappedChat:
 
 
 class _WrappedCompletions:
-    def __init__(self, completions: Any, monitor: FidelityMonitor, session_id: str,
-                 include_timestamps: bool,
-                 wrapper: HorizonWrappedOpenAI) -> None:
+    def __init__(
+        self,
+        completions: Any,
+        monitor: FidelityMonitor,
+        session_id: str,
+        include_timestamps: bool,
+        wrapper: HorizonWrappedOpenAI,
+    ) -> None:
         self._completions = completions
         self._monitor = monitor
         self._session_id = session_id

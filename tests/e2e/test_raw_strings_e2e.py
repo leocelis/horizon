@@ -30,26 +30,46 @@ def test_raw_strings_multi_turn_happy_path(monitor: FidelityMonitor) -> None:
 
     clock = datetime(2026, 4, 22, 12, 0, tzinfo=timezone.utc)
     script = [
-        ("I'm trying to write a sci-fi short story about time travel.",
-         "Great — do you have a rough premise or central tension?"),
-        ("A historian falls into 1630s Amsterdam and can't return.",
-         "That's a rich setting. Do they try to change history, or observe?"),
-        ("They deliberately stay to prevent a famine.",
-         "That gives you moral stakes. What's the twist?"),
-        ("The famine was the catalyst for something good.",
-         "Classic temporal paradox. What's your opening scene?"),
-        ("Maybe the historian is lecturing students, then vanishes mid-sentence.",
-         "That's a strong hook. Who narrates?"),
-        ("First-person, in the historian's voice.",
-         "Good. First-person keeps urgency. Chapter structure?"),
-        ("Five chapters — arrival, realization, decision, consequence, return.",
-         "Solid arc. The 'return' chapter could be metaphorical."),
-        ("Yes — they return to their own time, but wiser.",
-         "A transformation arc. What's the title?"),
-        ("'The Keeper of Gone Things.'",
-         "Evocative. Do you want help with prose style now or outline first?"),
-        ("Let's outline first.",
-         "Great — I'll sketch a scene-by-scene outline for all five chapters."),
+        (
+            "I'm trying to write a sci-fi short story about time travel.",
+            "Great — do you have a rough premise or central tension?",
+        ),
+        (
+            "A historian falls into 1630s Amsterdam and can't return.",
+            "That's a rich setting. Do they try to change history, or observe?",
+        ),
+        (
+            "They deliberately stay to prevent a famine.",
+            "That gives you moral stakes. What's the twist?",
+        ),
+        (
+            "The famine was the catalyst for something good.",
+            "Classic temporal paradox. What's your opening scene?",
+        ),
+        (
+            "Maybe the historian is lecturing students, then vanishes mid-sentence.",
+            "That's a strong hook. Who narrates?",
+        ),
+        (
+            "First-person, in the historian's voice.",
+            "Good. First-person keeps urgency. Chapter structure?",
+        ),
+        (
+            "Five chapters — arrival, realization, decision, consequence, return.",
+            "Solid arc. The 'return' chapter could be metaphorical.",
+        ),
+        (
+            "Yes — they return to their own time, but wiser.",
+            "A transformation arc. What's the title?",
+        ),
+        (
+            "'The Keeper of Gone Things.'",
+            "Evocative. Do you want help with prose style now or outline first?",
+        ),
+        (
+            "Let's outline first.",
+            "Great — I'll sketch a scene-by-scene outline for all five chapters.",
+        ),
     ]
 
     for i, (human, agent) in enumerate(script):
@@ -98,8 +118,7 @@ def test_raw_strings_zero_transitive_framework_imports_in_subprocess() -> None:
     """Run Horizon in a fresh Python subprocess and verify no agent framework is
     imported. This is stronger than the in-process check: it catches module-level
     side effects in ``import horizon`` or ``FidelityMonitor()``."""
-    script = textwrap.dedent(
-        """
+    script = textwrap.dedent("""
         import sys
         from horizon import FidelityMonitor
         monitor = FidelityMonitor()
@@ -109,8 +128,7 @@ def test_raw_strings_zero_transitive_framework_imports_in_subprocess() -> None:
         loaded = {m.split('.', 1)[0] for m in sys.modules}
         leaked = sorted(loaded & forbidden)
         print("LEAKED=" + ",".join(leaked))
-        """
-    )
+        """)
     proc = subprocess.run(
         [sys.executable, "-c", script],
         capture_output=True,
@@ -118,6 +136,6 @@ def test_raw_strings_zero_transitive_framework_imports_in_subprocess() -> None:
         timeout=120,
     )
     assert proc.returncode == 0, proc.stderr
-    assert "LEAKED=\n" in proc.stdout + "\n" or proc.stdout.strip().endswith("LEAKED="), (
-        f"Core horizon leaked forbidden imports in subprocess: {proc.stdout}"
-    )
+    assert "LEAKED=\n" in proc.stdout + "\n" or proc.stdout.strip().endswith(
+        "LEAKED="
+    ), f"Core horizon leaked forbidden imports in subprocess: {proc.stdout}"

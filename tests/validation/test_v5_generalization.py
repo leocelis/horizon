@@ -26,7 +26,9 @@ def test_cross_domain_rho() -> None:
         fidelity_scores: list[float] = []
         for turn in convo["turns"]:
             r = monitor.process_turn(
-                sid, turn["human"], turn["agent"],
+                sid,
+                turn["human"],
+                turn["agent"],
                 timestamp=turn.get("timestamp"),
                 client_context=turn.get("client_context"),
             )
@@ -35,9 +37,7 @@ def test_cross_domain_rho() -> None:
             continue
         by_domain[convo["domain"]].append((fidelity_scores, float(convo["human_rating"])))
 
-    assert len(by_domain) >= 5, (
-        f"V5 requires >= 5 held-out domains, have {sorted(by_domain)}"
-    )
+    assert len(by_domain) >= 5, f"V5 requires >= 5 held-out domains, have {sorted(by_domain)}"
 
     failures: list[str] = []
     for domain, rows in by_domain.items():

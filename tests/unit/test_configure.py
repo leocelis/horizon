@@ -31,7 +31,9 @@ def test_configure_per_session_does_not_leak() -> None:
     monitor.configure(session_id=sid_a, clarification_threshold=0.1)
 
     assert monitor._sessions[sid_a].config.clarification_threshold == 0.1
-    assert monitor._sessions[sid_b].config.clarification_threshold == Config().clarification_threshold
+    assert (
+        monitor._sessions[sid_b].config.clarification_threshold == Config().clarification_threshold
+    )
 
 
 def test_configure_unknown_parameter_returns_warning() -> None:
@@ -50,7 +52,10 @@ def test_configure_invalid_temporal_threshold_warns() -> None:
     result = monitor.configure(temporal_desync_threshold_seconds=-5)
 
     assert any(w.parameter == "temporal_desync_threshold_seconds" for w in result.warnings)
-    assert monitor._config.temporal_desync_threshold_seconds == Config().temporal_desync_threshold_seconds
+    assert (
+        monitor._config.temporal_desync_threshold_seconds
+        == Config().temporal_desync_threshold_seconds
+    )
 
 
 def test_configure_event_modes_activates_event() -> None:
