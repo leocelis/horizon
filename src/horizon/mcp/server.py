@@ -68,10 +68,36 @@ _log = logging.getLogger("horizon.mcp")
 
 try:
     from mcp.server.fastmcp import FastMCP
+    from mcp.server.sse import TransportSecuritySettings
 except ImportError as exc:
     raise ImportError(
         "MCP support requires: pip install 'horizon-monitor[mcp]'"
     ) from exc
+
+
+def _transport_security() -> "TransportSecuritySettings | None":
+    """
+    Build TransportSecuritySettings for production deployments.
+
+    In production (HORIZON_ENV=production) DNS rebinding protection is
+    configured with explicit allowed hosts. Bearer token auth (HorizonAuthMiddleware)
+    is the primary access control layer. If HORIZON_ALLOWED_HOSTS is not set,
+    DNS rebinding protection is disabled entirely — safe because every non-/health
+    request still requires a valid Bearer token.
+    """
+    if os.environ.get("HORIZON_ENV") != "production":
+        return None  # default FastMCP behaviour (localhost only) for local dev
+
+    raw = os.environ.get("HORIZON_ALLOWED_HOSTS", "")
+    hosts = [h.strip() for h in raw.split(",") if h.strip()]
+
+    if hosts:
+        return TransportSecuritySettings(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=hosts,
+        )
+    # No explicit list: disable DNS rebinding protection — auth middleware gates access
+    return TransportSecuritySettings(enable_dns_rebinding_protection=False)
 
 # ── Server-level instructions ─────────────────────────────────────────────────
 #
@@ -127,6 +153,7 @@ def _get_monitor() -> FidelityMonitor:
 mcp = FastMCP(
     "horizon-fidelity-monitor",
     instructions=_INSTRUCTIONS,
+    transport_security=_transport_security(),
 )
 
 
