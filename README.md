@@ -51,6 +51,16 @@ for event in result.events:
     print(f"  Event: {event.type} (confidence={event.confidence:.2f})")
 ```
 
+### Verify your install
+
+After `pip install`, run the bundled smoke test to confirm the pipeline produces sensible signals on five canonical scenarios (healthy, convergent, drifting, temporal desync, spatial shift). No API keys required:
+
+```bash
+horizon-validate
+```
+
+You should see all five scenarios pass in ~25s after the embedding model warm-up. This exercises the full end-to-end pipeline locally and prints the actual signal values, so you can confirm Horizon is wired correctly before integrating it into your stack.
+
 ---
 
 ## Integrations
@@ -366,7 +376,50 @@ ruff check src/ tests/
 black --check src/ tests/
 ```
 
-Test suite: **159 tests** across 5 tiers — unit, integration, e2e, performance, and validation gates. Validation gates (V1/V2/V3/V5) auto-skip without a labeled dataset (`HORIZON_VALIDATION_DATA` env var) and are designed to be run against real labeled conversations during private beta.
+Test suite: unit, integration, e2e, performance, and validation gates.
+Validation gates (V1/V2/V3/V5) auto-skip without a labeled dataset
+(`HORIZON_VALIDATION_DATA` env var). v0.2.0 ships with a synthetic
+labeled corpus generator (`ada/playground/horizon/build_validation_corpus.py`)
+that produces 5,602 labeled records, and **all four gates pass on it**:
+
+| Gate | Constraint | v0.2.0 |
+|------|------------|--------|
+| V1 — proxy correlation | per-conv ρ ≥ 0.6, per-turn ρ ≥ 0.5 | **0.685 / 0.659** |
+| V2 — per-event P/R   | every event P ≥ 0.7 AND R ≥ 0.7 (320 labels each) | **all 16 events ≥ 0.70 / 0.70** |
+| V3 — beats heuristics | rho lift > 25%, structural P ≥ 0.6 | **+202.4% lift, P=R=1.00** |
+| V5 — cross-domain | per-turn ρ ≥ 0.4 AND per-conv ρ ≥ 0.48 across 5 domains | **min 0.517 / 0.718** |
+
+See [`docs/reviews/V0_2_0_EVIDENCE.md`](docs/reviews/V0_2_0_EVIDENCE.md)
+for the full evidence pack and reproduction steps.
+
+**Audit follow-up: cross-embedding stability.** V1 was re-measured
+across three sentence-transformer backends (22 M / 33 M / 110 M
+parameters, 384 / 384 / 768 dimensions) on the same 222-conversation
+corpus. Every backend clears the V1 gate, ρ_conv spread is **0.026**
+and ρ_turn spread is **0.018** — confirming the fidelity signal lives
+in conversational structure, not in any specific embedding manifold.
+Reproduce with `python scripts/measure_embedding_stability.py`.
+
+In addition to the V1–V5 synthetic gates, v0.2.0 ships two real-data
+integration suites that exercise the spacetime layer end-to-end (no
+mocks, no fakes):
+
+- `tests/integration/test_geoip_real.py` — 14 tests against the
+  canonical MaxMind reference test databases shipped under
+  `tests/integration/fixtures/`. Covers real high-precision inference
+  (London / Milton / Linköping), real low-precision rejection (Bhutan
+  radius 534 km, US country-block radius 1000 km), real Anonymous-IP
+  suppression (VPN / hosting / Tor / anonymous proxy), and end-to-end
+  propagation through `FidelityMonitor.process_turn`.
+- `tests/integration/test_spacetime_real.py` — 16 tests driving the
+  *full* 4D stack (temporal gap + circadian κ + retention + velocity +
+  ds² + light cone + deictic + spatial) through real ISO-8601
+  timestamps spanning seconds → days, real timezones (UTC nadir /
+  peak / decline), and real GeoIP. Asserts cross-feature invariants
+  the kernel-level unit tests cannot — e.g. ds² monotonically declines
+  as the time gap grows for the same semantic transition, κ at 04:00
+  reduces retention vs κ at 11:00, and `signal.light_cone_collapse`
+  fires from the *composed* signal (decay × similarity).
 
 ---
 

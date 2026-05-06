@@ -24,6 +24,13 @@ from horizon.engines.igt import compute_igt, compute_igt_trend
 from horizon.engines.mode import detect_conversation_mode
 from horizon.engines.twr import compute_twr
 from horizon.events.evaluator import evaluate_events
+from horizon.grounding import (
+    GroundingHookError,
+    GroundingResult,
+    ToolHook,
+    call_hook,
+    estimate_grounding_need,
+)
 from horizon.models import (
     ConfigResult,
     ConfigWarning,
@@ -37,6 +44,7 @@ from horizon.spacetime.circadian import compute_circadian_factor
 from horizon.spacetime.deictic import resolve_deictic_expressions
 from horizon.spacetime.interval import compute_spacetime_interval
 from horizon.spacetime.light_cone import compute_reachability
+from horizon.spacetime.pacing import detect_completion_marker, detect_deferred_action
 from horizon.spacetime.spatial import compute_spatial_constraint, infer_location_class
 from horizon.spacetime.temporal import (
     compute_resumption_cost,
@@ -70,12 +78,16 @@ class FidelityMonitor:
         self,
         config: Config | None = None,
         store: Any | None = None,
+        grounding_hook: ToolHook | None = None,
     ) -> None:
         """Initialise the monitor.
 
         Args:
             config: Global default config. Can be overridden per-session via configure().
             store: Optional PersistentDynamicsStore for cross-session persistence.
+            grounding_hook: Optional callable (see horizon.grounding.ToolHook) invoked
+                            when a turn looks ungrounded. With no hook, Horizon makes
+                            zero outbound calls — privacy invariant preserved.
         """
         self._config = config or Config()
         self._sessions: dict[str, Session] = {}
@@ -84,6 +96,47 @@ class FidelityMonitor:
             model_path=self._config.model_path,
         )
         self._store = store
+        self._grounding_hook: ToolHook | None = grounding_hook
+        self._last_grounding: dict[str, GroundingResult] = {}
+
+    def preload_models(self) -> dict[str, float]:
+        """Eagerly load and warm all on-disk models. Eliminates first-call latency.
+
+        Production callers should invoke this at process startup so the first
+        ``process_turn`` call is fast rather than blocking on the ~3-5s
+        embedding-model load. Returns a small report with elapsed times per
+        model so callers can budget cold-start windows.
+
+        Safe to call repeatedly — already-loaded and already-warmed models are
+        skipped.
+        """
+        import time
+
+        report: dict[str, float] = {}
+        t0 = time.perf_counter()
+        was_loaded = self._embed_engine._model is not None
+        self._embed_engine.ensure_loaded()
+        if not was_loaded:
+            # First load also pays a JIT/tokenizer warmup on the first encode.
+            # Run a throwaway batch so the very next process_turn pays only the
+            # core-pipeline cost.
+            self._embed_engine.embed_batch(["warmup", "ready"])
+        report["embedding_model_ms"] = (time.perf_counter() - t0) * 1000.0
+        return report
+
+    def register_grounding_hook(self, hook: ToolHook | None) -> None:
+        """Attach (or detach with ``None``) an external grounding tool.
+
+        Once registered, Horizon emits ``signal.grounding_required`` on
+        turns where ungrounded specifics appear likely AND invokes the hook
+        to fetch supporting evidence. Pass ``None`` to detach and restore
+        the zero-outbound-call invariant.
+        """
+        self._grounding_hook = hook
+
+    def get_last_grounding(self, session_id: str) -> GroundingResult | None:
+        """Return the most recent GroundingResult for the session, if any."""
+        return self._last_grounding.get(session_id)
 
     # ── Session lifecycle ───────────────────────────────────────────────────
 
@@ -199,7 +252,13 @@ class FidelityMonitor:
         igt = compute_igt(c_emb, session.history_embedding, turn_number)
         igt_trend = compute_igt_trend(session, config.convergence_window)
         djs = compute_divergence(h_emb, a_emb)
-        twr = compute_twr(agent_response, session, self._embed_engine.embed)
+        agent_sentence_embeddings: list = []
+        twr = compute_twr(
+            agent_response,
+            session,
+            self._embed_engine.embed,
+            sentence_embeddings_out=agent_sentence_embeddings,
+        )
         consistency = compute_bipredictability(h_emb, a_emb, session.history_embedding)
         epsilon = estimate_epsilon(session, c_emb, djs)
 
@@ -245,6 +304,7 @@ class FidelityMonitor:
             delta_tau_penalty,
             kappa,
             config,
+            consistency=consistency,
         )
 
         # Turn 1: bootstrap fidelity from snapshot
@@ -253,7 +313,7 @@ class FidelityMonitor:
 
         # ── Step 5: Health ────────────────────────────────────────────────
         session.fidelity_trajectory.append(fidelity)
-        health = compute_health(session, fidelity, igt_trend, config)
+        health = compute_health(session, fidelity, igt_trend, config, current_igt=igt)
 
         degradation: str = "none"
         if delta_irreversible > 0 and delta_recoverable > 0.1:
@@ -315,11 +375,18 @@ class FidelityMonitor:
         session.detected_mode = mode
 
         # ── Step 11: Build TurnState and append ───────────────────────────
+        # Pacing hints — computed from text now, consumed by next turn's
+        # evaluator. Storing only the parsed flag/dataclass (never raw text)
+        # preserves the privacy invariant.
+        agent_pacing_hint = detect_deferred_action(agent_response)
+        human_completion = detect_completion_marker(human_message)
+
         turn_state = TurnState(
             turn_number=turn_number,
             human_embedding=h_emb,
             agent_embedding=a_emb,
             combined_embedding=c_emb,
+            agent_sentence_embeddings=agent_sentence_embeddings or None,
             timestamp=timestamp,
             timestamp_epoch=ts_epoch,
             client_context=client_context,
@@ -331,9 +398,41 @@ class FidelityMonitor:
             epsilon_t=epsilon,
             velocity=velocity,
             in_context=True,
+            agent_pacing_hint=agent_pacing_hint,
+            human_completion_marker=human_completion,
         )
         session.turns.append(turn_state)
         update_history(session, c_emb)
+
+        # ── Step 11b: Grounding-need estimate + optional hook callout ─────
+        # Always computed. The hook is only invoked when (a) a hook is
+        # registered AND (b) the heuristic crosses the configured threshold
+        # — preserves the privacy invariant for non-grounded deployments.
+        grounding_need = estimate_grounding_need(
+            human_message, agent_response, djs, consistency
+        )
+        grounding_evidence: list[str] = []
+        grounding_sources: list[str] = []
+        grounding_confidence: float = 0.0
+        if (
+            self._grounding_hook is not None
+            and grounding_need >= config.grounding_required_threshold
+        ):
+            try:
+                gres = call_hook(
+                    self._grounding_hook,
+                    human_message=human_message,
+                    agent_draft=agent_response,
+                )
+                self._last_grounding[session.session_id] = gres
+                if gres.grounded:
+                    grounding_evidence = list(gres.evidence)
+                    grounding_sources = list(gres.sources)
+                    grounding_confidence = gres.confidence
+            except GroundingHookError:
+                # Don't crash the pipeline — caller can poll get_last_grounding()
+                # to see why. Pipeline keeps the heuristic-only signal.
+                pass
 
         # ── Step 12: Preliminary result for event engine ──────────────────
         preliminary = TurnResult(
@@ -365,10 +464,20 @@ class FidelityMonitor:
             location_class=loc_class,
             spatial_constraint=spatial,
             spatial_frame_shift=spatial_shift,
+            grounding_need=grounding_need,
+            grounding_evidence=grounding_evidence,
+            grounding_sources=grounding_sources,
+            grounding_confidence=grounding_confidence,
         )
 
         # ── Step 13: Events ───────────────────────────────────────────────
-        events = evaluate_events(session, turn_state, preliminary, config)
+        events = evaluate_events(
+            session,
+            turn_state,
+            preliminary,
+            config,
+            agent_response=agent_response,
+        )
         session.event_log.extend(events)
 
         # Persist turn if store is configured

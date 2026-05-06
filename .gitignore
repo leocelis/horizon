@@ -45,3 +45,6 @@ horizon.db
 
 # Private / non-public documentation (marketing, internal strategy, etc.)
 docs-private/
+
+# Private deploy specs, credentials, and internal planning — never commit
+_private/

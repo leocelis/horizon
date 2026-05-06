@@ -18,6 +18,11 @@ Public API::
 
 from horizon.config import Config
 from horizon.engines.embedding import EmbeddingModelError
+from horizon.grounding import (
+    GroundingHookError,
+    GroundingResult,
+    ToolHook,
+)
 from horizon.models import (
     ConfigResult,
     ConfigWarning,
@@ -30,7 +35,7 @@ from horizon.models import (
 )
 from horizon.monitor import FidelityMonitor, SessionNotFoundError
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "FidelityMonitor",
@@ -45,4 +50,7 @@ __all__ = [
     "TemporalReference",
     "SessionNotFoundError",
     "EmbeddingModelError",
+    "ToolHook",
+    "GroundingResult",
+    "GroundingHookError",
 ]

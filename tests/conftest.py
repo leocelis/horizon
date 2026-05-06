@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
+
+# Use locally-cached HuggingFace models so tests work without internet access.
+# Models are downloaded once (e.g. via `python -m horizon.validate`) and then
+# resolved from the local ~/.cache/huggingface/hub/ directory.
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 from horizon import Config, FidelityMonitor
 

@@ -1,0 +1,47 @@
+{
+  "n_conversations": 222,
+  "results": [
+    {
+      "backend": "all-MiniLM-L6-v2",
+      "rho_conv": 0.6846245429732636,
+      "rho_turn": 0.6590957189619252,
+      "n_conv": 222,
+      "n_turn": 1332,
+      "domains": [
+        "creative_writing",
+        "customer_support",
+        "technical_qa"
+      ],
+      "seconds": 138.5070559978485
+    },
+    {
+      "backend": "all-MiniLM-L12-v2",
+      "rho_conv": 0.658661969397923,
+      "rho_turn": 0.6415509292881528,
+      "n_conv": 222,
+      "n_turn": 1332,
+      "domains": [
+        "creative_writing",
+        "customer_support",
+        "technical_qa"
+      ],
+      "seconds": 160.8575689792633
+    },
+    {
+      "backend": "all-mpnet-base-v2",
+      "rho_conv": 0.6829716513177342,
+      "rho_turn": 0.6514233437844505,
+      "n_conv": 222,
+      "n_turn": 1332,
+      "domains": [
+        "creative_writing",
+        "customer_support",
+        "technical_qa"
+      ],
+      "seconds": 217.61233019828796
+    }
+  ],
+  "rho_conv_spread": 0.025962573575340597,
+  "rho_turn_spread": 0.017544789673772376,
+  "verdict": "STABLE"
+}

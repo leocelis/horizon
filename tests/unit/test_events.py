@@ -20,6 +20,7 @@ ALL_EVENT_TYPES = {
     "signal.frame_shift",
     "signal.pace_shift",
     "signal.light_cone_collapse",
+    "signal.pace_premature_report",
 }
 
 
@@ -107,7 +108,11 @@ def test_convergence_detection_observe_mode() -> None:
     After 8+ turns of diminishing IGT, signal.convergence fires with
     active=False in default config.
     """
-    config = Config(convergence_window=3, convergence_threshold=0.95)
+    config = Config(
+        convergence_window=3,
+        convergence_threshold=0.95,
+        convergence_igt_ceiling=0.95,
+    )
     monitor = FidelityMonitor(config=config)
     sid = monitor.new_conversation()
 

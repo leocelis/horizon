@@ -1,0 +1,37 @@
+{
+  "scenarios": [
+    {
+      "scenario": "single_session",
+      "turns": 50,
+      "wall_seconds": 4.431154082994908,
+      "throughput_per_second": 11.283742127560194,
+      "latency_ms": {
+        "mean": 88.61785996006802,
+        "p50": 90.2730829839129,
+        "p95": 133.0247499863617,
+        "p99": 146.63612499134615,
+        "max": 146.63612499134615
+      }
+    },
+    {
+      "scenario": "rotating_sessions",
+      "turns": 400,
+      "wall_seconds": 34.75522566700238,
+      "throughput_per_second": 11.509060646951045,
+      "latency_ms": {
+        "mean": 86.88285320247815,
+        "p50": 89.6015830221586,
+        "p95": 120.14420900959522,
+        "p99": 120.87066599633545,
+        "max": 140.971749991877
+      }
+    }
+  ],
+  "peak_rss_mb": 608.578125,
+  "params": {
+    "single_turns": 50,
+    "rotating_sessions": 16,
+    "rotating_turns_per_session": 25,
+    "warmup_turns": 3
+  }
+}

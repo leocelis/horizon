@@ -111,6 +111,19 @@ class TurnResult:
     spatial_constraint: SpatialConstraint | None = None
     spatial_frame_shift: float | None = None
 
+    # ── Grounding (always computed; 0.0 when no claims detected) ─────────────
+    grounding_need: float = 0.0
+    """Heuristic [0, 1] estimate of how badly the turn needs external grounding."""
+
+    grounding_evidence: list[str] = field(default_factory=list)
+    """Evidence strings returned by the registered grounding hook (empty if no hook)."""
+
+    grounding_sources: list[str] = field(default_factory=list)
+    """Source identifiers returned by the registered grounding hook."""
+
+    grounding_confidence: float = 0.0
+    """[0, 1] confidence reported by the grounding hook (0 if no hook fired)."""
+
     def to_dict(self) -> dict:
         """Serialize to JSON-compatible dict."""
         return dataclasses.asdict(self)

@@ -27,6 +27,8 @@ EVENT_TYPES = (
     "signal.frame_shift",
     "signal.pace_shift",
     "signal.light_cone_collapse",
+    "signal.grounding_required",
+    "signal.pace_premature_report",
 )
 
 
@@ -54,7 +56,7 @@ def test_per_event_precision_recall() -> None:
         event_modes={etype: "active" for etype in EVENT_TYPES},
     )
     for convo in load_jsonl(convos_path):
-        sid = monitor.new_conversation()
+        sid = monitor.new_conversation(metadata=convo.get("metadata"))
         monitor.configure(
             session_id=sid,
             event_modes={etype: "active" for etype in EVENT_TYPES},

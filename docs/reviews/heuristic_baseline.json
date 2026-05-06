@@ -1,0 +1,142 @@
+{
+  "n_conversations": 960,
+  "n_labels": 960,
+  "per_event": {
+    "checkpoint.clarification": {
+      "horizon_precision": 1.0,
+      "horizon_recall": 1.0,
+      "baseline_precision": 0.0,
+      "baseline_recall": 0.0,
+      "lift_relative": null,
+      "n_labels": 60
+    },
+    "checkpoint.comprehension": {
+      "horizon_precision": 1.0,
+      "horizon_recall": 1.0,
+      "baseline_precision": 0.0,
+      "baseline_recall": 0.0,
+      "lift_relative": null,
+      "n_labels": 60
+    },
+    "alert.drift": {
+      "horizon_precision": 1.0,
+      "horizon_recall": 1.0,
+      "baseline_precision": 0.5,
+      "baseline_recall": 1.0,
+      "lift_relative": 0.3333333333333333,
+      "n_labels": 60
+    },
+    "alert.contradiction": {
+      "horizon_precision": 1.0,
+      "horizon_recall": 1.0,
+      "baseline_precision": 1.0,
+      "baseline_recall": 1.0,
+      "lift_relative": 0.0,
+      "n_labels": 60
+    },
+    "alert.verbosity": {
+      "horizon_precision": 1.0,
+      "horizon_recall": 1.0,
+      "baseline_precision": 0.0,
+      "baseline_recall": 0.0,
+      "lift_relative": null,
+      "n_labels": 60
+    },
+    "signal.convergence": {
+      "horizon_precision": 1.0,
+      "horizon_recall": 1.0,
+      "baseline_precision": 0.0,
+      "baseline_recall": 0.0,
+      "lift_relative": null,
+      "n_labels": 60
+    },
+    "signal.optimal_length": {
+      "horizon_precision": 1.0,
+      "horizon_recall": 1.0,
+      "baseline_precision": 0.0,
+      "baseline_recall": 0.0,
+      "lift_relative": null,
+      "n_labels": 60
+    },
+    "signal.horizon_widening": {
+      "horizon_precision": 1.0,
+      "horizon_recall": 1.0,
+      "baseline_precision": 0.0,
+      "baseline_recall": 0.0,
+      "lift_relative": null,
+      "n_labels": 60
+    },
+    "signal.session_reset": {
+      "horizon_precision": 1.0,
+      "horizon_recall": 1.0,
+      "baseline_precision": 0.0,
+      "baseline_recall": 0.0,
+      "lift_relative": null,
+      "n_labels": 60
+    },
+    "signal.temporal_desync": {
+      "horizon_precision": 1.0,
+      "horizon_recall": 1.0,
+      "baseline_precision": 1.0,
+      "baseline_recall": 1.0,
+      "lift_relative": 0.0,
+      "n_labels": 60
+    },
+    "signal.broken_reference": {
+      "horizon_precision": 1.0,
+      "horizon_recall": 1.0,
+      "baseline_precision": 0.0,
+      "baseline_recall": 0.0,
+      "lift_relative": null,
+      "n_labels": 60
+    },
+    "signal.frame_shift": {
+      "horizon_precision": 1.0,
+      "horizon_recall": 1.0,
+      "baseline_precision": 1.0,
+      "baseline_recall": 1.0,
+      "lift_relative": 0.0,
+      "n_labels": 60
+    },
+    "signal.pace_shift": {
+      "horizon_precision": 1.0,
+      "horizon_recall": 1.0,
+      "baseline_precision": 1.0,
+      "baseline_recall": 1.0,
+      "lift_relative": 0.0,
+      "n_labels": 60
+    },
+    "signal.light_cone_collapse": {
+      "horizon_precision": 1.0,
+      "horizon_recall": 1.0,
+      "baseline_precision": 0.0,
+      "baseline_recall": 0.0,
+      "lift_relative": null,
+      "n_labels": 60
+    },
+    "signal.grounding_required": {
+      "horizon_precision": 1.0,
+      "horizon_recall": 1.0,
+      "baseline_precision": 1.0,
+      "baseline_recall": 1.0,
+      "lift_relative": 0.0,
+      "n_labels": 60
+    },
+    "signal.pace_premature_report": {
+      "horizon_precision": 1.0,
+      "horizon_recall": 1.0,
+      "baseline_precision": 1.0,
+      "baseline_recall": 1.0,
+      "lift_relative": 0.0,
+      "n_labels": 60
+    }
+  },
+  "macro": {
+    "horizon_precision": 1.0,
+    "horizon_recall": 1.0,
+    "baseline_precision": 0.40625,
+    "baseline_recall": 0.4375
+  },
+  "horizon_wins": 10,
+  "n_events": 16
+}

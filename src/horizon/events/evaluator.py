@@ -1,4 +1,4 @@
-"""Event evaluation engine — all 14 signal conditions.
+"""Event evaluation engine — all 15 signal conditions.
 
 Events are emitted in observe mode by default. Each event carries:
 - type: the signal name (e.g. 'checkpoint.clarification')
@@ -11,6 +11,10 @@ Events are emitted in observe mode by default. Each event carries:
 from __future__ import annotations
 
 from horizon.config import Config
+from horizon.engines.claim_consistency import (
+    detect_contradictions,
+    summarise_conflicts,
+)
 from horizon.models import Event, TurnResult
 from horizon.session import Session, TurnState
 
@@ -20,8 +24,16 @@ def evaluate_events(
     turn: TurnState,
     result: TurnResult,
     config: Config,
+    *,
+    agent_response: str = "",
 ) -> list[Event]:
-    """Evaluate all 14 event conditions and return the fired events."""
+    """Evaluate all event conditions and return the fired events.
+
+    ``agent_response`` is the raw agent text for this turn — required by the
+    v0.2 claim-tracker contradiction detector, defaulted to the empty string
+    so older callers continue to work (they fall back to the v0.1
+    coherence-only path).
+    """
     events: list[Event] = []
 
     def emit(event_type: str, confidence: float, behavior: str, **meta: object) -> None:
@@ -46,13 +58,23 @@ def evaluate_events(
             divergence_score=result.divergence_score,
         )
 
-    # 2. checkpoint.comprehension
-    if result.igt_trend < -0.05 and session.turn_count >= config.convergence_window:
+    # 2. checkpoint.comprehension — fires when the human's information
+    # gain has clearly stalled (deep IGT drop AND low absolute IGT). The
+    # v0.1 trigger (`igt_trend < -0.05`) fired on essentially every
+    # natural conversation rhythm change, killing precision; v0.2
+    # additionally requires the absolute IGT to be in the bottom-third
+    # of the scale (genuine confusion, not just a topic switch).
+    if (
+        result.igt_trend < config.comprehension_trend_threshold
+        and result.igt_value < config.comprehension_igt_ceiling
+        and session.turn_count >= config.convergence_window
+    ):
         emit(
             "checkpoint.comprehension",
             abs(result.igt_trend),
             "Summarise your current understanding and ask for confirmation",
             igt_trend=result.igt_trend,
+            igt_value=result.igt_value,
         )
 
     # 3. alert.drift
@@ -66,12 +88,36 @@ def evaluate_events(
         )
 
     # 4. alert.contradiction
-    if result.consistency_score < config.consistency_threshold:
+    # claim_tracker (v0.2): only fires on explicit numeric/named-claim
+    #   conflicts — no coherence fallback to keep precision high.
+    # coherence (v0.1, opt-in via config): fires when bipredictability
+    #   coherence drops below ``consistency_threshold``.
+    if config.contradiction_method == "claim_tracker" and agent_response:
+        conflicts = detect_contradictions(
+            session.claim_tracker,
+            agent_response,
+            turn.turn_number,
+            relative_tolerance=config.contradiction_relative_tolerance,
+        )
+        if conflicts:
+            emit(
+                "alert.contradiction",
+                min(1.0, 0.6 + 0.1 * len(conflicts)),
+                "Reconcile the conflicting claims before continuing: "
+                + summarise_conflicts(conflicts),
+                conflict_count=len(conflicts),
+                method="claim_tracker",
+            )
+    elif (
+        config.contradiction_method == "coherence"
+        and result.consistency_score < config.consistency_threshold
+    ):
         emit(
             "alert.contradiction",
             1.0 - result.consistency_score,
             "Flag the specific contradicting turns for resolution",
             consistency_score=result.consistency_score,
+            method="coherence",
         )
 
     # 5. alert.verbosity
@@ -91,21 +137,33 @@ def evaluate_events(
             "Conversation reached its natural endpoint; summarise and close",
         )
 
-    # 7. signal.optimal_length
+    # 7. signal.optimal_length — the conversation has clearly peaked. Fires
+    # when (a) we have at least 5 turns, (b) IGT trend is negative, and
+    # (c) current IGT has dropped to at most ``optimal_length_decay``
+    # fraction of the running peak. v0.1 used a t-star projection that
+    # required pathologically steep decay to ever fire.
     if session.turn_count >= 5 and result.igt_trend < 0:
-        estimated_t_star = max(5, int(session.turn_count / max(0.01, -result.igt_trend)))
-        if session.turn_count > estimated_t_star * 0.8:
+        recent_igt = [t.igt_value for t in session.turns[-config.convergence_window :]]
+        peak_igt = max(t.igt_value for t in session.turns) if session.turns else 0.0
+        if peak_igt > 0 and (result.igt_value / peak_igt) <= config.optimal_length_decay:
             emit(
                 "signal.optimal_length",
                 0.7,
                 "Proactively summarise and check if more turns are needed",
-                estimated_t_star=estimated_t_star,
+                igt_decay_ratio=result.igt_value / peak_igt,
+                peak_igt=peak_igt,
             )
 
-    # 8. signal.horizon_widening
+    # 8. signal.horizon_widening — fires when the ontological gap (ε)
+    # both jumps significantly AND lands at a meaningfully high absolute
+    # value. The v0.1 thresholds (ratio>1.5, eps>0.3) fired on routine
+    # topic micro-shifts; v0.2 doubles both requirements.
     if session.turn_count >= 2:
         prev_eps = session.turns[-2].epsilon_t
-        if result.epsilon_t > prev_eps * 1.5 and result.epsilon_t > 0.3:
+        if (
+            result.epsilon_t > prev_eps * config.horizon_widening_ratio
+            and result.epsilon_t > config.horizon_widening_floor
+        ):
             emit(
                 "signal.horizon_widening",
                 result.epsilon_t,
@@ -114,8 +172,11 @@ def evaluate_events(
                 prev_epsilon_t=prev_eps,
             )
 
-    # 9. signal.session_reset
-    if result.degradation_type == "irreversible_loss":
+    # 9. signal.session_reset — fires whenever the context window has just
+    # evicted at least one turn (degradation includes any irreversible
+    # component). v0.1 only matched the pure ``irreversible_loss`` label
+    # which never fired when recoverable drift co-occurred with eviction.
+    if result.degradation_type in ("irreversible_loss", "both"):
         emit(
             "signal.session_reset",
             0.9,
@@ -205,5 +266,66 @@ def evaluate_events(
             reachable_turns=result.reachable_turns,
             reachable_fraction=result.reachable_fraction,
         )
+
+    # 15. signal.grounding_required
+    # Fires when the heuristic grounding-need score crosses threshold. The
+    # agent should hedge unsupported specifics OR cite evidence returned by
+    # the registered grounding hook (if one is wired).
+    if result.grounding_need >= config.grounding_required_threshold:
+        if result.grounding_confidence > 0 and result.grounding_evidence:
+            behavior = (
+                "Cite the attached grounding evidence verbatim before making "
+                "any specific numeric or named claim; never present an "
+                "unsupported specific as fact."
+            )
+        else:
+            behavior = (
+                "Lead every concrete claim with a hedge marker "
+                "('rough estimate', 'approximately', 'from memory') or ask the "
+                "user for the figure — no grounding evidence is available."
+            )
+        emit(
+            "signal.grounding_required",
+            result.grounding_need,
+            behavior,
+            grounding_need=result.grounding_need,
+            grounding_confidence=result.grounding_confidence,
+            evidence_count=len(result.grounding_evidence),
+            source_count=len(result.grounding_sources),
+        )
+
+    # 16. signal.pace_premature_report
+    # Fires when (a) the agent asked the user to do something deferred on the
+    # previous turn, (b) the user replied faster than that action could
+    # plausibly complete, and (c) the user did not say they completed it.
+    # The agent should re-confirm completion before treating the reply as a
+    # post-action result.
+    if (
+        session.turn_count >= 2
+        and result.gap_seconds is not None
+        and result.gap_seconds > 0
+    ):
+        prev_turn = session.turns[-2]
+        prev_hint = prev_turn.agent_pacing_hint
+        if (
+            prev_hint is not None
+            and prev_hint.has_deferred_action
+            and result.gap_seconds < prev_hint.est_min_seconds
+            and not turn.human_completion_marker
+        ):
+            ratio = result.gap_seconds / max(prev_hint.est_min_seconds, 1.0)
+            confidence = max(0.0, min(1.0, 1.0 - ratio))
+            emit(
+                "signal.pace_premature_report",
+                confidence,
+                "User replied faster than the deferred action could plausibly "
+                "complete and did not signal completion; treat their message as "
+                "in-progress / current state, and confirm whether they finished "
+                "the action before continuing.",
+                gap_seconds=result.gap_seconds,
+                expected_min_seconds=prev_hint.est_min_seconds,
+                action_hint=prev_hint.action_hint,
+                matched_pattern=prev_hint.matched_pattern,
+            )
 
     return events

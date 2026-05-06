@@ -259,6 +259,59 @@ interface:
       returns: "ConfigResult with applied settings and any warnings"
       test: "tests/unit/test_configure.py::test_event_mode_override"
 
+    - name: "configure_session"
+      description: "Override Horizon thresholds and event modes for a specific session or globally. REQUIRES HUMAN APPROVAL — mutates session config. Auto-run must be disabled for this tool."
+      parameters:
+        - name: "session_id"
+          type: "string"
+          required: false
+          description: "Session identifier. If omitted, applies globally to all sessions."
+        - name: "clarification_threshold"
+          type: "number"
+          required: false
+        - name: "event_modes"
+          type: "object"
+          required: false
+        - name: "domain"
+          type: "string"
+          required: false
+        - name: "context_half_life_hours"
+          type: "number"
+          required: false
+      returns: "ConfigResult with applied values and any validation warnings"
+      test: "tests/e2e/test_mcp_fastmcp_e2e.py::TestConfigureSession"
+      mcp_primitive: "tool"
+      auto_run: false
+
+  mcp_resources:
+    - uri: "horizon://session/{session_id}/trajectory"
+      name: "session_trajectory"
+      description: "Read-only fidelity arc: per-turn scores, gap durations, IGT trend, health_status, T*. Token-efficient; attach as context without a tool-call slot."
+      mime_type: "application/json"
+      test: "tests/e2e/test_mcp_fastmcp_e2e.py::TestTrajectoryResource"
+      auto_run: true
+
+    - uri: "horizon://session/{session_id}/events"
+      name: "session_events"
+      description: "Read-only event log: all fired signals and alerts with active flag, confidence, turn, suggested_behavior. Attach as context to check for actionable events before composing a long response."
+      mime_type: "application/json"
+      test: "tests/e2e/test_mcp_fastmcp_e2e.py::TestEventsResource"
+      auto_run: true
+
+  mcp_prompts:
+    - name: "monitor_conversation"
+      title: "Wire Horizon into the current conversation"
+      description: "Creates a new Horizon session and injects the full agent-loop instruction block. Invoke once per task thread via /monitor_conversation. Accepts domain and agent_name parameters."
+      test: "tests/e2e/test_mcp_fastmcp_e2e.py::TestMonitorConversationPrompt"
+
+  mcp_server:
+    transport_primary: "stdio"
+    transport_enterprise: "streamable-http"
+    fastmcp: true
+    instructions_field: true
+    permissions_json: "~/.cursor/permissions.json"
+    cursor_mcp_json: "~/.cursor/mcp.json"
+
     - name: "export_to"
       description: "Export conversation telemetry and fidelity trajectory to an observability platform"
       parameters:
@@ -449,6 +502,34 @@ constraints:
     entropy: "near-zero"
     priority: 1
     consequence_if_violated: "Rho advantage < 15%: THCP complexity not justified over heuristics. Ship as heuristic tool, retire THCP framing."
+
+  - name: "mcp_three_layer_model"
+    requirement: "The MCP server MUST expose Horizon API as three distinct primitive types: Tools (state-changing: new_conversation, process_turn, configure_session), Resources (read-only: trajectory, events), and Prompts (user-triggered: monitor_conversation). get_trajectory and get_events MUST NOT be exposed as Tools — they are Resources."
+    test: "tests/e2e/test_mcp_fastmcp_e2e.py::TestFastMCPAppObject"
+    entropy: "near-zero"
+    priority: 2
+    consequence_if_violated: "Agents waste tool-call slots on read-only operations; token budget burns on cacheable data; adoption friction increases."
+
+  - name: "mcp_configure_session_no_auto_run"
+    requirement: "configure_session MUST NOT appear in the mcpAllowlist in permissions.json. It mutates session config and requires human approval. The _INSTRUCTIONS field MUST explicitly mark it as 'REQUIRES HUMAN APPROVAL'."
+    test: "tests/e2e/test_mcp_fastmcp_e2e.py::TestFastMCPAppObject::test_mcp_instructions_mark_safe_tools"
+    entropy: "near-zero"
+    priority: 2
+    consequence_if_violated: "Agents silently change monitoring thresholds without user consent, making signal interpretation unreliable."
+
+  - name: "mcp_instructions_required"
+    requirement: "The FastMCP server MUST have a non-empty instructions field containing: the recommended agent loop, which tools are safe to auto-run, which require approval, and per-event-type action guidance."
+    test: "tests/e2e/test_mcp_fastmcp_e2e.py::TestFastMCPAppObject::test_mcp_instructions_contain_loop"
+    entropy: "near-zero"
+    priority: 2
+    consequence_if_violated: "Agent has no orientation without a per-project system prompt; adoption requires additional user setup."
+
+  - name: "mcp_prompt_creates_valid_session"
+    requirement: "The monitor_conversation Prompt MUST create a real, immediately usable FidelityMonitor session. The session_id embedded in the prompt text MUST be callable via process_turn without error."
+    test: "tests/e2e/test_mcp_fastmcp_e2e.py::TestMonitorConversationPrompt::test_creates_valid_session"
+    entropy: "near-zero"
+    priority: 2
+    consequence_if_violated: "The prompt creates text that looks correct but does not wire up actual monitoring — a silent failure that destroys user trust."
 
   - name: "v3_beats_heuristics_structural"
     requirement: "Monitor detects at least one class of sheaf gluing failure (global incoherence that does not appear in any single turn) that the naive heuristic baseline structurally cannot detect (precision >= 0.6 on held-out incoherence examples)"
@@ -947,6 +1028,54 @@ changelog:
       - "Essay Appendix D: Temporal-Spatial Grounding (references 119-141)"
       - "Essay Appendix E: Ontological Gap and Structural Defensibility"
       - "PRD updated: temporal context layer, fidelity dynamics, 12 events, P8-P9 predictions"
+
+  - version: 5
+    date: "2026-05-06"
+    change: |
+      FastMCP integration layer — full MCP server rebuild following spec best practices:
+      - Migrated mcp/server.py from low-level mcp.server.Server to mcp.server.fastmcp.FastMCP
+        (available natively in mcp>=1.13; no new dependency).
+      - Added server-level `instructions` field describing the recommended agent loop, safe
+        auto-run tools, and approval-required tools. Cursor/Claude Desktop surface this to
+        the model automatically — no per-project system prompt required.
+      - Redesigned all tool descriptions following Anthropic's agent-oriented guide:
+        primary use case, preconditions, steer-to-alternatives. Example accuracy improvements
+        from 72%→90% via 1-5 examples and negative guidance now applied to every tool.
+      - get_trajectory and get_events promoted from Tools to MCP Resources at URIs
+        horizon://session/{id}/trajectory and horizon://session/{id}/events. Resources are
+        passive, cacheable, and token-efficient — agents attach them as context without
+        spending a tool-call slot.
+      - Added monitor_conversation Prompt (user-triggered, /monitor_conversation slash command).
+        Creates a new session, generates the full agent-loop injection block, and wires the
+        monitoring loop via a single user action. Accepts domain and agent_name parameters.
+      - configure() MCP tool renamed to configure_session for clarity; explicitly marked
+        REQUIRES HUMAN APPROVAL in instructions and description.
+      - Registered horizon in ~/.cursor/mcp.json using python -m horizon.mcp.server pattern
+        (more portable than the 'horizon serve' entry point which requires PATH install).
+      - Shipped ~/.cursor/permissions.json with mcpAllowlist for new_conversation and
+        process_turn (auto-run without approval); configure_session excluded.
+      - Updated docs/integrations/CURSOR.md with full installation guide, three usage
+        patterns (system prompt / on-demand prompt / workspace rule), permissions.json
+        snippet, troubleshooting table, and enterprise/multi-user (Streamable HTTP) section.
+      - Added tests/e2e/test_mcp_fastmcp_e2e.py: 40+ assertions across all three MCP
+        primitive layers (tools, resources, prompt), full agent-loop integration test,
+        _dispatch shim backward-compat tests, FastMCP app-object assertions.
+      - Preserved _dispatch shim for backward compatibility with test_mcp_server_e2e.py.
+      - cli.py updated to use FastMCP .run() for all three transports (stdio, sse,
+        streamable-http) and to preload the embedding model on startup.
+    reason: |
+      Post-v0.2.0 audit identified MCP as the highest-leverage integration surface for
+      enterprise Cursor/Claude Desktop adoption. Research (Cursor docs, MCP spec, Anthropic
+      tool-writing guide) showed that: (a) thin tool descriptions cause agents to skip tools
+      that are available; (b) treating get_trajectory/get_events as Tools wastes tool-call
+      slots that should be spent on actions; (c) no Prompt means the agent has no one-click
+      path to start monitoring; (d) no permissions.json means every process_turn call
+      interrupts the user for approval. All four gaps closed in this revision.
+    evidence:
+      - "docs/integrations/CURSOR.md (updated integration guide)"
+      - "tests/e2e/test_mcp_fastmcp_e2e.py (40+ e2e assertions)"
+      - "~/.cursor/mcp.json (horizon server registered)"
+      - "~/.cursor/permissions.json (auto-run allowlist)"
 
   - version: 4
     date: "2026-04-22"
