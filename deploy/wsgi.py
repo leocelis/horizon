@@ -52,10 +52,15 @@ def build_app():
     fastmcp = create_app()
 
     # ── Preload the embedding model once at startup ───────────────────────────
+    # _get_monitor() is a module-level function in server.py (not a method on
+    # FastMCP). Calling it here ensures the same singleton that handles
+    # process_turn requests is warmed before the first request arrives.
     try:
-        fastmcp._get_monitor().preload_models()
-    except Exception:
-        pass  # non-fatal — model loads on first process_turn call
+        from horizon.mcp.server import _get_monitor as _get_horizon_monitor
+        report = _get_horizon_monitor().preload_models()
+        print(f"[Horizon MCP] Model preloaded: {report}", flush=True)
+    except Exception as exc:
+        print(f"[Horizon MCP] Model preload failed (lazy-load fallback): {exc}", flush=True)
 
     # ── Get both transport ASGI apps from FastMCP ─────────────────────────────
     sse_starlette    = fastmcp.sse_app()             # serves /sse + /messages/

@@ -33,14 +33,27 @@ pip install -e ".[mcp]" --quiet   # idempotent — ensures mcp extras are presen
 # ---------------------------------------------------------------------------
 # 2. Pre-cache the embedding model
 # ---------------------------------------------------------------------------
+#
+# SENTENCE_TRANSFORMERS_HOME pins the cache to an absolute repo-relative path
+# so that the runtime container (which shares the same filesystem image as the
+# build step) finds the model without re-downloading it.  The env var must be
+# set identically in the DO App Platform environment (BUILD_AND_RUN scope) so
+# the runtime Python process also resolves to this same path.
+
+MODEL_CACHE_DIR="$REPO_ROOT/.cache/models"
+export SENTENCE_TRANSFORMERS_HOME="$MODEL_CACHE_DIR"
+export HF_HOME="$MODEL_CACHE_DIR"
+mkdir -p "$MODEL_CACHE_DIR"
 
 echo ""
-echo "[build:2/4] Pre-caching embedding model (all-MiniLM-L6-v2)..."
+echo "[build:2/4] Pre-caching embedding model → $MODEL_CACHE_DIR ..."
 python - <<'PY'
+import os
 from sentence_transformers import SentenceTransformer
-m = SentenceTransformer("all-MiniLM-L6-v2")
+cache = os.environ["SENTENCE_TRANSFORMERS_HOME"]
+m = SentenceTransformer("all-MiniLM-L6-v2", cache_folder=cache)
 _ = m.encode(["warmup — model cache OK"])
-print("  Model: all-MiniLM-L6-v2 cached OK")
+print(f"  Model: all-MiniLM-L6-v2 cached OK → {cache}")
 PY
 
 # ---------------------------------------------------------------------------
