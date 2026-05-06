@@ -5,6 +5,20 @@ All notable changes to `horizon-monitor` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Infrastructure
+- **Hosted MCP endpoint live** at `https://horizon.leocelis.com` (DigitalOcean App Platform, SSE transport, Redis-backed session resumability). Any Cursor or Claude Desktop user with an alpha key can add Horizon without installing Python.
+- **Bearer token auth layer** (`src/horizon/mcp/auth.py`) — `HorizonAuthMiddleware` enforces `HORIZON_API_KEYS` on all MCP routes. `/health` and `/healthz` are unauthenticated.
+- **Production deploy scripts** — `deploy/Procfile`, `deploy/build.sh`, `deploy/runtime.txt`, `deploy/wsgi.py`. DO App Platform detects the project via `requirements.txt` at repo root.
+- **`/health` endpoint** — unauthenticated JSON response (`status`, `version`, `sessions_active`, `resumable`, `transports`). Used by DO health checks and external monitoring.
+- **GitHub Discussions enabled** — open a discussion to request an alpha key or ask a question.
+
+### Documentation
+- README overhauled: three getting-started paths (hosted MCP, pip install, source), market-demand evidence link, content pieces cross-linked.
+- `docs/integrations/CURSOR.md` — added Option A (hosted endpoint, zero install).
+- `docs/integrations/CLAUDE_DESKTOP.md` — added hosted endpoint option.
+
 ## [0.2.0] - 2026-04-25
 
 ### Headline

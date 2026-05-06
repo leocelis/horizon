@@ -2,19 +2,98 @@
 
 > **"Quality is not a model property — it is a conversation property."**
 
-Horizon is a real-time conversation health monitor for AI agents. It tracks the **structural dynamics** of multi-turn conversations — semantic drift, information gain, ontological gap width, temporal desynchronisation, circadian cognitive load, conversation velocity, and causal reachability — the dimensions that every LLM is architecturally blind to.
+Horizon is a real-time conversation health monitor for AI agents. It tracks the **structural dynamics** of multi-turn conversations — semantic drift, information gain, ontological gap width, temporal desynchronisation, circadian cognitive load, conversation velocity, and causal reachability — dimensions that every LLM is architecturally blind to.
 
-Based on the Trans-Horizon Communication Protocol (THCP) research paper. Three independent no-go theorems prove why no LLM can self-monitor these properties from the inside.
-
-```
-pip install horizon-monitor
-```
+Based on the Trans-Horizon Communication Protocol (THCP) research. Three independent no-go theorems prove why no LLM can self-monitor these properties from the inside.
 
 ---
 
-## Why Horizon
+## Why this exists
 
-Standard observability tools (LangSmith, RAGAS, DeepEval) evaluate **individual response quality**. Horizon evaluates **conversation quality** — a structurally different problem proven to diverge from per-response quality in Hafez et al. (2026).
+Multi-turn AI agents lose accuracy. [Our market research](docs/research/market-demand.md) puts the number at **39% accuracy degradation after 5 turns** — a structural property of conversations that standard observability tools (LangSmith, RAGAS, DeepEval) cannot see because they measure responses, not conversations.
+
+Horizon was built to close that gap. In A/B experiments across four scenarios, adding Horizon monitoring produced **+15.7% composite quality lift** and **87% fewer hallucination events** when Horizon events triggered interventions. The math is grounded in 173 academic references across information theory, cognitive science, category theory, and Lorentzian geometry.
+
+- Read the demand proof → [`docs/research/market-demand.md`](docs/research/market-demand.md)
+- Read the category argument → [`docs/content/naming-the-category-conversation-dynamics-monitoring.md`](docs/content/naming-the-category-conversation-dynamics-monitoring.md)
+- Read the engineering case → [`docs/content/why-every-production-agent-needs-conversation-dynamics-monitoring.md`](docs/content/why-every-production-agent-needs-conversation-dynamics-monitoring.md)
+
+---
+
+## Getting started
+
+Three paths — pick the one that fits your workflow:
+
+### Path 1 — Hosted MCP (fastest, zero install)
+
+The fastest way to add Horizon to any Cursor or Claude Desktop workspace. No Python required.
+
+Request an alpha key → [GitHub Discussions](https://github.com/leocelis/horizon/discussions), then add to `~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "horizon": {
+      "url": "https://horizon.leocelis.com/sse",
+      "headers": { "Authorization": "Bearer YOUR_KEY_HERE" }
+    }
+  }
+}
+```
+
+In Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "horizon": {
+      "url": "https://horizon.leocelis.com/sse",
+      "headers": { "Authorization": "Bearer YOUR_KEY_HERE" }
+    }
+  }
+}
+```
+
+That's it. Reload your MCP client and three tools appear: `new_conversation`, `process_turn`, `configure_session`.
+
+> **Alpha access:** Horizon's hosted endpoint is in private alpha. Keys are distributed to agent developers who want to monitor real projects. Open a GitHub Discussion to request one.
+
+### Path 2 — pip install (library integration)
+
+```bash
+pip install horizon-monitor
+```
+
+Verify your install (exercises the full pipeline on 5 canonical scenarios, ~25s):
+
+```bash
+horizon-validate
+```
+
+### Path 3 — MCP server from source
+
+```bash
+pip install 'horizon-monitor[mcp]'
+horizon serve                             # stdio — for Cursor, Claude Desktop
+horizon serve --transport sse --port 3847 # SSE — for web/team deployments
+```
+
+Add to `~/.cursor/mcp.json`:
+```json
+{
+  "mcpServers": {
+    "horizon": { "command": "horizon", "args": ["serve"] }
+  }
+}
+```
+
+Full Cursor and Claude Desktop setup guides: [`docs/integrations/`](docs/integrations/)
+
+---
+
+## What it monitors
+
+Standard observability tools evaluate individual response quality. Horizon evaluates **conversation quality** — a structurally different problem:
 
 | Tool | What it sees | What it misses |
 |---|---|---|
@@ -23,7 +102,7 @@ Standard observability tools (LangSmith, RAGAS, DeepEval) evaluate **individual 
 | Human raters | Subjective quality | Systematic structural decay |
 | **Horizon** | **Conversation dynamics** | Intentionally nothing |
 
-Horizon does not replace per-response quality tools. It adds the fourth dimension they all lack.
+Horizon does not replace per-response quality tools. It adds the dimension they all lack.
 
 ---
 
@@ -51,19 +130,9 @@ for event in result.events:
     print(f"  Event: {event.type} (confidence={event.confidence:.2f})")
 ```
 
-### Verify your install
-
-After `pip install`, run the bundled smoke test to confirm the pipeline produces sensible signals on five canonical scenarios (healthy, convergent, drifting, temporal desync, spatial shift). No API keys required:
-
-```bash
-horizon-validate
-```
-
-You should see all five scenarios pass in ~25s after the embedding model warm-up. This exercises the full end-to-end pipeline locally and prints the actual signal values, so you can confirm Horizon is wired correctly before integrating it into your stack.
-
 ---
 
-## Integrations
+## Framework integrations
 
 ### OpenAI SDK
 
@@ -75,7 +144,6 @@ monitor = FidelityMonitor()
 session_id = monitor.new_conversation()
 client = monitor.wrap(OpenAI(), session_id)
 
-# Identical to the standard OpenAI call — monitoring is transparent
 response = client.chat.completions.create(
     model="gpt-4o",
     messages=[{"role": "user", "content": "Tell me about quantum computing."}]
@@ -85,13 +153,7 @@ traj = monitor.get_trajectory(session_id)
 print(f"Fidelity: {traj.current_fidelity:.2f}  T*: {traj.estimated_t_star}")
 ```
 
-`monitor.wrap()` accepts custom timestamp and context providers for testing and replay:
-
-```python
-wrapped = monitor.wrap(OpenAI(), session_id)
-wrapped.set_timestamp_provider(lambda: simulated_clock.isoformat())
-wrapped.set_context_provider(lambda: {"device_type": "mobile", "timezone": "US/Pacific"})
-```
+`monitor.wrap()` accepts custom timestamp and context providers for testing and replay.
 
 ### Anthropic SDK
 
@@ -123,7 +185,6 @@ callback = HorizonCallback(monitor, session_id)
 
 llm = ChatOpenAI(callbacks=[callback])
 llm.invoke("Explain the CAP theorem.")
-
 print(f"Fidelity: {callback.last_result.fidelity_score:.2f}")
 ```
 
@@ -135,52 +196,19 @@ from horizon import FidelityMonitor
 
 monitor = FidelityMonitor()
 session_id = monitor.new_conversation()
-
 agent = Agent(name="assistant", model="gpt-4o-mini", instructions="You are helpful.")
 
 for user_message in conversation:
     result = Runner.run_sync(agent, user_message)
-    monitor.process_turn(
-        session_id,
-        human_message=user_message,
-        agent_response=result.final_output,
-        timestamp=datetime.now(timezone.utc).isoformat(),
-    )
+    monitor.process_turn(session_id, human_message=user_message,
+        agent_response=result.final_output, timestamp=datetime.now(timezone.utc).isoformat())
 ```
-
-### MCP Server — Cursor / Claude Desktop / GitHub Copilot
-
-```bash
-pip install horizon-monitor[mcp]
-horizon serve                           # stdio transport (Cursor, Claude Desktop)
-horizon serve --transport sse --port 3847  # SSE transport (web)
-```
-
-Add to `.cursor/mcp.json`:
-```json
-{
-  "mcpServers": {
-    "horizon": { "command": "horizon", "args": ["serve"] }
-  }
-}
-```
-
-Add to `claude_desktop_config.json`:
-```json
-{
-  "mcpServers": {
-    "horizon": { "command": "horizon", "args": ["serve"] }
-  }
-}
-```
-
-See [`docs/integrations/`](docs/integrations/) for Cursor, Claude Desktop, and Copilot setup guides.
 
 ---
 
 ## 4D Spacetime Signals
 
-Every `process_turn()` call returns a `TurnResult` with the following signal families:
+Every `process_turn()` returns a `TurnResult` with 29 fields across five signal families:
 
 ### Core (always present)
 
@@ -266,22 +294,15 @@ All events default to **observe mode** (emitted, not acted on). Enable active mo
 # Per-session override
 monitor.configure(
     session_id=session_id,
-    clarification_threshold=0.25,          # tighter D_JS gate
+    clarification_threshold=0.25,           # tighter D_JS gate
     event_modes={"alert.drift": "active"},  # activate one event
 )
 
-# Compound weight override (flattened to Config fields)
+# Compound weight override
 monitor.configure(
     fidelity_weights={"alpha": 0.35, "lambda_r": 0.12, "lambda_i": 0.28, "beta": 0.25},
     temporal_weights={"gamma": 0.08, "delta": 0.04},
     spacetime_coefficients={"alpha": 1.0, "beta": 1.0, "gamma": 0.8, "delta_st": 0.5},
-)
-
-# Per-domain tuning
-monitor.configure(
-    domain="medical",
-    context_half_life_hours=12.0,   # shorter memory decay for clinical sessions
-    chronotype_offset=0.0,
 )
 ```
 
@@ -290,32 +311,16 @@ monitor.configure(
 ## Export
 
 ```python
-# JSON (always available)
+# JSON
 result = monitor.export_to(session_id, target="json")
 
-# LangSmith
+# LangSmith / Langfuse / OpenTelemetry / Arize
 result = monitor.export_to(session_id, target="langsmith",
     connection={"api_key": "ls__..."})
-
-# Langfuse
-result = monitor.export_to(session_id, target="langfuse",
-    connection={"public_key": "pk_...", "secret_key": "sk_..."})
-
-# OpenTelemetry
-result = monitor.export_to(session_id, target="otel",
-    connection={"endpoint": "http://localhost:4318/v1/traces"})
-
-# Arize AX
-result = monitor.export_to(session_id, target="arize",
-    connection={"space_id": "...", "api_key": "...", "model_id": "my-agent"})
 ```
 
-Install the extras for your target:
 ```bash
-pip install horizon-monitor[langsmith]
-pip install horizon-monitor[langfuse]
-pip install horizon-monitor[otel]
-pip install horizon-monitor[arize]
+pip install horizon-monitor[langsmith]   # or langfuse, otel, arize
 ```
 
 ---
@@ -327,20 +332,16 @@ Input: plain strings (human_message, agent_response, optional timestamp, optiona
 
 Core pipeline (< 50ms on CPU):
   1. Embed both turns (local sentence-transformers, lazy-loaded)
-  2. IGT (Information Gain per Turn)     — semantic novelty
-  3. D_JS proxy                          — intent/response divergence
-  4. TWR                                 — token waste
-  5. Bipredictability                    — structural coherence
-  6. Epsilon                             — ontological gap
-  7. Temporal signals                    — gap, retention, circadian, deictic
-  8. Fidelity dynamics                   — composite score update
+  2–6.  IGT · D_JS · TWR · Bipredictability · Epsilon
+  7. Temporal signals  — gap, retention, circadian, deictic
+  8. Fidelity dynamics — composite score
   9. Health classification
- 10. Pace signals                        — velocity, acceleration
- 11. Spacetime interval                  — ds² and interval class
- 12. Causal reachability                 — light-cone membership
- 13. Spatial signals                     — device, location, frame shift
- 14. Mode detection                      — auto-classify conversation type
- 15. Event evaluation                    — 14 threshold checks
+ 10. Pace signals       — velocity, acceleration
+ 11. Spacetime interval — ds² and interval class
+ 12. Causal reachability — light-cone membership
+ 13. Spatial signals    — device, location, frame shift
+ 14. Mode detection     — auto-classify conversation type
+ 15. Event evaluation   — 14 threshold checks
  16. Optional: SQLite persistence
 
 Output: TurnResult dataclass (29 fields)
@@ -349,77 +350,27 @@ Output: TurnResult dataclass (29 fields)
 **Design constraints (all test-enforced):**
 - Zero LLM calls — pure arithmetic and local embeddings
 - Zero external network calls by default — fully local
-- Zero transitive framework dependencies in core — works with any agent
+- Zero transitive framework dependencies in core
 - < 50ms core pipeline on CPU
 - < 100MB memory for 100-turn conversations
 - All events observe-by-default — never interferes unless explicitly configured
 
 ---
 
-## Development
+## Validation
 
-```bash
-git clone https://github.com/leocelis/horizon.git
-cd horizon
-
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-
-# Run full test suite (unit + integration + e2e + perf + validation gates)
-pytest tests/ -v
-
-# Fast path (unit + integration + e2e only, ~6 min)
-pytest tests/unit tests/integration tests/e2e -v
-
-# Code quality
-ruff check src/ tests/
-black --check src/ tests/
-```
-
-Test suite: unit, integration, e2e, performance, and validation gates.
-Validation gates (V1/V2/V3/V5) auto-skip without a labeled dataset
-(`HORIZON_VALIDATION_DATA` env var). v0.2.0 ships with a synthetic
-labeled corpus generator (`ada/playground/horizon/build_validation_corpus.py`)
-that produces 5,602 labeled records, and **all four gates pass on it**:
+All four IVD validation gates pass on a 5,602-record labelled corpus:
 
 | Gate | Constraint | v0.2.0 |
-|------|------------|--------|
+|---|---|---|
 | V1 — proxy correlation | per-conv ρ ≥ 0.6, per-turn ρ ≥ 0.5 | **0.685 / 0.659** |
-| V2 — per-event P/R   | every event P ≥ 0.7 AND R ≥ 0.7 (320 labels each) | **all 16 events ≥ 0.70 / 0.70** |
+| V2 — per-event P/R | every event P ≥ 0.7 AND R ≥ 0.7 | **all 16 events ≥ 0.70 / 0.70** |
 | V3 — beats heuristics | rho lift > 25%, structural P ≥ 0.6 | **+202.4% lift, P=R=1.00** |
-| V5 — cross-domain | per-turn ρ ≥ 0.4 AND per-conv ρ ≥ 0.48 across 5 domains | **min 0.517 / 0.718** |
+| V5 — cross-domain | per-turn ρ ≥ 0.4 AND per-conv ρ ≥ 0.48 | **min 0.517 / 0.718** |
 
-See [`docs/reviews/V0_2_0_EVIDENCE.md`](docs/reviews/V0_2_0_EVIDENCE.md)
-for the full evidence pack and reproduction steps.
+Cross-embedding stability: ρ_conv spread **0.026**, ρ_turn spread **0.018** across three sentence-transformer backends (22M / 33M / 110M params). The fidelity signal lives in conversational structure, not in the embedding manifold.
 
-**Audit follow-up: cross-embedding stability.** V1 was re-measured
-across three sentence-transformer backends (22 M / 33 M / 110 M
-parameters, 384 / 384 / 768 dimensions) on the same 222-conversation
-corpus. Every backend clears the V1 gate, ρ_conv spread is **0.026**
-and ρ_turn spread is **0.018** — confirming the fidelity signal lives
-in conversational structure, not in any specific embedding manifold.
-Reproduce with `python scripts/measure_embedding_stability.py`.
-
-In addition to the V1–V5 synthetic gates, v0.2.0 ships two real-data
-integration suites that exercise the spacetime layer end-to-end (no
-mocks, no fakes):
-
-- `tests/integration/test_geoip_real.py` — 14 tests against the
-  canonical MaxMind reference test databases shipped under
-  `tests/integration/fixtures/`. Covers real high-precision inference
-  (London / Milton / Linköping), real low-precision rejection (Bhutan
-  radius 534 km, US country-block radius 1000 km), real Anonymous-IP
-  suppression (VPN / hosting / Tor / anonymous proxy), and end-to-end
-  propagation through `FidelityMonitor.process_turn`.
-- `tests/integration/test_spacetime_real.py` — 16 tests driving the
-  *full* 4D stack (temporal gap + circadian κ + retention + velocity +
-  ds² + light cone + deictic + spatial) through real ISO-8601
-  timestamps spanning seconds → days, real timezones (UTC nadir /
-  peak / decline), and real GeoIP. Asserts cross-feature invariants
-  the kernel-level unit tests cannot — e.g. ds² monotonically declines
-  as the time gap grows for the same semantic transition, κ at 04:00
-  reduces retention vs κ at 11:00, and `signal.light_cone_collapse`
-  fires from the *composed* signal (decay × similarity).
+Full evidence pack: [`docs/reviews/V0_2_0_EVIDENCE.md`](docs/reviews/V0_2_0_EVIDENCE.md)
 
 ---
 
@@ -432,32 +383,50 @@ cd deploy/docker
 docker compose up
 ```
 
-Horizon serves the MCP API via SSE. Configure `.cursor/mcp.json` to point to `http://localhost:3847/sse`.
+Horizon serves the MCP API via SSE. Point `.cursor/mcp.json` to `http://localhost:3847/sse`. The Dockerfile pre-caches the `all-MiniLM-L6-v2` weights at build time — zero cold start.
 
-The Dockerfile pre-caches the `all-MiniLM-L6-v2` embedding weights at build time — zero cold start on first request.
+### Hosted (DigitalOcean App Platform)
+
+The official hosted endpoint is live at `https://horizon.leocelis.com`. It runs on DigitalOcean App Platform (single instance, Redis-backed session resumability) and requires a Bearer token. See [Path 1](#path-1--hosted-mcp-fastest-zero-install) above.
 
 ---
 
-## Repository Layout
+## Development
+
+```bash
+git clone https://github.com/leocelis/horizon.git
+cd horizon
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+
+pytest tests/ -v                         # full suite
+pytest tests/unit tests/integration tests/e2e -v   # fast path (~6 min)
+ruff check src/ tests/
+black --check src/ tests/
+```
+
+---
+
+## Repository layout
 
 ```
 horizon/
-├── src/horizon/         # package source (src/ layout, PEP 517/518)
+├── src/horizon/         # package source (PEP 517/518 src/ layout)
 │   ├── engines/         # IGT, D_JS, TWR, coherence, fidelity, epsilon, mode
 │   ├── spacetime/       # temporal, circadian, deictic, velocity, interval, light cone, spatial
 │   ├── events/          # 14-event evaluator
-│   ├── integrations/    # OpenAI, Anthropic, LangChain, export (json/langsmith/langfuse/otel/arize)
+│   ├── integrations/    # OpenAI, Anthropic, LangChain, export targets
 │   ├── mcp/             # MCP server + CLI
-│   ├── storage/         # optional SQLite persistence
-│   └── context/         # context-window tracking
+│   └── storage/         # optional SQLite persistence
 ├── tests/               # unit / integration / e2e / perf / validation
-├── examples/            # runnable demos for each framework
-├── deploy/docker/       # Dockerfile + docker-compose
+├── examples/            # runnable framework demos
+├── deploy/              # Procfile, build.sh, runtime.txt, docker/
 ├── docs/
-│   ├── research/        # THCP theoretical framework (5 conjectures, 173 refs)
-│   ├── product/         # PRD
-│   ├── spec/            # horizon_intent.yaml + HORIZON_TECH_SPEC.md
-│   └── integrations/    # Cursor / Claude Desktop / Copilot setup guides
+│   ├── research/        # market-demand.md + THCP theoretical framework
+│   ├── content/         # published pieces on conversation dynamics monitoring
+│   ├── integrations/    # Cursor / Claude Desktop / Copilot setup guides
+│   ├── spec/            # HORIZON_TECH_SPEC.md + intent.yaml
+│   └── reviews/         # E2E reviews, validation evidence
 └── pyproject.toml
 ```
 
@@ -473,7 +442,15 @@ Horizon is grounded in the Trans-Horizon Communication Protocol (THCP), a theore
 - **THCP-4** — Global coherence requires sheaf gluing across all turns
 - **THCP-5** — Optimal trajectories lie on or near the conversation light cone
 
-The monitor instruments all five conjectures as computable signals. The math is grounded in 173 academic references across information theory, cognitive science, category theory, and Lorentzian geometry.
+The monitor instruments all five conjectures as computable signals.
+
+---
+
+## Community
+
+- **Questions, use cases, alpha access:** [GitHub Discussions](https://github.com/leocelis/horizon/discussions)
+- **Bug reports and feature requests:** [GitHub Issues](https://github.com/leocelis/horizon/issues)
+- **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ---
 

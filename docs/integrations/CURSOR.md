@@ -12,25 +12,41 @@ Resources are passive and cacheable — Cursor can inject them as context withou
 
 ---
 
-## 1. Install
+## 1. Register in Cursor
+
+Three options in order of setup time:
+
+### Option A — Hosted endpoint (zero install, recommended for alpha users)
+
+No Python install required. Request an alpha key via [GitHub Discussions](https://github.com/leocelis/horizon/discussions), then add to `~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "horizon": {
+      "url": "https://horizon.leocelis.com/sse",
+      "headers": { "Authorization": "Bearer YOUR_KEY_HERE" }
+    }
+  }
+}
+```
+
+Reload the MCP panel (Cursor Settings → Features → Model Context Protocol → toggle off/on). Done — the three tools, resources, and prompt appear immediately.
+
+> The hosted endpoint runs on DigitalOcean with Redis-backed session resumability. It is key-protected and in private alpha. Keys are distributed to agent developers on request.
+
+### Option B — pip install (global `~/.cursor/mcp.json`)
 
 ```bash
 pip install 'horizon-monitor[mcp]'
 ```
 
 Verify:
-
 ```bash
 python -m horizon.mcp.server --help 2>/dev/null || python -c "from horizon.mcp.server import mcp; print('OK', mcp.name)"
 ```
 
----
-
-## 2. Register in Cursor
-
-### Option A — global (`~/.cursor/mcp.json`)
-
-Works in every workspace. Replace the Python path with your actual venv or system Python:
+Add to `~/.cursor/mcp.json` — replace the Python path with your actual venv or system Python:
 
 ```json
 {
@@ -46,14 +62,14 @@ Works in every workspace. Replace the Python path with your actual venv or syste
 
 **Find your Python path:**
 ```bash
-which python3   # system
-# or for a specific venv:
+which python3   # system Python
+# or for a venv:
 echo /Users/you/workspace/project/.venv/bin/python
 ```
 
-### Option B — workspace (`.cursor/mcp.json`)
+### Option C — workspace (`.cursor/mcp.json`)
 
-Useful when you want Horizon only in one project and want to use `${workspaceFolder}`:
+Useful when you want Horizon only in one project:
 
 ```json
 {
@@ -69,7 +85,7 @@ Useful when you want Horizon only in one project and want to use `${workspaceFol
 }
 ```
 
-After adding the entry, reload the MCP panel (Cursor Settings → Features → Model Context Protocol → toggle off/on) or restart Cursor. The three tools, two resources, and one prompt appear in the agent's tool list.
+After adding any entry, reload the MCP panel or restart Cursor. The three tools, two resources, and one prompt appear in the agent's tool list.
 
 ---
 
