@@ -26,9 +26,9 @@ echo "============================================================"
 # ---------------------------------------------------------------------------
 
 echo ""
-echo "[build:1/4] Installing Python dependencies..."
-python -m pip install --upgrade pip
-pip install -e ".[mcp]"
+echo "[build:1/4] Verifying dependencies (installed by DO Python buildpack via requirements.txt)..."
+python -m pip install --upgrade pip --quiet
+pip install -e ".[mcp]" --quiet   # idempotent — ensures mcp extras are present
 
 # ---------------------------------------------------------------------------
 # 2. Pre-cache the embedding model
