@@ -1,0 +1,34 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.leocelis/horizon-fidelity-monitor",
+  "title": "Horizon Fidelity Monitor",
+  "description": "Real-time conversation health monitoring for AI agents. Tracks semantic drift, temporal desync, ontological gaps, and causal light-cone collapse across multi-turn sessions. Zero LLM calls, <50ms on CPU. +15.7% quality lift and 87% fewer hallucinations in A/B experiments.",
+  "version": "0.2.0",
+  "remotes": [
+    {
+      "type": "sse",
+      "url": "https://horizon.leocelis.com/sse",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer token for authentication. Request an alpha key at https://github.com/leocelis/horizon/discussions",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ],
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "horizon-monitor",
+      "version": "0.2.0",
+      "transport": {
+        "type": "stdio",
+        "command": "horizon",
+        "args": ["serve"]
+      },
+      "installationNotes": "Requires the [mcp] extra: pip install 'horizon-monitor[mcp]'"
+    }
+  ]
+}

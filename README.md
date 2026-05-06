@@ -457,3 +457,5 @@ The monitor instruments all five conjectures as computable signals.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+<!-- mcp-name: io.github.leocelis/horizon-fidelity-monitor -->
