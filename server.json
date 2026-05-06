@@ -11,24 +11,11 @@
       "headers": [
         {
           "name": "Authorization",
-          "description": "Bearer token for authentication. Request an alpha key at https://github.com/leocelis/horizon/discussions",
+          "description": "Bearer token. Request an alpha key at https://github.com/leocelis/horizon/discussions",
           "isRequired": true,
           "isSecret": true
         }
       ]
-    }
-  ],
-  "packages": [
-    {
-      "registryType": "pypi",
-      "identifier": "horizon-monitor",
-      "version": "0.2.0",
-      "transport": {
-        "type": "stdio",
-        "command": "horizon",
-        "args": ["serve"]
-      },
-      "installationNotes": "Requires the [mcp] extra: pip install 'horizon-monitor[mcp]'"
     }
   ]
 }
