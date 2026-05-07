@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import threading
 
 # ── Path setup — works both on DO (/workspace) and locally ───────────────────
 _here = os.path.dirname(os.path.abspath(__file__))
@@ -51,16 +52,23 @@ def build_app():
     """
     fastmcp = create_app()
 
-    # ── Preload the embedding model once at startup ───────────────────────────
-    # _get_monitor() is a module-level function in server.py (not a method on
-    # FastMCP). Calling it here ensures the same singleton that handles
-    # process_turn requests is warmed before the first request arrives.
-    try:
-        from horizon.mcp.server import _get_monitor as _get_horizon_monitor
-        report = _get_horizon_monitor().preload_models()
-        print(f"[Horizon MCP] Model preloaded: {report}", flush=True)
-    except Exception as exc:
-        print(f"[Horizon MCP] Model preload failed (lazy-load fallback): {exc}", flush=True)
+    # ── Preload the embedding model in a background thread ────────────────────
+    # Loading sentence-transformers takes 15-30 s on a 512 MB instance.
+    # Running it in a daemon thread lets the server start instantly (health
+    # checks pass at T+20s) while the model warms up concurrently.
+    # The first process_turn call after the thread finishes is instant; any
+    # call that arrives before the thread finishes will wait on the internal
+    # _ensure_loaded() lock — but loading from the pre-cached disk path is
+    # seconds, not minutes.
+    def _bg_preload() -> None:
+        try:
+            from horizon.mcp.server import _get_monitor as _get_horizon_monitor
+            report = _get_horizon_monitor().preload_models()
+            print(f"[Horizon MCP] Model preloaded: {report}", flush=True)
+        except Exception as exc:
+            print(f"[Horizon MCP] Model preload failed (lazy-load fallback): {exc}", flush=True)
+
+    threading.Thread(target=_bg_preload, daemon=True, name="model-preload").start()
 
     # ── Get both transport ASGI apps from FastMCP ─────────────────────────────
     sse_starlette    = fastmcp.sse_app()             # serves /sse + /messages/
