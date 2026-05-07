@@ -494,6 +494,45 @@ cd deploy/docker &amp;&amp; docker compose up
     </p>
   </section>
 
+  <section>
+    <h2>Built with IVD <span class="dim">— Intent-Verified Development</span></h2>
+    <p>
+      Horizon was designed, validated, and shipped using
+      <a href="https://github.com/leocelis/ivd" style="color:var(--accent-light)">IVD</a> —
+      a framework where the AI writes a structured intent artifact with constraints and tests,
+      implements against it, and verifies before you see a line of code.
+    </p>
+    <p>
+      Every constraint Horizon enforces, every validation gate (V1–V5), every event type — all
+      defined in a single <code>horizon_intent.yaml</code> before implementation began.
+      The result: zero undeclared behavior, four independent validation gates passing at first attempt.
+    </p>
+    <div style="
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    ">
+      <div>
+        <div style="font-weight:700; color:var(--text); margin-bottom:4px;">IVD — Intent-Verified Development</div>
+        <div style="font-size:0.875rem; color:var(--muted);">Stop correcting AI. Make it verify itself. Zero hallucinations, one turn.</div>
+      </div>
+      <a href="https://github.com/leocelis/ivd" style="
+        display:inline-flex; align-items:center; gap:8px;
+        padding:10px 20px; border-radius:8px; font-size:0.875rem; font-weight:600;
+        background:var(--accent-dim); color:var(--accent-light);
+        border:1px solid var(--accent); text-decoration:none;
+        white-space:nowrap;
+      ">View IVD on GitHub →</a>
+    </div>
+  </section>
+
   <footer>
     <div class="footer-links">
       <a href="https://github.com/leocelis/horizon">GitHub</a>
