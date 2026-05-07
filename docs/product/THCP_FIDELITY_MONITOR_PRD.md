@@ -574,7 +574,7 @@ The embedding-based proxies (IGT via orthogonality, $D_{JS}$ via cosine distance
 
 **Validation dataset requirements**:
 - 200+ multi-turn conversations from at least 3 domains (technical Q&A, creative/exploratory, task execution)
-- Sourced from public datasets (ShareGPT, LMSYS Chatbot Arena, WildChat) or internal ADA conversations
+- Sourced from public datasets (ShareGPT, LMSYS Chatbot Arena, WildChat) or real multi-agent conversation logs
 - **Per-turn annotations** by 2+ independent annotators per conversation:
   - "Did this turn add meaningful new information?" (binary — validates IGT)
   - "Did the agent's response address the human's actual intent?" (1–5 scale — validates $D_{JS}$)
