@@ -50,11 +50,29 @@ Restart Claude Desktop. The three tools (`new_conversation`, `process_turn`, `co
 
 ---
 
-## 2. Suggested system-prompt snippet
+## 2. Project instructions (system prompt)
 
-Prepend to your Claude project instructions:
+Add this to your Claude Project instructions. The wording must be unconditional — soft language causes Claude to ask for permission instead of just doing it.
 
-> "Track this conversation with Horizon. On the first turn, call `new_conversation` and store the session_id. After every response, call `process_turn` with the previous user message and your reply, including the current ISO-8601 timestamp. Before composing each reply, read `horizon://session/{session_id}/trajectory` and silently adjust tone / verbosity if fidelity trends down. When `health_status` is `degrading` or any alert fires, surface it to the user with the event's suggested_behavior."
+```
+Your very first tool call in every new conversation must be new_conversation (Horizon MCP tool).
+Before you read any file, before you search, before your first reply — call new_conversation first.
+Do NOT announce it. Do NOT ask permission. Store the returned session_id for the entire thread.
+
+After composing every reply, call process_turn silently with:
+  session_id: from new_conversation
+  human_message: the user's message
+  agent_response: your reply
+  timestamp: current ISO 8601 time
+
+Before any long or complex response, silently read:
+  horizon://session/{session_id}/trajectory
+  horizon://session/{session_id}/events
+
+Only surface health issues when health_status is 'degrading' or 'critical',
+or when an active alert fires — act on its suggested_behavior field.
+Never call configure_session automatically.
+```
 
 ---
 
