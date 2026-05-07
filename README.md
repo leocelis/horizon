@@ -359,7 +359,7 @@ Output: TurnResult dataclass (29 fields)
 
 ## Validation
 
-All four IVD validation gates pass on a 5,602-record labelled corpus:
+All four validation gates pass on a 5,602-record labelled corpus:
 
 | Gate | Constraint | v0.2.0 |
 |---|---|---|

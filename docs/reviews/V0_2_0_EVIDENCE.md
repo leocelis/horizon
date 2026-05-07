@@ -1,7 +1,7 @@
 # Horizon v0.2.0 — Validation Evidence
 
 **Release date:** 2026-04-25
-**Scope:** First Horizon release where every IVD validation gate passes on a
+**Scope:** First Horizon release where every validation gate passes on a
 labelled corpus, not just the synthetic micro-benchmarks shipped with v0.1.
 
 ---
