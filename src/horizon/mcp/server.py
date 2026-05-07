@@ -51,6 +51,7 @@ from horizon import __version__
 
 from horizon import Config, FidelityMonitor
 from horizon.monitor import SessionNotFoundError
+from horizon.mcp.auth import current_key_id
 
 # ── Structured log — file for local Cursor use, stdout for DO/production ──────
 _LOG_PATH = os.path.expanduser("~/.cursor/horizon_mcp.log")
@@ -182,7 +183,7 @@ def new_conversation(
     """Create a new Horizon session. Returns {session_id: str}."""
     monitor = _get_monitor()
     sid = monitor.new_conversation(metadata=metadata)
-    _log.info("TOOL  new_conversation  session=%s  metadata=%s", sid[:8] + "…", metadata)
+    _log.info("TOOL  new_conversation  key=%s  session=%s  metadata=%s", current_key_id.get(), sid[:8] + "…", metadata)
     return {"session_id": sid}
 
 
@@ -244,8 +245,9 @@ def process_turn(
         d = dataclasses.asdict(result)
         active_evs = [e["type"] for e in d.get("events", []) if e.get("active")]
         _log.info(
-            "TOOL  process_turn  session=%s  turn=%s  fidelity=%.3f  health=%s  "
+            "TOOL  process_turn  key=%s  session=%s  turn=%s  fidelity=%.3f  health=%s  "
             "gap=%s  retention=%s  active_events=%s",
+            current_key_id.get(),
             session_id[:8] + "…",
             d["turn_number"],
             d["fidelity_score"],
@@ -256,7 +258,7 @@ def process_turn(
         )
         return d
     except SessionNotFoundError as exc:
-        _log.warning("TOOL  process_turn  ERROR: %s", exc)
+        _log.warning("TOOL  process_turn  key=%s  ERROR: %s", current_key_id.get(), exc)
         return {"error": str(exc), "hint": "Call new_conversation first."}
 
 
@@ -312,10 +314,10 @@ def configure_session(
     try:
         result = monitor.configure(session_id=session_id, **kwargs)
         d = dataclasses.asdict(result)
-        _log.info("TOOL  configure_session  session=%s  applied=%s", str(session_id)[:8], d["applied"])
+        _log.info("TOOL  configure_session  key=%s  session=%s  applied=%s", current_key_id.get(), str(session_id)[:8], d["applied"])
         return d
     except SessionNotFoundError as exc:
-        _log.warning("TOOL  configure_session  ERROR: %s", exc)
+        _log.warning("TOOL  configure_session  key=%s  ERROR: %s", current_key_id.get(), exc)
         return {"error": str(exc), "hint": "Call new_conversation first."}
 
 
@@ -348,12 +350,12 @@ def get_trajectory(session_id: str) -> str:
         traj = monitor.get_trajectory(session_id)
         d = dataclasses.asdict(traj)
         _log.info(
-            "RESOURCE  trajectory  session=%s  turns=%s  health=%s  fidelity=%.3f",
-            session_id[:8] + "…", d["turn_count"], d["health_status"], d["current_fidelity"],
+            "RESOURCE  trajectory  key=%s  session=%s  turns=%s  health=%s  fidelity=%.3f",
+            current_key_id.get(), session_id[:8] + "…", d["turn_count"], d["health_status"], d["current_fidelity"],
         )
         return json.dumps(d, indent=2, default=str)
     except SessionNotFoundError as exc:
-        _log.warning("RESOURCE  trajectory  ERROR: %s", exc)
+        _log.warning("RESOURCE  trajectory  key=%s  ERROR: %s", current_key_id.get(), exc)
         return json.dumps({"error": str(exc), "hint": "Call new_conversation first."})
 
 
@@ -378,8 +380,8 @@ def get_events(session_id: str) -> str:
         active = [dataclasses.asdict(e) for e in events if e.active]
         all_events = [dataclasses.asdict(e) for e in events]
         _log.info(
-            "RESOURCE  events  session=%s  total=%s  active=%s  active_types=%s",
-            session_id[:8] + "…", len(all_events), len(active),
+            "RESOURCE  events  key=%s  session=%s  total=%s  active=%s  active_types=%s",
+            current_key_id.get(), session_id[:8] + "…", len(all_events), len(active),
             [e["type"] for e in active] if active else "none",
         )
         return json.dumps(
@@ -393,7 +395,7 @@ def get_events(session_id: str) -> str:
             default=str,
         )
     except SessionNotFoundError as exc:
-        _log.warning("RESOURCE  events  ERROR: %s", exc)
+        _log.warning("RESOURCE  events  key=%s  ERROR: %s", current_key_id.get(), exc)
         return json.dumps({"error": str(exc), "hint": "Call new_conversation first."})
 
 
@@ -431,7 +433,7 @@ def monitor_conversation(
         metadata={"domain": domain, "agent_name": agent_name}
     )
     ts = datetime.now(timezone.utc).isoformat()
-    _log.info("PROMPT  monitor_conversation  session=%s  domain=%s  agent=%s", sid[:8] + "…", domain, agent_name)
+    _log.info("PROMPT  monitor_conversation  key=%s  session=%s  domain=%s  agent=%s", current_key_id.get(), sid[:8] + "…", domain, agent_name)
 
     return f"""You are now being monitored by the Horizon Fidelity Monitor.
 

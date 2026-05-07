@@ -15,11 +15,20 @@ Key generation:
 
 from __future__ import annotations
 
+import contextvars
 import hashlib
 import logging
 import os
 import secrets
 from typing import Optional, Tuple
+
+# ── Per-request context: key_id of the currently authenticated caller ─────────
+# Set by HorizonAuthMiddleware after successful auth; read by tool handlers
+# for structured logging. Defaults to "local" so stdio/unit-test callers
+# that bypass HTTP auth still produce readable log lines.
+current_key_id: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "horizon_current_key_id", default="local"
+)
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -65,7 +74,11 @@ class HorizonAuthMiddleware:
             return
 
         _log.info("AUTH  ok  key=%s  path=%s", key_id, path)
-        await self.app(scope, receive, send)
+        token = current_key_id.set(key_id)
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            current_key_id.reset(token)
 
 
 # ── Validation helpers ────────────────────────────────────────────────────────
