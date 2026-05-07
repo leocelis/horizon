@@ -28,7 +28,7 @@ Three paths — pick the one that fits your workflow:
 
 The fastest way to add Horizon to any Cursor or Claude Desktop workspace. No Python required.
 
-Request an alpha key → [GitHub Discussions](https://github.com/leocelis/horizon/discussions), then add to `~/.cursor/mcp.json`:
+Request an alpha key → [open a Discussion](https://github.com/leocelis/horizon/discussions/new?category=q-a), then add to `~/.cursor/mcp.json`:
 
 ```json
 {
@@ -56,7 +56,7 @@ In Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.j
 
 That's it. Reload your MCP client and three tools appear: `new_conversation`, `process_turn`, `configure_session`.
 
-> **Alpha access:** Horizon's hosted endpoint is in private alpha. Keys are distributed to agent developers who want to monitor real projects. Open a GitHub Discussion to request one.
+> **Alpha access:** Horizon's hosted endpoint is in private alpha. Keys are distributed to agent developers who want to monitor real projects. [Open a Discussion](https://github.com/leocelis/horizon/discussions/new?category=q-a) to request one — describe your use case and we'll send a key.
 
 ### Path 2 — pip install (library integration)
 
@@ -448,8 +448,9 @@ The monitor instruments all five conjectures as computable signals.
 
 ## Community
 
-- **Questions, use cases, alpha access:** [GitHub Discussions](https://github.com/leocelis/horizon/discussions)
-- **Bug reports and feature requests:** [GitHub Issues](https://github.com/leocelis/horizon/issues)
+- **Request alpha access:** [Open a Discussion →](https://github.com/leocelis/horizon/discussions/new?category=q-a)
+- **Ask a question:** [GitHub Discussions](https://github.com/leocelis/horizon/discussions/new?category=q-a)
+- **Bug reports:** [GitHub Issues](https://github.com/leocelis/horizon/issues/new)
 - **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ---

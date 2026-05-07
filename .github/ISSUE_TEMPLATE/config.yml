@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "🔑 Request alpha access"
+    url: https://github.com/leocelis/horizon/discussions/new?category=q-a
+    about: Request a Horizon hosted MCP key — describe your use case and we'll send one.
+  - name: "💬 Ask a question"
+    url: https://github.com/leocelis/horizon/discussions/new?category=q-a
+    about: Ask about setup, signals, integration, or anything else.
+  - name: "💡 Share an idea"
+    url: https://github.com/leocelis/horizon/discussions/new?category=ideas
+    about: Suggest a new signal, event type, or integration.
