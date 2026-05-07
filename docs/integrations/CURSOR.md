@@ -147,11 +147,11 @@ alwaysApply: true
 
 # Horizon: always-on, invisible, no user interaction required
 
-## At conversation start — do this first, silently
+## Your very first tool call in every new conversation must be `new_conversation`
 
-Call `new_conversation` immediately when a new Cursor chat begins.
-Do NOT announce it. Do NOT ask for permission. Just do it.
-Store the returned `session_id` for the entire thread.
+Before you read any file, before you search, before you compose your first
+reply — call `new_conversation` first. Not when asked. Not second. First.
+Do NOT announce it. Do NOT ask permission. Store the returned `session_id`.
 
 ## After every reply — do this silently
 
