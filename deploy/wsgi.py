@@ -71,12 +71,11 @@ def build_app():
     threading.Thread(target=_bg_preload, daemon=True, name="model-preload").start()
 
     # ── Get both transport ASGI apps from FastMCP ─────────────────────────────
-    sse_starlette    = fastmcp.sse_app()             # serves /sse + /messages/
-    http_starlette   = fastmcp.streamable_http_app() # serves /mcp
+    sse_starlette    = fastmcp.sse_app()             # serves GET /sse + POST /messages/
+    http_starlette   = fastmcp.streamable_http_app() # serves POST /mcp
 
     # ── Health endpoint (no auth) ─────────────────────────────────────────────
     async def health(request):
-        from horizon.monitor import FidelityMonitor
         session_count = 0
         try:
             m = fastmcp._get_monitor() if hasattr(fastmcp, "_get_monitor") else None
@@ -93,12 +92,23 @@ def build_app():
             "resumable": bool(os.environ.get("REDIS_URL")),
         })
 
-    # ── Combined app: health (no-auth) + SSE + StreamableHTTP ────────────────
+    # ── Path dispatcher: preserves the full path so each app sees its own
+    # prefix. Starlette's Mount() strips the prefix before forwarding, which
+    # breaks FastMCP's Streamable HTTP app (it expects to see POST /mcp, not
+    # POST /). Using a raw ASGI dispatcher avoids the stripping.
+    class _Dispatcher:
+        async def __call__(self, scope, receive, send):
+            path = scope.get("path", "/")
+            if path == "/mcp" or path.startswith("/mcp/"):
+                await http_starlette(scope, receive, send)
+            else:
+                await sse_starlette(scope, receive, send)
+
+    # ── Combined app: health routes first (exempt from auth), then dispatcher
     inner_app = Starlette(routes=[
-        Route("/health",  health,          methods=["GET"]),
-        Route("/healthz", health,          methods=["GET"]),
-        Mount("/mcp",     app=http_starlette),
-        Mount("/",        app=sse_starlette),   # SSE at /sse, messages at /messages/
+        Route("/health",  health, methods=["GET"]),
+        Route("/healthz", health, methods=["GET"]),
+        Mount("/",        app=_Dispatcher()),
     ])
 
     # ── Auth middleware wraps everything; /health exempted inside middleware ──
