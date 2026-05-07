@@ -11,11 +11,11 @@ Cost control:
 
 Usage::
 
-    # 1) Ensure ANTHROPIC_API_KEY is set, or fall back to ADA's .env
+    # 1) Ensure ANTHROPIC_API_KEY is set
     python examples/anthropic_real_agent_e2e.py
 
-    # 2) Override the env file location
-    ADA_ENV_PATH=/path/to/.env python examples/anthropic_real_agent_e2e.py
+    # 2) Or load from a .env file
+    ENV_PATH=/path/to/.env python examples/anthropic_real_agent_e2e.py
 
 What this demonstrates (identical feature set to the OpenAI example, different SDK):
     - ``monitor.wrap(anthropic_client)`` — transparent interception of ``messages.create``
@@ -46,9 +46,7 @@ def load_anthropic_key() -> str:
     if key:
         return key
 
-    env_path = os.environ.get("ADA_ENV_PATH") or str(
-        Path.home() / "workspace" / "leocelis" / "ada" / "ada" / ".env"
-    )
+    env_path = os.environ.get("ENV_PATH") or str(Path(".env"))
     if Path(env_path).is_file():
         load_dotenv(env_path)
         key = os.environ.get("ANTHROPIC_API_KEY")
@@ -57,7 +55,7 @@ def load_anthropic_key() -> str:
             return key
 
     print(
-        "[setup] ANTHROPIC_API_KEY not found. Export it or set ADA_ENV_PATH to "
+        "[setup] ANTHROPIC_API_KEY not found. Export it or set ENV_PATH to "
         "a .env file that defines it.",
         file=sys.stderr,
     )

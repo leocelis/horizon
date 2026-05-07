@@ -40,9 +40,7 @@ def load_openai_key() -> str:
     if key:
         return key
 
-    env_path = os.environ.get("ADA_ENV_PATH") or str(
-        Path.home() / "workspace" / "leocelis" / "ada" / "ada" / ".env"
-    )
+    env_path = os.environ.get("ENV_PATH") or str(Path(".env"))
     if Path(env_path).is_file():
         load_dotenv(env_path)
         key = os.environ.get("OPENAI_API_KEY")

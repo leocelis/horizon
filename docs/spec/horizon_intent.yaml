@@ -19,7 +19,7 @@
 #                     velocity v_t/a_t, spacetime interval ds², causal reachability J⁻(t_i),
 #                     14 events, 13 predictions, Conjecture THCP-5, 173 references
 
-parent_intent: "../../ada_system_intent.yaml"
+parent_intent: null
 
 scope:
   level: "module"
@@ -597,8 +597,8 @@ rationale:
     spatial constraints, four-velocity drives conversation pace, the spacetime interval
     drives the unified ds² metric, and the light cone drives the causal reachability map.
   evidence:
-    - "ada/ada/docs/research/TRANS_HORIZON_COMMUNICATION_HUMAN_AI_THEORETICAL_FRAMEWORK.md"
-    - "ada/ada/docs/research/THCP_FIDELITY_MONITOR_PRD.md"
+    - "docs/research/TRANS_HORIZON_COMMUNICATION_HUMAN_AI_THEORETICAL_FRAMEWORK.md"
+    - "docs/product/THCP_FIDELITY_MONITOR_PRD.md"
   date: "2026-04-22"
   stakeholder: "Leo Celis"
 
@@ -608,22 +608,22 @@ rationale:
 alternatives:
   - name: "Fine-tune models for proactive collaboration (CollabLLM approach)"
     rejected_because: "Requires training; cannot be applied to closed models (GPT, Claude); provides no runtime signals; solves same problem through fundamentally different mechanism"
-    experiment: "ada/ada/docs/research/THCP_FIDELITY_MONITOR_PRD.md §3.1 (CollabLLM analysis)"
+    experiment: "docs/product/THCP_FIDELITY_MONITOR_PRD.md §3.1 (CollabLLM analysis)"
     date_tested: "2026-04-22"
 
   - name: "Extend existing observability platforms (LangSmith, Langfuse, Arize)"
     rejected_because: "They measure infrastructure (traces, latency, tool calls), not communication quality. Adding conversation dynamics metrics to a tracing platform conflates two different abstraction levels. Built as complementary layer that integrates with them via export_to()."
-    experiment: "ada/ada/docs/research/THCP_FIDELITY_MONITOR_PRD.md §3.2 (competitive table)"
+    experiment: "docs/product/THCP_FIDELITY_MONITOR_PRD.md §3.2 (competitive table)"
     date_tested: "2026-04-22"
 
   - name: "Post-hoc evaluation only (DeepEval, RAGAS style)"
     rejected_because: "Evaluates after the conversation ends; cannot intervene during. Measures content quality, not dynamics. Cannot detect convergence, trigger clarification, or signal session reset in real time."
-    experiment: "ada/ada/docs/research/THCP_FIDELITY_MONITOR_PRD.md §2.2"
+    experiment: "docs/product/THCP_FIDELITY_MONITOR_PRD.md §2.2"
     date_tested: "2026-04-22"
 
   - name: "Single-metric drift detection (Bipredictability, context-decay-drift, SAFi)"
     rejected_because: "Each measures one signal. Cannot distinguish recoverable drift from irreversible loss, does not detect convergence, has no mode awareness, no cross-session persistence, no event system, no temporal awareness. Bipredictability is incorporated as Tier 1 of our coherence engine — it's a component, not the product."
-    experiment: "ada/ada/docs/research/THCP_FIDELITY_MONITOR_PRD.md §3.3 (updated competitive check)"
+    experiment: "docs/product/THCP_FIDELITY_MONITOR_PRD.md §3.3 (updated competitive check)"
     date_tested: "2026-04-22"
 
   - name: "LLM-as-judge evaluation per turn"
@@ -633,7 +633,7 @@ alternatives:
 
   - name: "Wait for models to self-correct via scaling"
     rejected_because: "SACD (arXiv:2603.01239) proves all frontier models drift differently in multi-turn. Bounded self-certification (arXiv:2603.06012) proves current-turn dynamics are opaque to the generating system. Representational incompleteness (Spivack, Lean 4) proves every self-model has an unreachable diagonal. Scaling shifts the diagonal; it does not eliminate it."
-    experiment: "ada/ada/docs/research/THCP_FIDELITY_MONITOR_PRD.md Appendix E"
+    experiment: "docs/product/THCP_FIDELITY_MONITOR_PRD.md Appendix E"
     date_tested: "2026-04-22"
 
   - name: "Static spacetime embeddings (Geometry of Meaning, Neural Spacetimes)"
@@ -749,8 +749,8 @@ implementation:
     - "tests/validation/test_v3_baseline.py"
     - "tests/validation/test_v5_generalization.py"
   documentation:
-    - "ada/ada/docs/research/TRANS_HORIZON_COMMUNICATION_HUMAN_AI_THEORETICAL_FRAMEWORK.md"
-    - "ada/ada/docs/research/THCP_FIDELITY_MONITOR_PRD.md"
+    - "docs/research/TRANS_HORIZON_COMMUNICATION_HUMAN_AI_THEORETICAL_FRAMEWORK.md"
+    - "docs/product/THCP_FIDELITY_MONITOR_PRD.md"
 
 # ----------------------------------------------------------------------------
 # VERIFICATION
@@ -994,7 +994,7 @@ changelog:
     date: "2026-04-22"
     change: |
       Full review pass — 14 issues resolved:
-      - Fixed parent_intent path (system_intent.yaml → ada_system_intent.yaml)
+      - Fixed parent_intent path (system_intent.yaml → null; top-level intent)
       - Added session_id parameter to process_turn; added new_conversation() tool
       - Added configure() and export_to() tools to complete public API surface
       - Fixed test case constraint mappings

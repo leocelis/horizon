@@ -7,11 +7,11 @@ score remains correlated with human ratings when the embedding backend
 changes.
 
 Usage:
-  HORIZON_VALIDATION_DATA=ada/playground/horizon/data/horizon_validation_corpus_v1 \
+  HORIZON_VALIDATION_DATA=data/horizon_validation_corpus_v1 \
       python scripts/measure_embedding_stability.py
 
 The corpus files are git-ignored runtime data — point ``HORIZON_VALIDATION_DATA``
-at the directory produced by ``ada/playground/horizon/build_validation_corpus.py``.
+at the directory produced by ``scripts/build_validation_corpus.py``.
 """
 
 from __future__ import annotations

@@ -453,8 +453,7 @@ axioms.
 
 Horizon has been validated across multiple real-use-case scenarios:
 
-1. **ADA multi-agent conversations** — integrated into ADA's agent architecture in the
-   `ada/playground/horizon/` subdirectory; produces real conversation telemetry.
+1. **Internal multi-agent conversations** — integrated into a real agent architecture, producing live conversation telemetry across multi-turn sessions.
 2. **Developer scenario** — long-horizon coding sessions with topic shifts, pacing anomalies,
    and context eviction, measured and evidenced.
 3. **Customer service simulation** — demonstrates fidelity decay and drift detection at turn

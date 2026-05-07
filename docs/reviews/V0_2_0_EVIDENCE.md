@@ -16,7 +16,7 @@ labelled corpus, not just the synthetic micro-benchmarks shipped with v0.1.
 | **V5** — cross-domain | per-turn ρ ≥ 0.4 AND per-conv ρ ≥ 0.48 across ≥ 5 held-out domains | per-turn ρ = 0.22-0.28 ❌ | **min 0.517 / 0.718 across 5 domains** ✅ | +29% / +50% |
 
 All four gates were green when run on the corpus produced by
-`ada/playground/horizon/build_validation_corpus.py` (5,602 records:
+`scripts/build_validation_corpus.py` (5,602 records:
 222 V1 conversations, 5,120 V2 labels, 60 V3 conversations, 200 V5
 conversations across 5 held-out domains).
 
@@ -162,7 +162,7 @@ conversations, so the detector has a realistic target.
 | `src/horizon/session.py` | `agent_sentence_embeddings` field on `TurnState`; `claim_tracker` on `Session`. |
 | `src/horizon/monitor.py` | Wires `consistency` into `compute_dynamic_fidelity`; passes `agent_response` to `evaluate_events`; honours `current_igt` in health check. |
 | `tests/validation/test_v5_generalization.py` | Per-turn ratings preferred over broadcast. |
-| `ada/playground/horizon/build_validation_corpus.py` | New seeds + per-event setup turns; produces a 5,602-record gate-ready corpus. |
+| `scripts/build_validation_corpus.py` | New seeds + per-event setup turns; produces a 5,602-record gate-ready corpus. |
 
 ### Why these gates failed in v0.1
 
@@ -264,16 +264,16 @@ diagnostic — not a vague "the monitor doesn't feel right".
 
 ```bash
 # 1. Generate the labelled corpus (~2 s)
-python ada/playground/horizon/build_validation_corpus.py
+python scripts/build_validation_corpus.py
 
 # 2. Run V1, V3, V5 gates (~9 min total)
-HORIZON_VALIDATION_DATA=ada/playground/horizon/data/horizon_validation_corpus_v1 \
+HORIZON_VALIDATION_DATA=data/horizon_validation_corpus_v1 \
     pytest -v tests/validation/test_v1_proxy.py \
               tests/validation/test_v3_baseline.py \
               tests/validation/test_v5_generalization.py
 
 # 3. Run V2 gate (~52 min — 5,120 labelled turns × full pipeline)
-HORIZON_VALIDATION_DATA=ada/playground/horizon/data/horizon_validation_corpus_v1 \
+HORIZON_VALIDATION_DATA=data/horizon_validation_corpus_v1 \
     pytest -v tests/validation/test_v2_signal_quality.py
 ```
 
@@ -327,7 +327,7 @@ on the same 222-conversation corpus.
 Reproduce:
 
 ```bash
-HORIZON_VALIDATION_DATA=ada/playground/horizon/data/horizon_validation_corpus_v1 \
+HORIZON_VALIDATION_DATA=data/horizon_validation_corpus_v1 \
     python scripts/measure_embedding_stability.py \
         --output docs/reviews/embedding_stability.json
 ```
@@ -453,7 +453,7 @@ human-rated event corpus on the v0.2.0 backlog.
 Reproduce:
 
 ```bash
-HORIZON_VALIDATION_DATA=ada/playground/horizon/data/horizon_validation_corpus_v1 \
+HORIZON_VALIDATION_DATA=data/horizon_validation_corpus_v1 \
     python scripts/measure_heuristic_baseline.py \
         --per-event-limit 60 \
         --output docs/reviews/heuristic_baseline.json

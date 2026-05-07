@@ -13,7 +13,7 @@ For each event we report:
   - Lift     : Horizon-(P+R) / Baseline-(P+R).
 
 Usage:
-  HORIZON_VALIDATION_DATA=ada/playground/horizon/data/horizon_validation_corpus_v1 \
+  HORIZON_VALIDATION_DATA=data/horizon_validation_corpus_v1 \
       python scripts/measure_heuristic_baseline.py
 """
 

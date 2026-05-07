@@ -11,11 +11,11 @@ Cost control:
 
 Usage::
 
-    # 1) Ensure OPENAI_API_KEY is set, or fall back to ADA's .env
+    # 1) Ensure OPENAI_API_KEY is set
     python examples/openai_real_agent_e2e.py
 
-    # 2) Override the env file location
-    ADA_ENV_PATH=/path/to/.env python examples/openai_real_agent_e2e.py
+    # 2) Or load from a .env file
+    ENV_PATH=/path/to/.env python examples/openai_real_agent_e2e.py
 
 What this demonstrates:
     - ``monitor.wrap(client)`` — transparent interception of ``chat.completions.create``
@@ -48,14 +48,12 @@ MAX_TOKENS_PER_REPLY = 120
 
 
 def load_openai_key() -> str:
-    """Prefer the env var; fall back to ADA's .env. Fail early if neither works."""
+    """Prefer the env var; fall back to a .env file. Fail early if neither works."""
     key = os.environ.get("OPENAI_API_KEY")
     if key:
         return key
 
-    env_path = os.environ.get("ADA_ENV_PATH") or str(
-        Path.home() / "workspace" / "leocelis" / "ada" / "ada" / ".env"
-    )
+    env_path = os.environ.get("ENV_PATH") or str(Path(".env"))
     if Path(env_path).is_file():
         load_dotenv(env_path)
         key = os.environ.get("OPENAI_API_KEY")
@@ -64,7 +62,7 @@ def load_openai_key() -> str:
             return key
 
     print(
-        "[setup] OPENAI_API_KEY not found. Export it or set ADA_ENV_PATH to "
+        "[setup] OPENAI_API_KEY not found. Export it or set ENV_PATH to "
         "a .env file that defines it.",
         file=sys.stderr,
     )
