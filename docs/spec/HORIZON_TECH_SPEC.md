@@ -1,6 +1,6 @@
 # Horizon Fidelity Monitor — Technical Specification
 
-*Leo Celis — ADA Research · April 2026*
+*Leo Celis · April 2026*
 
 **Based on**: [PRD](./THCP_FIDELITY_MONITOR_PRD.md) · [Research](./TRANS_HORIZON_COMMUNICATION_HUMAN_AI_THEORETICAL_FRAMEWORK.md) · [Intent](./horizon_intent.yaml)
 

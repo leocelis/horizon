@@ -1,6 +1,6 @@
 # Trans-Horizon Communication: A Theoretical Framework for Human–AI Interaction Across Ontological Boundaries
 
-*Leo Celis — ADA Research · April 2026*
+*Leo Celis · April 2026*
 
 ---
 

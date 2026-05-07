@@ -1,6 +1,6 @@
 # THCP Fidelity Monitor — Product Requirements Document
 
-*Leo Celis — ADA Research · April 2026*
+*Leo Celis · April 2026*
 
 **Codename**: Horizon
 **Based on**: [Trans-Horizon Communication: A Theoretical Framework for Human–AI Interaction Across Ontological Boundaries](./TRANS_HORIZON_COMMUNICATION_HUMAN_AI_THEORETICAL_FRAMEWORK.md)
