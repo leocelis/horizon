@@ -19,6 +19,7 @@ import argparse
 import os
 import sys
 import threading
+from contextlib import asynccontextmanager
 
 # ── Path setup — works both on DO (/workspace) and locally ───────────────────
 _here = os.path.dirname(os.path.abspath(__file__))
@@ -93,9 +94,9 @@ def build_app():
         })
 
     # ── Path dispatcher: preserves the full path so each app sees its own
-    # prefix. Starlette's Mount() strips the prefix before forwarding, which
-    # breaks FastMCP's Streamable HTTP app (it expects to see POST /mcp, not
-    # POST /). Using a raw ASGI dispatcher avoids the stripping.
+    # prefix. Starlette's Mount() strips the matched prefix before forwarding,
+    # which breaks FastMCP's Streamable HTTP app (it expects POST /mcp, not
+    # POST /). A raw ASGI dispatcher avoids the stripping.
     class _Dispatcher:
         async def __call__(self, scope, receive, send):
             path = scope.get("path", "/")
@@ -104,12 +105,23 @@ def build_app():
             else:
                 await sse_starlette(scope, receive, send)
 
+    # ── Lifespan: FastMCP's StreamableHTTPSessionManager requires its own
+    # lifespan `run()` to initialise the anyio task group. When embedded as a
+    # sub-app the inner lifespan never fires, so we forward it explicitly.
+    @asynccontextmanager
+    async def _lifespan(app):
+        async with http_starlette.router.lifespan_context(app):
+            yield
+
     # ── Combined app: health routes first (exempt from auth), then dispatcher
-    inner_app = Starlette(routes=[
-        Route("/health",  health, methods=["GET"]),
-        Route("/healthz", health, methods=["GET"]),
-        Mount("/",        app=_Dispatcher()),
-    ])
+    inner_app = Starlette(
+        lifespan=_lifespan,
+        routes=[
+            Route("/health",  health, methods=["GET"]),
+            Route("/healthz", health, methods=["GET"]),
+            Mount("/",        app=_Dispatcher()),
+        ],
+    )
 
     # ── Auth middleware wraps everything; /health exempted inside middleware ──
     return HorizonAuthMiddleware(inner_app)
