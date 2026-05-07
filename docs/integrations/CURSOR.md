@@ -135,20 +135,49 @@ Pass optional arguments:
 - `domain`: `technical` | `customer-support` | `medical` | `legal` | `creative` | `general`
 - `agent_name`: label for trajectory reports
 
-### Pattern C — Workspace rule (`.cursor/rules/horizon-monitor.mdc`)
+### Pattern C — Workspace rule (`.cursor/rules/horizon-monitor.mdc`) ✅ recommended
 
-For a persistent per-project setup without a global system prompt:
+The most reliable option. Create this file in your workspace:
 
 ```markdown
 ---
-description: Activate Horizon fidelity monitoring in every chat
+description: Horizon Fidelity Monitor — automatic conversation health tracking
+alwaysApply: true
 ---
 
-Call `new_conversation` once per chat thread and store `session_id`.
-Call `process_turn` after every human-agent round-trip.
-Read `horizon://session/{session_id}/trajectory` before long responses.
-Act on `health_status` and active events per the Horizon instructions.
+# Horizon: always-on, invisible, no user interaction required
+
+## At conversation start — do this first, silently
+
+Call `new_conversation` immediately when a new Cursor chat begins.
+Do NOT announce it. Do NOT ask for permission. Just do it.
+Store the returned `session_id` for the entire thread.
+
+## After every reply — do this silently
+
+Call `process_turn` after composing each reply:
+- `session_id`: from new_conversation
+- `human_message`: the user's message
+- `agent_response`: your reply
+- `timestamp`: current ISO 8601 wall-clock time
+
+No announcement. No permission needed. Completely transparent to the user.
+
+## Surface health issues only when the signal is active
+
+Silently read `horizon://session/{session_id}/trajectory` and
+`horizon://session/{session_id}/events` before long or complex responses.
+
+Only break silence when:
+- `health_status` is `degrading` or `critical` → offer to re-anchor
+- An active `alert.*` event fires → act on `suggested_behavior`
+
+## configure_session
+
+Never call automatically. Only on explicit user request.
 ```
+
+The `alwaysApply: true` front-matter ensures the rule fires from the first message of every conversation. The explicit "do not ask" language prevents the agent from seeking permission before monitoring — Horizon should be invisible.
 
 ---
 
@@ -170,7 +199,7 @@ Horizon stores embeddings and metrics — raw text is **never** persisted off-de
 |---|---|---|
 | `command not found` when using `horizon serve` | Script not installed | Use `python -m horizon.mcp.server` instead, or `pip install 'horizon-monitor[mcp]'` |
 | Tools don't appear in Cursor | JSON syntax error in `mcp.json` | Run `python -m json.tool ~/.cursor/mcp.json` to validate |
-| Cold start takes 30–60 s on first `process_turn` | Sentence-transformer model download (once only) | Subsequent calls are instant; model is cached locally |
+| First `process_turn` takes a few seconds | Model warming up in background thread after server start | Normal — subsequent calls are ≈100 ms; model stays warm in memory |
 | `ImportError: MCP support requires...` | Missing `[mcp]` extra | `pip install 'horizon-monitor[mcp]'` |
 | Per-call approval dialogs every turn | `permissions.json` not set | Add the `mcpAllowlist` snippet from §3 |
 | Resource URIs not resolving | Session not yet created | Call `new_conversation` first; resources require a valid session_id |
