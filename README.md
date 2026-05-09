@@ -26,9 +26,11 @@ Three paths — pick the one that fits your workflow:
 
 ### Path 1 — Hosted MCP (fastest, zero install)
 
-The fastest way to add Horizon to any Cursor or Claude Desktop workspace. No Python required.
+The fastest way to add Horizon to any Cursor, VS Code, or Claude Desktop workspace. No Python required.
 
-Request an alpha key → [open a Discussion](https://github.com/leocelis/horizon/discussions/new?category=q-a), then add to `~/.cursor/mcp.json`:
+Request an alpha key → [open a Discussion](https://github.com/leocelis/horizon/discussions/new?category=q-a), then add the config for your client:
+
+**Cursor** (`~/.cursor/mcp.json`):
 
 ```json
 {
@@ -41,7 +43,23 @@ Request an alpha key → [open a Discussion](https://github.com/leocelis/horizon
 }
 ```
 
-In Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+**VS Code / GitHub Copilot** (`.vscode/mcp.json` in your workspace):
+
+```json
+{
+  "servers": {
+    "horizon": {
+      "type": "http",
+      "url": "https://horizon.leocelis.com/sse",
+      "headers": { "Authorization": "Bearer YOUR_KEY_HERE" }
+    }
+  }
+}
+```
+
+> **VS Code note:** Use `"servers"` (not `"mcpServers"`) and `"type": "http"` — VS Code tries Streamable HTTP first and falls back to SSE automatically, so `"type": "http"` works with the `/sse` URL.
+
+**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
 ```json
 {
