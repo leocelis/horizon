@@ -17,10 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   even during healthy sessions ([design-flaw/silent-agent-response]).
 
 ### Documentation
-- **`docs/cursor-rules/horizon-monitor.mdc`** updated: removed the proactive resource-read
-  instruction ("read trajectory/events before complex responses") and replaced with explicit
-  `ok`-signal contract. Agents now have unambiguous instructions to ignore `process_turn`
-  entirely when `ok` is `true`.
+- **`docs/cursor-rules/horizon-monitor.mdc`** — two rounds of fixes:
+  1. Removed proactive resource-read instruction ("read trajectory/events before complex
+     responses"); replaced with explicit `ok`-signal contract.
+  2. Added hard prohibition on narrating or mentioning Horizon in any form — thinking steps,
+     intermediate text, or response text. Prohibited patterns include: "Calling Horizon...",
+     "Recording the turn...", "✓ verified: session is active", and any reference to session_id,
+     fidelity score, or turn number in the reply. Agents were leaking Horizon state into
+     visible output despite the minimal signal fix; this closes the rule gap.
 
 ### Infrastructure
 - **Hosted MCP endpoint live** at `https://horizon.leocelis.com` (DigitalOcean App Platform, SSE transport, Redis-backed session resumability). Any Cursor or Claude Desktop user with an alpha key can add Horizon without installing Python.
