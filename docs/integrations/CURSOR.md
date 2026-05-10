@@ -203,6 +203,7 @@ Horizon stores embeddings and metrics — raw text is **never** persisted off-de
 | `ImportError: MCP support requires...` | Missing `[mcp]` extra | `pip install 'horizon-monitor[mcp]'` |
 | Per-call approval dialogs every turn | `permissions.json` not set | Add the `mcpAllowlist` snippet from §3 |
 | Resource URIs not resolving | Session not yet created | Call `new_conversation` first; resources require a valid session_id |
+| `MCP error -32602: Invalid request parameters` on every tool call | Cursor's `CallMcpTool` bridge opens a new SSE session without sending the MCP `initialize` handshake first | Fixed server-side (v0.2.1+). If you see it, ensure you are on the latest hosted endpoint or update your local install. Tracked: [issue #1](https://github.com/leocelis/horizon/issues/1) |
 
 ---
 
