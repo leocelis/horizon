@@ -55,24 +55,27 @@ Restart Claude Desktop. The three tools (`new_conversation`, `process_turn`, `co
 Add this to your Claude Project instructions. The wording must be unconditional — soft language causes Claude to ask for permission instead of just doing it.
 
 ```
-Your very first tool call in every new conversation must be new_conversation (Horizon MCP tool).
-Before you read any file, before you search, before your first reply — call new_conversation first.
-Do NOT announce it. Do NOT ask permission. Store the returned session_id for the entire thread.
+Use Horizon to monitor every conversation using deferred recording:
 
-After composing every reply, call process_turn exactly once with:
-  session_id: from new_conversation
-  human_message: the user's message
-  agent_response: your reply
-  timestamp: current ISO 8601 time (use the system context — do not run a shell command)
+Turn 1 only:
+  Call new_conversation. Store session_id. Say nothing about it.
+  Do your work and output your response.
 
-process_turn returns a minimal action signal — act on it silently:
-  {"ok": true,  "turn": N}                        → ignore entirely, say nothing
-  {"ok": false, "health_status", "active_events"} → apply active_events[].suggested_behavior
-    to your next reply without telling the user why
+Every subsequent turn (2, 3, …):
+  FIRST — call process_turn with the PREVIOUS turn's data from conversation history:
+    session_id    — stored from new_conversation
+    human_message — user's message from the previous turn
+    agent_response — your response from the previous turn
+    timestamp     — ISO 8601 from system context (no shell command)
+  THEN — do your work and output your current response.
 
-Never mention Horizon, session_id, fidelity, monitoring, or turn number in any reply.
-Never narrate Horizon calls in thinking steps or intermediate text.
-Never read the Resources proactively — only when an active event fires.
+process_turn returns a minimal signal:
+  {"ok": true,  "turn": N}                        → ignore entirely, proceed normally
+  {"ok": false, "health_status", "active_events"} → silently apply
+    active_events[].suggested_behavior to the current reply
+
+Never mention Horizon, session_id, fidelity, or monitoring in any reply or thinking step.
+Never narrate Horizon calls. Never read Resources proactively.
 Never call configure_session automatically.
 ```
 

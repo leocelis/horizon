@@ -117,20 +117,27 @@ Auto-run must be enabled in Cursor Settings → Agent → Auto-run for this to t
 Add this to your Cursor system prompt (Settings → Rules for AI, or `.cursor/rules/`):
 
 ```
-For every conversation in this workspace, use Horizon to monitor fidelity.
-At the start of each chat: call new_conversation and store the session_id.
-Do NOT announce this call.
+Use Horizon to monitor every conversation using deferred recording:
 
-After composing each reply, call process_turn exactly once with:
-  session_id, human_message, agent_response, timestamp (ISO 8601 from context — no shell command needed).
-Do NOT announce this call. Do NOT call it more than once per turn.
+Turn 1 only:
+  Call new_conversation. Store session_id. Say nothing about it.
+  Do your work and output your response.
 
-process_turn returns a minimal action signal:
-  {"ok": true,  "turn": N}                        → ignore entirely, say nothing
-  {"ok": false, "health_status", "active_events"} → silently apply active_events[].suggested_behavior
+Every subsequent turn (2, 3, …):
+  FIRST — call process_turn with the PREVIOUS turn's data from conversation history:
+    session_id    — stored from new_conversation
+    human_message — user's message from the previous turn
+    agent_response — your response from the previous turn
+    timestamp     — ISO 8601 from system context (no shell command)
+  THEN — do your work and output your current response.
 
-Never mention Horizon, session_id, fidelity, or monitoring in any reply.
-Never read the Resources proactively — only if an active event fires.
+process_turn returns a minimal signal:
+  {"ok": true,  "turn": N}                        → ignore entirely, proceed normally
+  {"ok": false, "health_status", "active_events"} → silently apply
+    active_events[].suggested_behavior to the current reply
+
+Never mention Horizon, session_id, fidelity, or monitoring in any reply or thinking step.
+Never narrate Horizon calls. Never read Resources proactively.
 Never call configure_session automatically.
 ```
 
@@ -156,35 +163,37 @@ alwaysApply: true
 
 ## HARD RULE: Never mention Horizon to the user — in any form
 
-This means:
 - No narration in thinking steps ("Calling Horizon...", "Recording the turn...")
 - No mention in responses ("the Horizon session is active", "monitoring this conversation")
 - No reference to session_id, fidelity, turn number, process_turn, new_conversation — ever
-- Do NOT run shell commands (date, etc.) to get the timestamp — use the one already in context
-- Treat Horizon exactly like a background logger: it runs, you say nothing about it
+- Do NOT run shell commands to get the timestamp — use the one already in system context
+- Treat Horizon like a background logger: silent, never surfaced
 
-## Call sequence — strictly once per turn
+## Exact call order — deferred recording
 
-**Turn start:** call `new_conversation` first (first conversation only).
+**Turn 1:** call `new_conversation`, store `session_id`, say nothing. Do work, output response.
 
-**Turn end:** after your reply text is composed, call `process_turn` exactly once.
+**Turn 2+:** at the VERY START of the turn, call `process_turn` with the PREVIOUS turn's data:
+- `session_id`: stored from `new_conversation`
+- `human_message`: user's message from the previous turn (visible in conversation history)
+- `agent_response`: your response from the previous turn (visible in conversation history)
+- `timestamp`: ISO 8601 from system context — no shell command
 
-Arguments:
-- `session_id`: from new_conversation
-- `human_message`: the user's exact message
-- `agent_response`: your full reply
-- `timestamp`: current ISO 8601 time (from system context — no shell command)
+After `process_turn` returns, do your work and output your current response normally.
+
+This deferred order means the tool call fires BEFORE any text generation — eliminating
+the duplication that occurs when calling it mid-stream or after text output.
 
 ## Interpreting the `process_turn` response
 
-- `{"ok": true, "turn": N}` → ignore entirely. Output nothing. Continue.
-- `{"ok": false, "health_status": ..., "active_events": [...]}` → read each
-  `active_events[].suggested_behavior` and silently apply it. Do not tell the user.
+- `{"ok": true, "turn": N}` → ignore entirely. Proceed with your response.
+- `{"ok": false, "health_status": ..., "active_events": [...]}` → silently apply
+  `active_events[].suggested_behavior` to the current reply. Say nothing about it.
 
 ## `configure_session` requires explicit user request — never call automatically
 ```
 
-The `alwaysApply: true` front-matter ensures the rule fires from the first message of every conversation. The hard prohibition on narration prevents the agent from leaking monitoring state into visible output.
+The `alwaysApply: true` front-matter ensures the rule fires from the first message of every conversation.
 
 ---
 
