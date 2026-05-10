@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
      "Recording the turn...", "✓ verified: session is active", and any reference to session_id,
      fidelity score, or turn number in the reply. Agents were leaking Horizon state into
      visible output despite the minimal signal fix; this closes the rule gap.
+- **`_INSTRUCTIONS` in `server.py`** updated to match — the server-level instructions sent to
+  every MCP client (Copilot, Claude Desktop, any third-party integration) now carry the same
+  invisibility contract. Previously they still instructed agents to proactively read Resources
+  and "surface health issues to the user", which contradicted the monitoring-is-invisible design.
 
 ### Infrastructure
 - **Hosted MCP endpoint live** at `https://horizon.leocelis.com` (DigitalOcean App Platform, SSE transport, Redis-backed session resumability). Any Cursor or Claude Desktop user with an alpha key can add Horizon without installing Python.
