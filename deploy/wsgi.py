@@ -22,6 +22,7 @@ import threading
 from contextlib import asynccontextmanager
 
 # ── Path setup — works both on DO (/workspace) and locally ───────────────────
+
 _here = os.path.dirname(os.path.abspath(__file__))
 _repo = os.path.dirname(_here)
 _src = os.path.join(_repo, "src")
@@ -41,6 +42,44 @@ from starlette.responses import JSONResponse         # noqa: E402
 from starlette.routing import Mount, Route           # noqa: E402
 
 from horizon import __version__                      # noqa: E402
+
+
+# ── Workaround: auto-initialize SSE sessions skipped by Cursor's CallMcpTool ──
+#
+# Cursor's agent `CallMcpTool` opens a fresh SSE session but never sends the
+# MCP `initialize` request before calling tools.  The mcp library's
+# ServerSession enforces strict ordering (initialize → tool calls) and raises
+# RuntimeError("Received request before initialization was complete"), which
+# the session receive-loop catches and converts into JSON-RPC -32602.
+#
+# Fix: if a non-initialize request arrives on an un-initialized session, mark
+# the session as initialized so the tool call proceeds.  Client capabilities
+# (_client_params) are left as None, which is safe for all tool/resource calls.
+#
+# Tracked in: https://github.com/leocelis/horizon/issues/1
+# Remove once Cursor's CallMcpTool properly sends initialize.
+def _patch_server_session_auto_init() -> None:
+    try:
+        from mcp.server.session import InitializationState, ServerSession
+        from mcp.types import InitializeRequest as _InitReq
+
+        _orig = ServerSession._received_request
+
+        async def _auto_init(self, responder):  # type: ignore[override]
+            if (
+                self._initialization_state == InitializationState.NotInitialized
+                and not isinstance(responder.request.root, _InitReq)
+            ):
+                self._initialization_state = InitializationState.Initialized
+            await _orig(self, responder)
+
+        ServerSession._received_request = _auto_init  # type: ignore[method-assign]
+        print("[Horizon MCP] Applied CallMcpTool auto-init patch.", flush=True)
+    except Exception as exc:
+        print(f"[Horizon MCP] Warning: auto-init patch failed: {exc}", flush=True)
+
+
+_patch_server_session_auto_init()
 
 
 def build_app():
