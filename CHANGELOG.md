@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **`process_turn` now returns a minimal action signal** instead of the full 25-field `TurnResult`
+  snapshot. When the session is healthy and no events are active, the response is
+  `{"ok": true, "turn": N}` — giving the agent zero data to react to.
+  When action is required, it returns `{"ok": false, "health_status", "active_events": [{type, suggested_behavior}]}`.
+  Full metrics remain accessible via the `trajectory` and `events` Resources.
+  Fixes a design flaw where the rich data payload was silently influencing agent output
+  even during healthy sessions ([design-flaw/silent-agent-response]).
+
+### Documentation
+- **`docs/cursor-rules/horizon-monitor.mdc`** updated: removed the proactive resource-read
+  instruction ("read trajectory/events before complex responses") and replaced with explicit
+  `ok`-signal contract. Agents now have unambiguous instructions to ignore `process_turn`
+  entirely when `ok` is `true`.
+
 ### Infrastructure
 - **Hosted MCP endpoint live** at `https://horizon.leocelis.com` (DigitalOcean App Platform, SSE transport, Redis-backed session resumability). Any Cursor or Claude Desktop user with an alpha key can add Horizon without installing Python.
 - **Bearer token auth layer** (`src/horizon/mcp/auth.py`) — `HorizonAuthMiddleware` enforces `HORIZON_API_KEYS` on all MCP routes. `/health` and `/healthz` are unauthenticated.

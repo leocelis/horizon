@@ -191,23 +191,20 @@ def new_conversation(
     name="process_turn",
     title="Record a conversation turn",
     description=(
-        "Record one human-agent turn and return the full Horizon fidelity "
-        "snapshot for that turn. Call after EVERY round-trip in the "
-        "conversation. Requires an active session_id from new_conversation. "
-        "\n\nKey outputs:\n"
-        "  • fidelity_score [0,1]    — composite conversation health\n"
-        "  • health_status           — 'healthy'|'degrading'|'critical'|'converged'\n"
-        "  • events                  — list of fired signals and alerts\n"
-        "  • gap_class               — 'realtime'|'seconds'|'minutes'|'hours'|'days'\n"
-        "  • estimated_retention     — fraction of prior context still accessible\n"
-        "  • interval_class          — 'timelike'|'spacelike'|'lightlike' (ds²)\n"
-        "\n"
-        "Pass timestamp (ISO 8601) to enable all 4D temporal and spacetime "
-        "signals; without it, only semantic signals fire. "
-        "Pass client_context with device_type and timezone to enable spatial "
-        "and circadian signals. "
-        "To read the fidelity arc without updating it, use the Resource "
-        "horizon://session/{session_id}/trajectory instead."
+        "Record one human-agent turn and return a minimal action signal. "
+        "Call after EVERY round-trip in the conversation. "
+        "Requires an active session_id from new_conversation.\n\n"
+        "Return shape:\n"
+        "  • {ok: true,  turn: N}                          — session healthy, nothing to do\n"
+        "  • {ok: false, health_status, active_events: []} — action required\n\n"
+        "When ok is false, each active_event contains:\n"
+        "  • type              — e.g. 'alert.drift', 'alert.contradiction'\n"
+        "  • suggested_behavior — exact text to follow\n\n"
+        "Full fidelity metrics are available via the Resources:\n"
+        "  horizon://session/{session_id}/trajectory\n"
+        "  horizon://session/{session_id}/events\n\n"
+        "Pass timestamp (ISO 8601) to enable temporal and spacetime signals. "
+        "Pass client_context with device_type and timezone for spatial signals."
     ),
 )
 def process_turn(
@@ -218,7 +215,15 @@ def process_turn(
     client_context: dict | None = None,
 ) -> dict:
     """
-    Record one turn. Returns TurnResult as a dict.
+    Record one turn. Returns a minimal action signal.
+
+    When the session is healthy and no events are active, returns:
+        {"ok": True, "turn": N}
+
+    When action is needed, returns:
+        {"ok": False, "health_status": ..., "active_events": [{type, suggested_behavior}, ...]}
+
+    Full TurnResult metrics are accessible via the trajectory/events Resources.
 
     Args:
         session_id: UUID from new_conversation().
@@ -243,7 +248,7 @@ def process_turn(
             client_context=client_context,
         )
         d = dataclasses.asdict(result)
-        active_evs = [e["type"] for e in d.get("events", []) if e.get("active")]
+        active_evs = [e for e in d.get("events", []) if e.get("active")]
         _log.info(
             "TOOL  process_turn  key=%s  session=%s  turn=%s  fidelity=%.3f  health=%s  "
             "gap=%s  retention=%s  active_events=%s",
@@ -254,9 +259,22 @@ def process_turn(
             d["health_status"],
             d.get("gap_class", "n/a"),
             f"{d['estimated_retention']:.0%}" if d.get("estimated_retention") is not None else "n/a",
-            active_evs if active_evs else "none",
+            [e["type"] for e in active_evs] if active_evs else "none",
         )
-        return d
+        is_healthy = d["health_status"] == "healthy" and not active_evs
+        if is_healthy:
+            return {"ok": True, "turn": d["turn_number"]}
+        return {
+            "ok": False,
+            "health_status": d["health_status"],
+            "active_events": [
+                {
+                    "type": e["type"],
+                    "suggested_behavior": e["suggested_behavior"],
+                }
+                for e in active_evs
+            ],
+        }
     except SessionNotFoundError as exc:
         _log.warning("TOOL  process_turn  key=%s  ERROR: %s", current_key_id.get(), exc)
         return {"error": str(exc), "hint": "Call new_conversation first."}
