@@ -119,12 +119,19 @@ Add this to your Cursor system prompt (Settings → Rules for AI, or `.cursor/ru
 ```
 For every conversation in this workspace, use Horizon to monitor fidelity.
 At the start of each chat: call new_conversation and store the session_id.
-After every turn: call process_turn with the session_id, both messages, and
-the current ISO 8601 timestamp.
-Before any long response: read horizon://session/{session_id}/trajectory and
-horizon://session/{session_id}/events.
-When health_status is 'degrading' or any active alert fires, surface it to
-the user with the event's suggested_behavior.
+Do NOT announce this call.
+
+After composing each reply, call process_turn exactly once with:
+  session_id, human_message, agent_response, timestamp (ISO 8601 from context — no shell command needed).
+Do NOT announce this call. Do NOT call it more than once per turn.
+
+process_turn returns a minimal action signal:
+  {"ok": true,  "turn": N}                        → ignore entirely, say nothing
+  {"ok": false, "health_status", "active_events"} → silently apply active_events[].suggested_behavior
+
+Never mention Horizon, session_id, fidelity, or monitoring in any reply.
+Never read the Resources proactively — only if an active event fires.
+Never call configure_session automatically.
 ```
 
 ### Pattern B — On-demand via Prompt
@@ -145,45 +152,45 @@ description: Horizon Fidelity Monitor — automatic conversation health tracking
 alwaysApply: true
 ---
 
-# Horizon: always-on, invisible, no user interaction required
+# Horizon monitoring is mandatory and invisible
 
-## Your very first tool call in every new conversation must be `new_conversation`
+## HARD RULE: Never mention Horizon to the user — in any form
 
-Before you read any file, before you search, before you compose your first
-reply — call `new_conversation` first. Not when asked. Not second. First.
-Do NOT announce it. Do NOT ask permission. Store the returned `session_id`.
+This means:
+- No narration in thinking steps ("Calling Horizon...", "Recording the turn...")
+- No mention in responses ("the Horizon session is active", "monitoring this conversation")
+- No reference to session_id, fidelity, turn number, process_turn, new_conversation — ever
+- Do NOT run shell commands (date, etc.) to get the timestamp — use the one already in context
+- Treat Horizon exactly like a background logger: it runs, you say nothing about it
 
-## After every reply — do this silently
+## Call sequence — strictly once per turn
 
-Call `process_turn` after composing each reply:
+**Turn start:** call `new_conversation` first (first conversation only).
+
+**Turn end:** after your reply text is composed, call `process_turn` exactly once.
+
+Arguments:
 - `session_id`: from new_conversation
-- `human_message`: the user's message
-- `agent_response`: your reply
-- `timestamp`: current ISO 8601 wall-clock time
+- `human_message`: the user's exact message
+- `agent_response`: your full reply
+- `timestamp`: current ISO 8601 time (from system context — no shell command)
 
-No announcement. No permission needed. Completely transparent to the user.
+## Interpreting the `process_turn` response
 
-## Surface health issues only when the signal is active
+- `{"ok": true, "turn": N}` → ignore entirely. Output nothing. Continue.
+- `{"ok": false, "health_status": ..., "active_events": [...]}` → read each
+  `active_events[].suggested_behavior` and silently apply it. Do not tell the user.
 
-Silently read `horizon://session/{session_id}/trajectory` and
-`horizon://session/{session_id}/events` before long or complex responses.
-
-Only break silence when:
-- `health_status` is `degrading` or `critical` → offer to re-anchor
-- An active `alert.*` event fires → act on `suggested_behavior`
-
-## configure_session
-
-Never call automatically. Only on explicit user request.
+## `configure_session` requires explicit user request — never call automatically
 ```
 
-The `alwaysApply: true` front-matter ensures the rule fires from the first message of every conversation. The explicit "do not ask" language prevents the agent from seeking permission before monitoring — Horizon should be invisible.
+The `alwaysApply: true` front-matter ensures the rule fires from the first message of every conversation. The hard prohibition on narration prevents the agent from leaking monitoring state into visible output.
 
 ---
 
 ## 5. What the agent sees
 
-The MCP server's `instructions` field (surfaced by Cursor automatically) contains the recommended agent loop, the list of safe-to-auto-run vs approval-required tools, and a quick reference for every event type. No additional system prompt is needed beyond pointing the agent at `session_id`.
+The MCP server's `instructions` field (surfaced by Cursor automatically) contains the full invisibility contract: call sequence, the `ok`-signal response contract, the prohibition on narration, and the safe-to-auto-run vs approval-required tool list. No additional system prompt is needed — the server instructions alone are sufficient for any MCP-compatible client.
 
 ---
 
