@@ -1,0 +1,81 @@
+Horizon Fidelity Monitor
+Copyright 2025-2026 Leo Celis
+
+This product includes software developed by third parties under
+Apache License 2.0 and other open-source licenses.
+
+=======================================================================
+Apache License 2.0 Dependencies
+=======================================================================
+
+The following components are distributed under the Apache License,
+Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
+
+Redistribution of Horizon in source or binary form that incorporates
+these components must include the applicable NOTICE file content below
+per Section 4(c) of the Apache License 2.0.
+
+-----------------------------------------------------------------------
+sentence-transformers
+
+Copyright 2019-2025
+Ubiquitous Knowledge Processing (UKP) Lab
+Technische Universität Darmstadt
+
+Copyright 2025-present
+Hugging Face, Inc.
+
+License: Apache 2.0
+Repository: https://github.com/UKPLab/sentence-transformers
+
+-----------------------------------------------------------------------
+geoip2 (optional dependency)
+
+Copyright MaxMind, Inc.
+
+License: Apache 2.0
+Repository: https://github.com/maxmind/GeoIP2-python
+Additional license: MaxMind End User License Agreement
+  https://www.maxmind.com/en/end-user-license-agreement
+
+Note: Use of geoip2 with a MaxMind database file requires compliance
+with the applicable MaxMind EULA (GeoLite2 or commercial GeoIP2 tier).
+
+-----------------------------------------------------------------------
+transformers (optional dependency, required by sentence-transformers)
+
+Copyright 2018-present Hugging Face, Inc.
+
+License: Apache 2.0
+Repository: https://github.com/huggingface/transformers
+
+-----------------------------------------------------------------------
+PyTorch (optional transitive dependency)
+
+Copyright 2016-present Facebook Inc.
+Copyright 2015-present Google Inc.
+Copyright 2016 Soumith Chintala
+
+License: BSD-3-Clause (core) with Apache 2.0 components
+Repository: https://github.com/pytorch/pytorch
+Full NOTICE: see torch-*.dist-info/NOTICE in your Python environment
+
+=======================================================================
+MIT License Dependencies
+=======================================================================
+
+The following components are distributed under the MIT License.
+See each package's LICENSE file for the full license text.
+
+  dateparser       — Copyright (c) 2014 Scrapinghub
+  mcp              — Copyright (c) Anthropic PBC
+  starlette        — Copyright (c) 2018 Tom Christie
+
+=======================================================================
+BSD License Dependencies
+=======================================================================
+
+  numpy            — Copyright (c) NumPy Developers, BSD-3-Clause
+  scipy            — Copyright (c) SciPy Developers, BSD-3-Clause
+
+=======================================================================

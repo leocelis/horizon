@@ -262,3 +262,57 @@ class PersistentDynamicsStore:
                 (user_id, limit),
             ).fetchall()
         return [dict(r) for r in rows]
+
+    # ── Data subject rights (GDPR Art. 17 / CCPA § 1798.105) ────────────────
+
+    def delete_user_data(self, user_id: str) -> int:
+        """Delete all data linked to a user_id.
+
+        Satisfies GDPR Art. 17 (Right to Erasure) and CCPA § 1798.105.
+        Removes sessions, turn snapshots, and the user profile in one
+        atomic transaction.
+
+        Returns the number of sessions (and their turn snapshots) deleted.
+        """
+        with self._lock, self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT session_id FROM sessions WHERE user_id = ?",
+                (user_id,),
+            ).fetchall()
+            session_ids = [r["session_id"] for r in rows]
+            if session_ids:
+                placeholders = ",".join("?" * len(session_ids))
+                conn.execute(
+                    "DELETE FROM turn_snapshots"
+                    f" WHERE session_id IN ({placeholders})",
+                    session_ids,
+                )
+                conn.execute(
+                    "DELETE FROM sessions"
+                    f" WHERE session_id IN ({placeholders})",
+                    session_ids,
+                )
+            conn.execute(
+                "DELETE FROM user_profiles WHERE user_id = ?",
+                (user_id,),
+            )
+        return len(session_ids)
+
+    def anonymize_session(self, session_id: str) -> bool:
+        """Anonymize a session by nullifying its user_id (GDPR Art. 89).
+
+        The session record and turn snapshots are retained but the link
+        to the data subject is severed. Use when you need to keep aggregate
+        analytics while honoring a specific user erasure request.
+
+        For full erasure of all data for a user, call delete_user_data().
+
+        Returns True if the session was found, False if not found.
+        """
+        with self._lock, self._get_conn() as conn:
+            result = conn.execute(
+                "UPDATE sessions SET user_id = NULL WHERE session_id = ?",
+                (session_id,),
+            )
+            anonymized = result.rowcount > 0
+        return anonymized

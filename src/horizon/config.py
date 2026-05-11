@@ -150,6 +150,12 @@ class Config:
     grounding_required_threshold: float = 0.5
     """Estimated grounding-need score above this → signal.grounding_required."""
 
+    min_eviction_threshold: int = 100
+    """Minimum token count that must be evicted before delta_irreversible is
+    non-zero. Prevents signal.session_reset from firing on routine single-token
+    context trims. Only evictions beyond this floor contribute to irreversible
+    degradation scoring. Default: 100 tokens (~75 words)."""
+
     spacetime_alpha: float = 1.0
     """ds² time coefficient (sign: negative, timelike)."""
 

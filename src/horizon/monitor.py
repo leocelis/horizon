@@ -3,9 +3,19 @@
 from __future__ import annotations
 
 import dataclasses
+import logging
 import uuid
 from datetime import datetime
 from typing import Any
+
+_log = logging.getLogger(__name__)
+
+# Events that exist in the evaluator but have NOT been through the V2 signal
+# quality gate (300+ labelled turns per type, P≥0.7 / R≥0.7).  Activating them
+# without domain-level validation is at the deployer's risk.  See LEGAL.md §3.3.
+_UNGATED_EVENTS: frozenset[str] = frozenset(
+    {"signal.grounding_required", "signal.pace_premature_report"}
+)
 
 import numpy as np
 
@@ -292,7 +302,10 @@ class FidelityMonitor:
         # ── Step 4: Fidelity dynamics ─────────────────────────────────────
         evicted = update_context_window(session, human_message, agent_response)
         delta_recoverable = max(0.0, twr - 0.3)
-        delta_irreversible = evicted * 0.1
+        # Only count evictions above the minimum threshold to avoid classifying
+        # routine single-token context trims as irreversible degradation
+        # (which would fire signal.session_reset far too aggressively).
+        delta_irreversible = max(0.0, (evicted - config.min_eviction_threshold) * 0.1)
 
         prev_fidelity = session.fidelity_trajectory[-1] if session.fidelity_trajectory else 0.5
         fidelity = compute_dynamic_fidelity(
@@ -593,6 +606,22 @@ class FidelityMonitor:
             else:
                 filtered[k] = v
                 applied[k] = v
+
+        # Warn when ungated event types are being set to active mode.
+        # These events have not completed the V2 precision/recall validation gate
+        # (300+ labelled turns, P≥0.7 / R≥0.7) and may fire incorrectly in
+        # production deployments.  See LEGAL.md §3.3 and TERMS_OF_SERVICE.md §4.
+        if "event_modes" in filtered:
+            for event_type, mode in (filtered["event_modes"] or {}).items():
+                if mode == "active" and event_type in _UNGATED_EVENTS:
+                    msg = (
+                        f"Activating '{event_type}' without V2 validation gate clearance. "
+                        "This event has not been validated to P≥0.7/R≥0.7 on a labelled "
+                        "corpus. Validate on your specific domain before production use. "
+                        "See LEGAL.md §3.3."
+                    )
+                    _log.warning(msg)
+                    warnings.append(ConfigWarning(event_type, msg))
 
         # Validate timezone if present in event_modes via temporal params
         if "temporal_desync_threshold_seconds" in filtered:

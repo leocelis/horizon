@@ -477,4 +477,27 @@ The monitor instruments all five conjectures as computable signals.
 
 MIT — see [LICENSE](LICENSE).
 
+---
+
+## Legal
+
+| Document | Purpose |
+|----------|---------|
+| [LEGAL.md](LEGAL.md) | Full legal notices: what Horizon is/is not, high-stakes domain warnings, performance claim scope, EU AI Act classification, grounding hook privacy, limitation of liability |
+| [TERMS_OF_SERVICE.md](TERMS_OF_SERVICE.md) | Binding terms governing hosted server access and commercial use |
+| [PRIVACY_POLICY.md](PRIVACY_POLICY.md) | GDPR Art. 13 compliant privacy notice — what data is collected and your rights |
+| [DATA_PROCESSING_AGREEMENT.md](DATA_PROCESSING_AGREEMENT.md) | GDPR Art. 28 DPA template for EU enterprise users (request via email) |
+| [SECURITY.md](SECURITY.md) | Responsible disclosure policy; known self-hosted security considerations |
+
+**Performance claims:** The +15.7% quality lift and 87% fewer hallucination events
+figures in this README are from controlled A/B experiments on a 5,602-record labelled
+corpus. Results may vary by domain, model, and deployment configuration. Do not use
+these figures in external marketing without conducting your own domain-specific
+evaluation. See [LEGAL.md §5](LEGAL.md#5-performance-claims--scope-and-substantiation)
+for full scope and evidentiary basis.
+
+**High-stakes domains:** Do not enable event types in `active` mode in healthcare,
+legal, financial, or emergency service contexts without domain-specific validation and
+human oversight. See [LEGAL.md §4](LEGAL.md#4-high-stakes-domain-warning).
+
 <!-- mcp-name: io.github.leocelis/horizon-fidelity-monitor -->

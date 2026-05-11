@@ -6,7 +6,7 @@
   <title>Horizon — Conversation Fidelity Monitor for AI Agents</title>
   <meta name="description" content="Real-time conversation health monitoring for AI agents. Tracks semantic drift, temporal desync, and causal light-cone collapse. Zero LLM calls, &lt;50ms on CPU." />
   <meta property="og:title" content="Horizon Fidelity Monitor" />
-  <meta property="og:description" content="Quality is not a model property — it is a conversation property. +15.7% quality lift, 87% fewer hallucinations. Free, open-source, zero LLM calls." />
+  <meta property="og:description" content="Quality is not a model property — it is a conversation property. +15.7% quality lift and 87% fewer hallucination events in controlled A/B experiments. Free, open-source, zero LLM calls." />
   <meta property="og:type" content="website" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -521,7 +521,7 @@ cd deploy/docker &amp;&amp; docker compose up
     ">
       <div>
         <div style="font-weight:700; color:var(--text); margin-bottom:4px;">IVD — Intent-Verified Development</div>
-        <div style="font-size:0.875rem; color:var(--muted);">Stop correcting AI. Make it verify itself. Zero hallucinations, one turn.</div>
+        <div style="font-size:0.875rem; color:var(--muted);">Stop correcting AI. Make it verify itself. Dramatically fewer hallucinations, one turn.</div>
       </div>
       <a href="https://ivdframework.dev/" style="
         display:inline-flex; align-items:center; gap:8px;
@@ -541,8 +541,12 @@ cd deploy/docker &amp;&amp; docker compose up
       <a href="https://github.com/leocelis/horizon/blob/main/docs/integrations/CLAUDE_DESKTOP.md">Claude Desktop</a>
       <a href="https://github.com/leocelis/horizon/discussions">Discussions</a>
       <a href="https://github.com/leocelis/horizon/blob/main/LICENSE">MIT License</a>
+      <a href="https://github.com/leocelis/horizon/blob/main/LEGAL.md">Legal Notices</a>
+      <a href="https://github.com/leocelis/horizon/blob/main/TERMS_OF_SERVICE.md">Terms of Service</a>
+      <a href="https://github.com/leocelis/horizon/blob/main/PRIVACY_POLICY.md">Privacy Policy</a>
     </div>
     <p>Horizon Fidelity Monitor — built by <a href="https://github.com/leocelis">Leo Celis</a></p>
+    <p style="font-size:0.75rem; color:var(--muted); margin-top:8px;">Performance figures (+15.7% quality lift, 87% fewer hallucination events) are from controlled A/B experiments on a 5,602-record labelled corpus. Results may vary by domain and deployment configuration. See <a href="https://github.com/leocelis/horizon/blob/main/LEGAL.md#5-performance-claims--scope-and-substantiation" style="color:var(--muted)">LEGAL.md §5</a> for full scope and limitations.</p>
   </footer>
 </div>
 
