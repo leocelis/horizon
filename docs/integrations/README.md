@@ -12,6 +12,7 @@ Pick the shortest path for your stack.
 | Any custom / local LLM | `monitor.process_turn(sid, human, agent, ...)` | [`examples/raw_framework_agnostic_e2e.py`](../../examples/raw_framework_agnostic_e2e.py) | [`tests/e2e/test_raw_strings_e2e.py`](../../tests/e2e/test_raw_strings_e2e.py) |
 | Cursor (IDE agent) | MCP server — [CURSOR.md](./CURSOR.md) | MCP config snippet in `CURSOR.md` | [`tests/e2e/test_mcp_server_e2e.py`](../../tests/e2e/test_mcp_server_e2e.py) |
 | Claude Desktop | MCP server — [CLAUDE_DESKTOP.md](./CLAUDE_DESKTOP.md) | MCP config snippet in `CLAUDE_DESKTOP.md` | [`tests/e2e/test_mcp_server_e2e.py`](../../tests/e2e/test_mcp_server_e2e.py) |
+| Claude Code (CLI) | MCP server — [CLAUDE_CODE.md](./CLAUDE_CODE.md) | `claude mcp add` + `~/.claude/CLAUDE.md` block | [`tests/e2e/test_mcp_server_e2e.py`](../../tests/e2e/test_mcp_server_e2e.py) |
 | GitHub Copilot | VS Code extension / gateway middleware / log replay — [COPILOT.md](./COPILOT.md) | see `COPILOT.md` | covered by raw + MCP e2e tests |
 
 ## The common contract
