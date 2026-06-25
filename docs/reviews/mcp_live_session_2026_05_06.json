@@ -1,0 +1,158 @@
+{
+  "meta": {
+    "session_id": "14fb57f5-4aee-4beb-82ed-806e88de7d97",
+    "session_label": "mcp-live-demo-2026-05-06",
+    "agent": "cursor-agent",
+    "user": "demo-user",
+    "domain": "general",
+    "recorded_at": "2026-05-06T16:43:16.038008+00:00",
+    "horizon_version": "0.2.0",
+    "mcp_transport": "stdio (in-process)",
+    "turns": 5
+  },
+  "turn_by_turn": [
+    {
+      "turn": 1,
+      "fidelity_score": 0.931,
+      "health_status": "healthy",
+      "igt_value": 1.0,
+      "igt_trend": 0.0,
+      "divergence_score": 0.23,
+      "consistency_score": 1.0,
+      "gap_seconds": 0.0,
+      "gap_class": "realtime",
+      "estimated_retention": 1.0,
+      "circadian_factor": 1.0,
+      "spacetime_interval": null,
+      "interval_class": null,
+      "spatial_screen": "medium",
+      "spatial_attention": "medium",
+      "events_fired": []
+    },
+    {
+      "turn": 2,
+      "fidelity_score": 0.977,
+      "health_status": "healthy",
+      "igt_value": 0.514,
+      "igt_trend": 0.0,
+      "divergence_score": 0.307,
+      "consistency_score": 0.699,
+      "gap_seconds": 1020.0,
+      "gap_class": "minutes",
+      "estimated_retention": 0.992,
+      "circadian_factor": 1.0,
+      "spacetime_interval": -47.902,
+      "interval_class": "timelike",
+      "spatial_screen": "medium",
+      "spatial_attention": "medium",
+      "events_fired": []
+    },
+    {
+      "turn": 3,
+      "fidelity_score": 1.0,
+      "health_status": "healthy",
+      "igt_value": 0.848,
+      "igt_trend": -0.4865,
+      "divergence_score": 0.375,
+      "consistency_score": 0.582,
+      "gap_seconds": 480.0,
+      "gap_class": "minutes",
+      "estimated_retention": 0.996,
+      "circadian_factor": 1.0,
+      "spacetime_interval": -38.118,
+      "interval_class": "timelike",
+      "spatial_screen": "medium",
+      "spatial_attention": "medium",
+      "events_fired": [
+        {
+          "type": "checkpoint.clarification",
+          "active": false,
+          "confidence": 0.37
+        },
+        {
+          "type": "signal.light_cone_collapse",
+          "active": false,
+          "confidence": 0.0
+        }
+      ]
+    },
+    {
+      "turn": 4,
+      "fidelity_score": 1.0,
+      "health_status": "healthy",
+      "igt_value": 0.579,
+      "igt_trend": -0.0759,
+      "divergence_score": 0.181,
+      "consistency_score": 0.733,
+      "gap_seconds": 480.0,
+      "gap_class": "minutes",
+      "estimated_retention": 0.996,
+      "circadian_factor": 1.0,
+      "spacetime_interval": -38.053,
+      "interval_class": "timelike",
+      "spatial_screen": "medium",
+      "spatial_attention": "medium",
+      "events_fired": []
+    },
+    {
+      "turn": 5,
+      "fidelity_score": 1.0,
+      "health_status": "healthy",
+      "igt_value": 0.677,
+      "igt_trend": 0.0329,
+      "divergence_score": 0.158,
+      "consistency_score": 0.713,
+      "gap_seconds": 120.0,
+      "gap_class": "minutes",
+      "estimated_retention": 0.999,
+      "circadian_factor": 1.0,
+      "spacetime_interval": -22.965,
+      "interval_class": "timelike",
+      "spatial_screen": "medium",
+      "spatial_attention": "medium",
+      "events_fired": []
+    }
+  ],
+  "trajectory": {
+    "scores": [
+      0.931,
+      0.977,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "gap_durations_seconds": [
+      null,
+      1020.0,
+      480.0,
+      480.0,
+      120.0
+    ],
+    "igt_trend": -0.0581,
+    "health_status": "healthy",
+    "peak_fidelity": 1.0,
+    "current_fidelity": 1.0,
+    "estimated_t_star": 86
+  },
+  "event_log": [
+    {
+      "turn": 3,
+      "type": "checkpoint.clarification",
+      "active": false,
+      "confidence": 0.37,
+      "suggested_behavior": "Pause and ask a targeted question before continuing"
+    },
+    {
+      "turn": 3,
+      "type": "signal.light_cone_collapse",
+      "active": false,
+      "confidence": 0.0,
+      "suggested_behavior": "Summarise key context before it becomes unreachable; do not reference lost turns"
+    }
+  ],
+  "export_status": {
+    "status": "success",
+    "records_exported": 5,
+    "target": "json"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "n_conversations": 6,
+  "n_turns": 30,
+  "mean_control_outcome": 0.5842,
+  "mean_treatment_outcome": 0.7129,
+  "absolute_lift": 0.1287,
+  "relative_lift": 0.2203,
+  "sign_test": {
+    "wins": 6,
+    "losses": 0,
+    "p_value": 0.03125
+  },
+  "actionable_events": [
+    "alert.drift",
+    "checkpoint.clarification",
+    "signal.broken_reference",
+    "signal.light_cone_collapse",
+    "signal.session_reset"
+  ],
+  "outcome_metric": "cosine(agent_response, gold_reference) \u2014 independent of Horizon fidelity",
+  "source": "synthetic-demo",
+  "caveat": "Synthetic-demo lift demonstrates the mechanism only, not a production result. A defensible outcome claim requires a real, independent corpus."
+}

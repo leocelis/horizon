@@ -1,0 +1,22 @@
+{
+  "source": "data/ood_corpus/ood_rated_conversations.jsonl",
+  "n_conversations": 80,
+  "caveat": "Measures whether events PRECEDE fidelity drops (prediction), not whether acting on them improves outcomes (intervention). Numbers describe the corpus in source only — report classifications honestly even if lagging or insufficient-data.",
+  "horizon_k": 3,
+  "drop_threshold": 0.05,
+  "n_turns_total": 160,
+  "n_trajectories": 80,
+  "n_degradation_steps": 11,
+  "per_event": {
+    "checkpoint.clarification": {
+      "n_fired": 0,
+      "base_rate": 0.1375,
+      "conditional_rate": 0.0,
+      "lift": 0.0,
+      "predictive_recall": 0.0,
+      "lagging_fraction": 0.0,
+      "mean_lead_turns": null,
+      "classification": "insufficient-data"
+    }
+  }
+}

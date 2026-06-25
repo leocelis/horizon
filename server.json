@@ -1,0 +1,37 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.leocelis/horizon-fidelity-monitor",
+  "title": "Horizon Fidelity Monitor",
+  "description": "Tracks conversation health in real time — drift, desync, and causal collapse — for any AI agent.",
+  "version": "0.2.1",
+  "repository": {
+    "url": "https://github.com/leocelis/horizon",
+    "source": "github",
+    "id": "1219148287"
+  },
+  "websiteUrl": "https://leocelis.github.io/horizon",
+  "remotes": [
+    {
+      "type": "sse",
+      "url": "https://horizon.leocelis.com/sse",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "API key for the Horizon hosted server. Request one at https://github.com/leocelis/horizon/discussions",
+          "isRequired": true,
+          "format": "string",
+          "value": "Bearer {api_key}",
+          "isSecret": true
+        }
+      ],
+      "variables": {
+        "api_key": {
+          "description": "Your Horizon API key. Request one at https://github.com/leocelis/horizon/discussions",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": true
+        }
+      }
+    }
+  ]
+}

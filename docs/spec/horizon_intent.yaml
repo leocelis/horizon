@@ -1,0 +1,1115 @@
+# horizon_intent.yaml
+# Intent Artifact for the THCP Fidelity Monitor (Codename: Horizon)
+#
+# IVD: THE FRAMEWORK FOR THE AI AGENTS ERA
+# =========================================
+# The AI writes this intent artifact, not the human.
+# The AI implements against this intent.
+# The AI verifies its output against the constraints.
+#
+# Review history:
+#   v1.0  2026-04-22  Initial draft
+#   v1.1  2026-04-22  Full review: 14 issues resolved
+#   v2.0  2026-04-22  Major revision: collapsed phases into single V1 product,
+#                     added temporal context layer (essay Appendix D, 23 sources),
+#                     added ontological gap defensibility (essay Appendix E, 3 no-go theorems),
+#                     updated event count 9→12, added timestamp/client_context params,
+#                     removed all timelines and estimates, intent distilled from research
+#   v4.0  2026-04-22  Full 4D spacetime layer: circadian κ(t), deictic D(c,t), spatial Φ(σ),
+#                     velocity v_t/a_t, spacetime interval ds², causal reachability J⁻(t_i),
+#                     14 events, 13 predictions, Conjecture THCP-5, 173 references
+
+parent_intent: null
+
+scope:
+  level: "module"
+  type: "product"
+  granularity: "coarse"
+
+metadata:
+  feature_id: "horizon_fidelity_monitor"
+  category: "conversation_dynamics"
+  tags: ["thcp", "fidelity", "conversation-quality", "real-time", "middleware", "temporal-awareness", "ontological-gap", "4d-spacetime", "circadian", "causal-reachability"]
+  status: "planned"
+
+# ----------------------------------------------------------------------------
+# AUTHORSHIP
+# ----------------------------------------------------------------------------
+authorship:
+  origin: "ai_proposed"
+  human_oversight: "review_required"
+
+  ai_authority:
+    can_create: false
+    can_modify:
+      - "implementation"
+      - "verification"
+    requires_approval:
+      - "intent.goal"
+      - "intent.success_metric"
+      - "constraints"
+
+  escalation: "Any change to the constraints or to the THCP-to-metric mapping requires human sign-off, because these encode the falsifiable predictions the product is staked on"
+
+# ----------------------------------------------------------------------------
+# INVERSION OPPORTUNITIES
+# ----------------------------------------------------------------------------
+inversion_opportunities:
+  problem: "AI agents have limited visibility into the structural health of a conversation — they do not reliably surface, from the inside, signals about time (drift, convergence, degradation, human memory decay, circadian cognitive load, temporal desynchronization), space (distance from human intent, ontological gap width, conversation geodesics, physical location constraints, device context), pace (conversation velocity and acceleration), or causality (which prior turns are still reachable) during multi-turn interactions. LLM introspection is partial and unreliable, so an external, deterministic measurement layer is the dependable way to make these signals visible — this is an empirical argument, not an impossibility proof."
+  dominant_belief: "Improve conversation quality by making the model smarter — larger context windows, better RLHF, Constitutional AI. Conversation quality is a model property."
+  proposed_inversions:
+    - name: "Quality is not a model property — it is a conversation property"
+      description: "Instead of embedding quality into the model at training time, measure it externally at runtime as a dynamic system with its own trajectory, health status, and physics."
+      rationale: "OpenAI's alignment midtraining (April 2026) showed training-time alignment does not generalize to multi-turn chat. MSR/Salesforce showed 39% degradation from turn boundaries alone, not context length. Quality emerges from the interaction, not the model."
+      status: "chosen"
+
+    - name: "Don't evaluate content — evaluate dynamics"
+      description: "Every existing tool evaluates what the agent said (content quality). Invert: evaluate how the conversation is evolving (dynamics quality). Trajectory, not snapshot."
+      rationale: "Hafez et al. (2026) proved response quality and conversation quality diverge — you can have individually good responses in a structurally broken conversation. DeepEval, RAGAS, LangSmith all operate at the wrong abstraction level."
+      status: "chosen"
+
+    - name: "Don't prescribe behavior — emit signals"
+      description: "Instead of building a system that controls the agent (guardrails, constitutional self-critique), build one that measures and signals, letting the agent's controller decide."
+      rationale: "Framework-agnostic design. Works with any LLM, any agent architecture. Respects the separation of measurement and decision. Avoids the brittleness of prescriptive systems."
+      status: "chosen"
+
+    - name: "Don't fix the model — instrument the horizon"
+      description: "The ontological gap between human and AI is best treated as a measurable, persistent property rather than a bug to be trained away. LLM introspection is partial and unreliable, so models do not dependably surface their own conversation dynamics from the inside. Instead of trying to close the gap, measure its width externally and adapt to it."
+      rationale: "THCP working assumption: a non-trivial ontological loss epsilon > 0 persists in practice. Self-assessment from inside the model is unreliable — it can be wrong, add cost, or perturb the very state it measures — so an external observer is the dependable design. This is an empirical/engineering argument, not an impossibility proof."
+      status: "chosen"
+
+    - name: "The agent must perceive the human's time, not just its own"
+      description: "LLMs are temporally blind (TicToc: < 65% alignment with human temporal perception). The human experiences time between turns — memory decays, context switches happen, intent evolves. The agent experiences zero time. Instrument this asymmetry."
+      rationale: "Ebbinghaus/HLR: memory retention R = 2^(-Δt/h). Gloria Mark: 23m15s recovery after interruption. Lamport clocks: two processes with no shared clock need explicit synchronization. A 3-day gap means ~87.5% context decay — the agent must know this."
+      status: "chosen"
+
+    - name: "Build a full 4D translation layer, not just temporal signals"
+      description: "Don't just detect time gaps — compute a complete spacetime model of the conversation: circadian cognitive load (κ), deictic resolution (D), spatial constraints (Φ), velocity (v_t), acceleration (a_t), a unified spacetime interval (ds²), and a causal reachability map (J⁻). This is the physics-grounded translation between the agent's event-horizon state and the human's 4D experience."
+      rationale: "Appendix E research: Valdez et al. (2012) — 9-34% reaction time variation across day; dateparser/datefinder for deictic grounding; NN/G — mobile 2× cognitive difficulty; Onishi et al. (SIGDIAL 2025) — turn-taking speed is gamma-distributed; arXiv:2505.08795 — perfect Minkowski embeddings for hierarchical structures; DCGM (2026) — causal structure +8.3 F1 over window-based. Without full 4D, you solve temporal blindness but leave spatial, pace, and causal blindness untouched."
+      status: "chosen"
+
+    - name: "Embed fidelity monitoring inside the LLM (system prompt approach)"
+      description: "Add a self-monitoring instruction to the LLM's system prompt that asks it to evaluate its own conversation quality at each turn."
+      rationale: "Rejected: self-evaluation in LLMs is empirically unreliable and brittle (introspection degrades on complex/OOD tasks); violates the constraint that the monitor must not interact with the LLM directly; creates prompt coupling that breaks framework agnosticism."
+      status: "rejected"
+
+    - name: "Build a separate evaluator LLM as judge"
+      description: "Run a second LLM call after each turn to evaluate quality, following the LLM-as-judge pattern."
+      rationale: "Rejected: doubles inference cost; evaluation quality depends on judge model; adds ~500ms per turn (violates latency constraints); cannot detect structural coherence failures that require graph traversal. This is the DeepEval/RAGAS pattern we are explicitly not building."
+      status: "rejected"
+
+    - name: "Rely on models self-correcting over time via scaling"
+      description: "Wait for next-generation models to internalize conversation quality monitoring."
+      rationale: "Rejected: SACD (arXiv:2603.01239) shows all three frontier models drift differently in multi-turn and none self-detects. Bounded self-certification (arXiv:2603.06012) proves current-turn dynamics are opaque to the generating system. Turn-boundary degradation (39% drop) is architectural (RoPE, attention dilution), not a context-length problem. Scaling does not solve structural limits."
+      status: "rejected"
+
+# ----------------------------------------------------------------------------
+# INTERFACE
+# ----------------------------------------------------------------------------
+interface:
+  type: "api"
+
+  tools:
+    - name: "new_conversation"
+      description: "Initialize a new conversation session and return a session_id. Must be called before process_turn."
+      parameters:
+        - name: "metadata"
+          type: "object"
+          required: false
+          description: "Optional context: domain, user_id, agent_name, config overrides"
+      returns: "session_id (string, UUID)"
+      test: "tests/unit/test_session.py::test_new_conversation_returns_uuid"
+
+    - name: "process_turn"
+      description: "Process a single conversation turn and return all metrics, fidelity score, temporal signals, and events for that session"
+      parameters:
+        - name: "session_id"
+          type: "string"
+          required: true
+          description: "Session identifier returned by new_conversation()"
+        - name: "human_message"
+          type: "string"
+          required: true
+          description: "The human's message text"
+        - name: "agent_response"
+          type: "string"
+          required: true
+          description: "The agent's response text"
+        - name: "timestamp"
+          type: "string"
+          required: false
+          description: "ISO 8601 wall-clock time of the human's message. Enables all temporal and circadian signals: gap classification, estimated human retention (HLR × circadian), temporal asymmetry penalty, circadian factor κ(t), deictic expression resolution, conversation velocity/acceleration, spacetime interval, causal reachability map"
+        - name: "logprobs"
+          type: "array"
+          required: false
+          description: "Optional token log probabilities from the LLM for AI uncertainty channel"
+        - name: "client_context"
+          type: "object"
+          required: false
+          description: "Optional metadata: device_type, timezone, locale, location_class (office/home/transit/meeting/unknown), ip_address (for geolocation via MaxMind GeoIP2). Enables signal.frame_shift, spatial constraint vector Φ(σ), and circadian factor computation"
+        - name: "human_latency_ms"
+          type: "number"
+          required: false
+          description: "Optional milliseconds between agent response and human reply, for ambient signal channel"
+      returns: |
+        TurnResult with:
+          Core: turn_number, igt_value, divergence_score, twr_value, consistency_score, fidelity_score, health_status, degradation_type, events[], epsilon_t
+          Temporal (when timestamp provided): gap_seconds, gap_class, estimated_retention (HLR × κ), temporal_asymmetry, resumption_cost, circadian_factor, temporal_references[] (resolved deictic expressions)
+          Pace (when timestamp provided, turn >= 2): conversation_velocity, conversation_acceleration
+          Spacetime (when timestamp provided, turn >= 2): spacetime_interval (ds²), interval_class (timelike/spacelike/lightlike)
+          Causal: reachable_turns (|J⁻|), reachable_fraction (|J⁻|/i)
+          Spatial (when client_context provided): location_class, spatial_constraint (Φ), spatial_frame_shift (ΔΦ)
+      test: "tests/unit/test_process_turn.py::test_happy_path"
+
+    - name: "get_trajectory"
+      description: "Return the full fidelity trajectory for a conversation session, including temporal gaps"
+      parameters:
+        - name: "session_id"
+          type: "string"
+          required: true
+          description: "Session identifier"
+      returns: "FidelityTrajectory with per-turn scores, per-turn timestamps, gap durations, trend, health_status, estimated T* (convergence point)"
+      test: "tests/unit/test_trajectory.py::test_full_trajectory"
+
+    - name: "get_events"
+      description: "Return all events emitted during a conversation session, optionally filtered to active-mode only"
+      parameters:
+        - name: "session_id"
+          type: "string"
+          required: true
+          description: "Session identifier"
+        - name: "active_only"
+          type: "boolean"
+          required: false
+          description: "If true, return only events that have passed precision/recall gates and have active: true"
+      returns: "List of Event objects with type, confidence, active flag, suggested_behavior"
+      test: "tests/unit/test_events.py::test_event_filtering"
+
+    - name: "configure"
+      description: "Set per-event active/observe mode, thresholds, temporal parameters, and embedding model selection for a session or globally"
+      parameters:
+        - name: "session_id"
+          type: "string"
+          required: false
+          description: "If set, overrides apply to this session only; if omitted, applies globally"
+        - name: "event_modes"
+          type: "object"
+          required: false
+          description: "Map of event_type → active|observe. e.g. {'signal.convergence': 'active'}"
+        - name: "embedding_model"
+          type: "string"
+          required: false
+          description: "local-sentence-transformer (default) | openai-text-embedding-3-small | custom"
+        - name: "clarification_threshold"
+          type: "number"
+          required: false
+          description: "Override D_JS threshold for checkpoint.clarification (default: 0.35)"
+        - name: "convergence_window"
+          type: "number"
+          required: false
+          description: "Number of consecutive turns of low IGT to trigger signal.convergence (default: 3)"
+        - name: "convergence_threshold"
+          type: "number"
+          required: false
+          description: "IGT trend threshold below which convergence is detected (default: 0.1)"
+        - name: "consistency_method"
+          type: "string"
+          required: false
+          description: "fast (embedding-only Tier 1+2) | nli (adds Tier 3 constraint optimization)"
+        - name: "conversation_mode"
+          type: "string"
+          required: false
+          description: "Override auto-detected mode: execute | explore | refine | learn"
+        - name: "domain"
+          type: "string"
+          required: false
+          description: "Domain hint for threshold presets: technical | creative | support | coding | educational"
+        - name: "fidelity_weights"
+          type: "object"
+          required: false
+          description: "Override alpha, lambda_r, lambda_i, beta weights in the fidelity compositor"
+        - name: "temporal_weights"
+          type: "object"
+          required: false
+          description: "Override gamma (temporal asymmetry) and delta (circadian penalty) weights in fidelity dynamics"
+        - name: "context_half_life_hours"
+          type: "number"
+          required: false
+          description: "Override the conversation context half-life h_c for temporal retention estimation (default: 24)"
+        - name: "temporal_desync_threshold_seconds"
+          type: "number"
+          required: false
+          description: "Override the gap threshold that triggers signal.temporal_desync (default: 3600)"
+        - name: "chronotype_offset"
+          type: "number"
+          required: false
+          description: "Hours to shift circadian curve for individual chronotype (e.g., +2 for night owl). Default: 0"
+        - name: "spacetime_coefficients"
+          type: "object"
+          required: false
+          description: "Override alpha, beta, gamma, delta_st coefficients in ds² computation. Default: all 1.0 (calibrated via V4 A/B testing)"
+        - name: "pace_shift_threshold"
+          type: "number"
+          required: false
+          description: "Override |a_t| threshold for signal.pace_shift (default: 0.3)"
+        - name: "light_cone_ratio_threshold"
+          type: "number"
+          required: false
+          description: "Override |J⁻|/i threshold for signal.light_cone_collapse (default: 0.3)"
+      returns: "ConfigResult with applied settings and any warnings"
+      test: "tests/unit/test_configure.py::test_event_mode_override"
+
+    - name: "configure_session"
+      description: "Override Horizon thresholds and event modes for a specific session or globally. REQUIRES HUMAN APPROVAL — mutates session config. Auto-run must be disabled for this tool."
+      parameters:
+        - name: "session_id"
+          type: "string"
+          required: false
+          description: "Session identifier. If omitted, applies globally to all sessions."
+        - name: "clarification_threshold"
+          type: "number"
+          required: false
+        - name: "event_modes"
+          type: "object"
+          required: false
+        - name: "domain"
+          type: "string"
+          required: false
+        - name: "context_half_life_hours"
+          type: "number"
+          required: false
+      returns: "ConfigResult with applied values and any validation warnings"
+      test: "tests/e2e/test_mcp_fastmcp_e2e.py::TestConfigureSession"
+      mcp_primitive: "tool"
+      auto_run: false
+
+    - name: "export_to"
+      description: "Export conversation telemetry and fidelity trajectory to an observability platform"
+      parameters:
+        - name: "session_id"
+          type: "string"
+          required: true
+          description: "Session identifier to export"
+        - name: "target"
+          type: "string"
+          required: true
+          description: "json | langsmith | langfuse | otel | arize"
+        - name: "connection"
+          type: "object"
+          required: false
+          description: "Platform-specific connection config (API key, endpoint). If omitted, reads from environment."
+      returns: "ExportResult with status, records_exported, target_url"
+      test: "tests/integration/test_export.py::test_json_export"
+
+  mcp_resources:
+    - uri: "horizon://session/{session_id}/trajectory"
+      name: "session_trajectory"
+      description: "Read-only fidelity arc: per-turn scores, gap durations, IGT trend, health_status, T*. Token-efficient; attach as context without a tool-call slot."
+      mime_type: "application/json"
+      test: "tests/e2e/test_mcp_fastmcp_e2e.py::TestTrajectoryResource"
+      auto_run: true
+
+    - uri: "horizon://session/{session_id}/events"
+      name: "session_events"
+      description: "Read-only event log: all fired signals and alerts with active flag, confidence, turn, suggested_behavior. Attach as context to check for actionable events before composing a long response."
+      mime_type: "application/json"
+      test: "tests/e2e/test_mcp_fastmcp_e2e.py::TestEventsResource"
+      auto_run: true
+
+  mcp_prompts:
+    - name: "monitor_conversation"
+      title: "Wire Horizon into the current conversation"
+      description: "Creates a new Horizon session and injects the full agent-loop instruction block. Invoke once per task thread via /monitor_conversation. Accepts domain and agent_name parameters."
+      test: "tests/e2e/test_mcp_fastmcp_e2e.py::TestMonitorConversationPrompt"
+
+  mcp_server:
+    transport_primary: "stdio"
+    transport_enterprise: "streamable-http"
+    fastmcp: true
+    instructions_field: true
+    permissions_json: "~/.cursor/permissions.json"
+    cursor_mcp_json: "~/.cursor/mcp.json"
+
+# ----------------------------------------------------------------------------
+# INTENT
+# ----------------------------------------------------------------------------
+intent:
+  summary: "Real-time conversation dynamics monitor that gives AI agents functional dimensions of time and space — including awareness of the human's temporal reality — for cohesive human communication"
+  goal: |
+    Build a runtime library (Python SDK) that measures the structural health of human-AI
+    conversations as they unfold, providing a complete 4D spacetime translation between
+    the agent's event-horizon state and the human's physical reality. The library emits
+    signals that enable agents to perceive:
+
+    TIME:
+    - Fidelity trajectory (is this conversation improving or degrading?)
+    - Convergence detection (has the conversation reached its natural end?)
+    - Irreversible vs recoverable loss (can this drift be fixed, or is the context gone?)
+    - Temporal asymmetry (the human experienced 3 days; the agent experienced zero)
+    - Human memory decay estimation (what fraction of context does the human still hold?)
+    - Temporal desynchronization (the human's clock and the agent's clock are out of sync)
+    - Circadian cognitive load κ(t) (is the human at cognitive peak or nadir?)
+    - Deictic temporal resolution D(c,t) (what does "yesterday" or "next week" mean right now?)
+
+    SPACE:
+    - Intent-response divergence (how far is the agent from what the human actually meant?)
+    - Ontological gap width (how hard is this domain for human-AI communication?)
+    - Global coherence topology (is the conversation contradicting itself across turns?)
+    - Conversation geodesics (can the agent still traverse back to a referenced prior turn?)
+    - Broken references (the user is referencing something the agent no longer has access to)
+    - Frame shifts (the human changed environment — device, timezone, context)
+    - Spatial constraint vector Φ(σ) (device, location class, screen size → channel capacity)
+    - Location awareness (IP geolocation, timezone inference, local machine time)
+
+    PACE:
+    - Conversation velocity v_t (semantic displacement per unit human time)
+    - Conversation acceleration a_t (is the pace increasing, stable, or decelerating?)
+    - Engagement vs frustration disambiguation (high velocity + low D_JS vs high D_JS)
+
+    CAUSALITY:
+    - Conversation spacetime interval ds² (unified time+space+meaning distance)
+    - Interval classification (timelike → re-anchor, spacelike → clarify, lightlike → flow)
+    - Causal reachability map J⁻(t_i) (which prior turns are still "live" for both parties?)
+    - Light cone collapse detection (proactive warning before referencing forgotten context)
+
+    The monitor runs as a sidecar to any LLM-powered agent. It does not generate responses,
+    modify prompts, or interact with the LLM directly. It is a pure measurement and
+    signaling layer grounded in the Trans-Horizon Communication Protocol (THCP).
+
+    This capability is defensible on empirical grounds, not by impossibility proof:
+    LLM introspection is partial and unreliable (Binder et al. 2024; arXiv:2512.12411),
+    so models do not dependably surface their own conversation dynamics from the inside.
+    Models will keep improving individual responses; an external, deterministic observer
+    is the reliable way to measure conversation-level dynamics regardless of how good
+    introspection becomes. Horizon is that external observer.
+
+    Origin: A philosophical question — "for an AI, time does not pass; what is the
+    parallelism with the theory of relativity?" — led to a theoretical framework mapping
+    the human-AI communication gap to an event horizon in general relativity. That mapping is
+    design *metaphor*, not physics: the product operationalizes a handful of load-bearing,
+    falsifiable signals (the rest of the framework's references are motivation/context, not
+    evidence) into a tool that treats conversation dynamics as a measurable system. The
+    relativity vocabulary names the signals; it is not the proof of them.
+  success_metric: |
+    Primary: Conversations monitored by Horizon show statistically significant improvement
+    (p < 0.05) in human-rated quality vs. unmonitored conversations, in at least 2 of 3
+    tested domains.
+
+    Secondary:
+    - 30% reduction in turns to resolution
+    - 40% reduction in total tokens generated per resolved conversation
+    - 50% reduction in user corrections ("no, I meant...")
+    - 25% reduction in conversation abandonment
+    - Spearman rho > 0.5 per-turn, rho > 0.6 conversation-level between fidelity score
+      and human quality ratings
+    - Monitor outperforms naive heuristics by > 25% on rho
+    - All 14 event types achieve precision >= 0.7, recall >= 0.7 on labeled dataset
+    - Metrics maintain rho within 20% across 5+ unseen domains
+
+    Proof: 13 registered predictions (P1-P13) tracked via continuous proof system with
+    explicit kill criteria. P8-P9 validate temporal signals. P10-P13 validate 4D layer
+    (circadian quality prediction, spacetime interval classification, light cone collapse
+    prediction, velocity-engagement correlation).
+    See: THCP_FIDELITY_MONITOR_PRD.md Appendix D.
+  stakeholders:
+    - "AI agent builders shipping multi-turn conversational products"
+    - "Platform teams managing multiple agents across domains"
+    - "Researchers studying human-AI interaction dynamics"
+
+# ----------------------------------------------------------------------------
+# CONSTRAINTS
+# ----------------------------------------------------------------------------
+# Ordered highest-priority LAST (position bias: LLMs silently violate early constraints)
+# Priority 1 = highest (must not be violated); Priority 3 = important but tradeable
+constraints:
+  - name: "latency_core"
+    requirement: "Core metrics pipeline (IGT, D_JS, TWR, Tier 1 coherence, temporal signals) completes in < 50ms per turn on CPU"
+    test: "tests/perf/test_performance.py::test_core_pipeline_latency"
+    entropy: "near-zero"
+    priority: 3
+    consequence_if_violated: "Monitor becomes unusable for real-time applications; agents experience perceptible delay"
+
+  - name: "latency_deep"
+    requirement: "Full pipeline including Tier 2/3 coherence (TGN/NLI, constraint propagation) < 200ms per turn with GPU, < 500ms on CPU"
+    test: "tests/perf/test_performance.py::test_deep_pipeline_latency"
+    entropy: "near-zero"
+    priority: 3
+    consequence_if_violated: "NLI-based coherence checking becomes impractical for interactive use"
+
+  - name: "memory_footprint"
+    requirement: "< 100MB for conversations up to 100 turns (measured via tracemalloc)"
+    test: "tests/perf/test_performance.py::test_memory_100_turns"
+    entropy: "near-zero"
+    priority: 3
+    consequence_if_violated: "Monitor cannot run as lightweight sidecar in memory-constrained environments"
+
+  - name: "no_external_calls_default"
+    requirement: "Default configuration sends zero data to external services; all processing local; export_to() must be explicitly called"
+    test: "tests/unit/test_privacy.py::test_no_external_calls_on_process_turn"
+    entropy: "near-zero"
+    priority: 2
+    consequence_if_violated: "Privacy guarantee broken; enterprise adoption blocked"
+
+  - name: "framework_agnostic"
+    requirement: "Core library installs with zero transitive framework dependencies; process_turn() accepts plain strings and returns plain dicts; no LangChain, no OpenAI SDK, no LlamaIndex in core"
+    test: "tests/unit/test_integration.py::test_zero_framework_imports_in_core"
+    entropy: "near-zero"
+    priority: 2
+    consequence_if_violated: "Product becomes tied to specific ecosystem; loses primary competitive advantage"
+
+  - name: "observe_mode_default"
+    requirement: "All 14 event types ship with active: false in default config; configure() required to enable any event type"
+    test: "tests/unit/test_events.py::test_all_events_observe_by_default"
+    entropy: "near-zero"
+    priority: 2
+    consequence_if_violated: "Unvalidated signals cause agents to make harmful decisions; trust eroded before product proves itself"
+
+  - name: "temporal_signals_optional"
+    requirement: "All 4D spacetime signals (gap_seconds, estimated_retention, temporal_asymmetry, circadian_factor, temporal_references, conversation_velocity, conversation_acceleration, spacetime_interval, interval_class, reachable_turns, reachable_fraction) are only computed when timestamp is provided; core pipeline operates identically without timestamps"
+    test: "tests/unit/test_temporal.py::test_no_timestamp_no_temporal_signals"
+    entropy: "near-zero"
+    priority: 2
+    consequence_if_violated: "Mandatory timestamp would break backward compatibility and force integration changes on all consumers"
+
+  - name: "spatial_signals_optional"
+    requirement: "Spatial signals (location_class, spatial_constraint, spatial_frame_shift) are only computed when client_context is provided; core pipeline operates identically without client_context"
+    test: "tests/unit/test_spacetime.py::test_no_client_context_no_spatial_signals"
+    entropy: "near-zero"
+    priority: 2
+    consequence_if_violated: "Mandatory client_context would break backward compatibility and exclude server-side-only integrations"
+
+  - name: "v2_signal_precision_recall"
+    requirement: "Each of the 14 event types achieves precision >= 0.7 AND recall >= 0.7 on labeled test set (300+ labeled turns per event type, 3+ domains) before that event type is allowed to ship with active: true"
+    test: "tests/validation/test_v2_signal_quality.py::test_per_event_precision_recall"
+    entropy: "near-zero"
+    priority: 1
+    consequence_if_violated: "Agents act on low-quality signals causing wrong interventions. No event may ever ship active: true without passing this gate."
+
+  - name: "v5_domain_generalization"
+    requirement: "On 5+ domains not present in validation sets, composite fidelity rho degrades by < 20% relative (Spearman rho >= 0.4 per-turn, >= 0.48 conversation-level)"
+    test: "tests/validation/test_v5_generalization.py::test_cross_domain_rho"
+    entropy: "near-zero"
+    priority: 1
+    consequence_if_violated: "Metrics overfit to training domains; product fails in production where domain distribution is unknown. Revise embedding model or add domain-adaptive calibration."
+
+  - name: "v1_proxy_correlation"
+    requirement: "Composite fidelity score correlates with human quality ratings at Spearman rho > 0.5 per-turn, > 0.6 conversation-level on validation dataset (200+ conversations, 3+ domains)"
+    test: "tests/validation/test_v1_proxy.py::test_fidelity_correlation"
+    entropy: "near-zero"
+    priority: 1
+    consequence_if_violated: "The metrics don't measure what they claim; product has no empirical foundation. Swap proxies per fallback protocol."
+
+  - name: "v3_beats_heuristics_rho"
+    requirement: "Monitor outperforms naive heuristic baseline (turn-count + keyword overlap) by > 25% on fidelity-quality Spearman rho"
+    test: "tests/validation/test_v3_baseline.py::test_heuristic_rho_comparison"
+    entropy: "near-zero"
+    priority: 1
+    consequence_if_violated: "Rho advantage < 15%: THCP complexity not justified over heuristics. Ship as heuristic tool, retire THCP framing."
+
+  - name: "mcp_three_layer_model"
+    requirement: "The MCP server MUST expose Horizon API as three distinct primitive types: Tools (state-changing: new_conversation, process_turn, configure_session), Resources (read-only: trajectory, events), and Prompts (user-triggered: monitor_conversation). get_trajectory and get_events MUST NOT be exposed as Tools — they are Resources."
+    test: "tests/e2e/test_mcp_fastmcp_e2e.py::TestFastMCPAppObject"
+    entropy: "near-zero"
+    priority: 2
+    consequence_if_violated: "Agents waste tool-call slots on read-only operations; token budget burns on cacheable data; adoption friction increases."
+
+  - name: "mcp_configure_session_no_auto_run"
+    requirement: "configure_session MUST NOT appear in the mcpAllowlist in permissions.json. It mutates session config and requires human approval. The _INSTRUCTIONS field MUST explicitly mark it as 'REQUIRES HUMAN APPROVAL'."
+    test: "tests/e2e/test_mcp_fastmcp_e2e.py::TestFastMCPAppObject::test_mcp_instructions_mark_safe_tools"
+    entropy: "near-zero"
+    priority: 2
+    consequence_if_violated: "Agents silently change monitoring thresholds without user consent, making signal interpretation unreliable."
+
+  - name: "mcp_instructions_required"
+    requirement: "The FastMCP server MUST have a non-empty instructions field containing: the recommended agent loop, which tools are safe to auto-run, which require approval, and per-event-type action guidance."
+    test: "tests/e2e/test_mcp_fastmcp_e2e.py::TestFastMCPAppObject::test_mcp_instructions_contain_loop"
+    entropy: "near-zero"
+    priority: 2
+    consequence_if_violated: "Agent has no orientation without a per-project system prompt; adoption requires additional user setup."
+
+  - name: "mcp_prompt_creates_valid_session"
+    requirement: "The monitor_conversation Prompt MUST create a real, immediately usable FidelityMonitor session. The session_id embedded in the prompt text MUST be callable via process_turn without error."
+    test: "tests/e2e/test_mcp_fastmcp_e2e.py::TestMonitorConversationPrompt::test_creates_valid_session"
+    entropy: "near-zero"
+    priority: 2
+    consequence_if_violated: "The prompt creates text that looks correct but does not wire up actual monitoring — a silent failure that destroys user trust."
+
+  - name: "v3_beats_heuristics_structural"
+    requirement: "Monitor detects at least one class of sheaf gluing failure (global incoherence that does not appear in any single turn) that the naive heuristic baseline structurally cannot detect (precision >= 0.6 on held-out incoherence examples)"
+    test: "tests/validation/test_v3_baseline.py::test_structural_failure_detection"
+    entropy: "near-zero"
+    priority: 1
+    consequence_if_violated: "Product provides no capability that heuristics cannot provide. If combined with v3_beats_heuristics_rho failure, retire THCP framing entirely."
+
+constraint_satisfiability:
+  conflicts_checked: true
+  known_tensions:
+    - between: ["latency_core", "v1_proxy_correlation"]
+      resolution: "If embedding model needed for rho > 0.5 exceeds 50ms, accept the fastest local model that achieves rho > 0.3 per-turn for core pipeline; expose slower high-accuracy model as opt-in via configure(embedding_model=...)"
+    - between: ["no_external_calls_default", "v1_proxy_correlation"]
+      resolution: "Default embedding model is a local sentence-transformer (~30M params, ~20ms). External API embedding is opt-in config only."
+    - between: ["latency_core", "v2_signal_precision_recall"]
+      resolution: "V2 gate is measured offline on labeled dataset; it does not affect runtime latency. Events that pass V2 gates are registered as configuration, not recomputed at runtime."
+    - between: ["temporal_signals_optional", "v1_proxy_correlation"]
+      resolution: "Temporal penalty gamma·Δτ and circadian penalty delta·(1-κ) are only applied when timestamps are provided. Without timestamps, fidelity dynamics use the 4-signal equation (no temporal/circadian terms). V1 validation must pass with and without timestamps."
+    - between: ["spatial_signals_optional", "v1_proxy_correlation"]
+      resolution: "Spatial constraint Φ(σ) is informational only — it does not affect the fidelity composite score. V1 validation is independent of client_context."
+    - between: ["latency_core", "temporal_signals_optional"]
+      resolution: "4D spacetime signals add < 5ms total: circadian (lookup), deictic (regex + dateparser ~2ms), velocity/acceleration (arithmetic), ds² (arithmetic), J⁻ (set intersection). All within the 50ms budget."
+  simultaneous_satisfaction: "All satisfiable given known tensions resolved above. Latency and accuracy trade off at embedding model selection, not at architecture level. 4D spacetime signals add < 5ms computation (timestamp arithmetic, circadian lookup, deictic regex, set intersection for light cone)."
+
+# ----------------------------------------------------------------------------
+# RATIONALE
+# ----------------------------------------------------------------------------
+rationale:
+  decision: "Build a conversation dynamics monitor as external middleware, not as model fine-tuning or prompt engineering"
+  reasoning: |
+    Six converging signals drove this decision:
+
+    1. Training-time alignment doesn't generalize to multi-turn chat (OpenAI alignment
+       midtraining, April 2026). Quality must be measured at runtime.
+
+    2. Multi-turn degradation is structural, not a context length problem (MSR/Salesforce,
+       39% drop from turn boundaries alone, May 2025). Larger windows don't fix it.
+
+    3. Response quality is not conversation quality (Hafez et al., 2026). Existing tools
+       measure the wrong thing. No product measures conversation dynamics as a first-class object.
+
+    4. The theoretical framework (THCP) supplies design inspiration and a handful of
+       load-bearing, falsifiable predictions — not just ad-hoc heuristics. Its motivating
+       references span information theory, cognitive science, and category theory. The
+       necessity argument for an external monitor is empirical (LLM introspection is
+       partial and unreliable), not an impossibility proof.
+
+    5. LLM agents are temporally blind (TicToc, arXiv:2510.23853: < 65% alignment with
+       human temporal perception). The human experiences time between turns; the agent does
+       not. This asymmetry degrades conversations predictably and no model addresses it.
+
+    6. Conversations exist in 4D spacetime — not just semantic distance and temporal gaps, but
+       circadian cognitive load (9-34% RT variation, Valdez 2012), spatial constraints (mobile
+       2× cognitive difficulty, NN/G), pace dynamics (gamma-distributed turn-taking, Onishi 2025),
+       and causal structure (DCGM: +8.3 F1 over window-based). No tool computes any of these.
+       Minkowski spacetime has been shown to perfectly embed hierarchical meaning structures
+       (arXiv:2505.08795); Horizon applies this to dynamic conversation trajectories.
+
+    The event horizon analogy is a generative *metaphor* — it suggested which quantities to
+    compute, and each maps to a standard, plainly-defined measure: the ontological gap (epsilon)
+    → intent/response gap proxy feeding the fidelity score; "sheaf gluing" → cross-turn
+    contradiction checks; "proper time" asymmetry → the temporal gap term; "gravitational time
+    dilation" → a circadian lookup factor; "four-velocity" → semantic-displacement-per-time
+    (pace); the "spacetime interval" → a weighted 4-term distance (descriptive metadata only);
+    the "light cone" → retention × similarity reachability over prior turns. Drop the physics
+    vocabulary and the signals are unchanged. The analogy is inspiration, not evidence.
+  evidence:
+    - "docs/product/THCP_FIDELITY_MONITOR_PRD.md"
+  date: "2026-04-22"
+  stakeholder: "Leo Celis"
+
+# ----------------------------------------------------------------------------
+# ALTERNATIVES REJECTED
+# ----------------------------------------------------------------------------
+alternatives:
+  - name: "Fine-tune models for proactive collaboration (CollabLLM approach)"
+    rejected_because: "Requires training; cannot be applied to closed models (GPT, Claude); provides no runtime signals; solves same problem through fundamentally different mechanism"
+    experiment: "docs/product/THCP_FIDELITY_MONITOR_PRD.md §3.1 (CollabLLM analysis)"
+    date_tested: "2026-04-22"
+
+  - name: "Extend existing observability platforms (LangSmith, Langfuse, Arize)"
+    rejected_because: "They measure infrastructure (traces, latency, tool calls), not communication quality. Adding conversation dynamics metrics to a tracing platform conflates two different abstraction levels. Built as complementary layer that integrates with them via export_to()."
+    experiment: "docs/product/THCP_FIDELITY_MONITOR_PRD.md §3.2 (competitive table)"
+    date_tested: "2026-04-22"
+
+  - name: "Post-hoc evaluation only (DeepEval, RAGAS style)"
+    rejected_because: "Evaluates after the conversation ends; cannot intervene during. Measures content quality, not dynamics. Cannot detect convergence, trigger clarification, or signal session reset in real time."
+    experiment: "docs/product/THCP_FIDELITY_MONITOR_PRD.md §2.2"
+    date_tested: "2026-04-22"
+
+  - name: "Single-metric drift detection (Bipredictability, context-decay-drift, SAFi)"
+    rejected_because: "Each measures one signal. Cannot distinguish recoverable drift from irreversible loss, does not detect convergence, has no mode awareness, no cross-session persistence, no event system, no temporal awareness. Bipredictability is incorporated as Tier 1 of our coherence engine — it's a component, not the product."
+    experiment: "docs/product/THCP_FIDELITY_MONITOR_PRD.md §3.3 (updated competitive check)"
+    date_tested: "2026-04-22"
+
+  - name: "LLM-as-judge evaluation per turn"
+    rejected_because: "Doubles inference cost per turn; LLMs do not reliably observe their own epistemic state in multi-turn (empirically — self-evaluation is brittle and degrades on complex/OOD tasks); ~500ms latency violates latency_core constraint; cannot detect graph-level structural failures."
+    experiment: "N/A — eliminated at architecture design stage"
+    date_tested: "2026-04-22"
+
+  - name: "Wait for models to self-correct via scaling"
+    rejected_because: "SACD (arXiv:2603.01239) reports that frontier models drift differently in multi-turn and do not reliably self-detect it. In-conversation dynamics are not dependably observable by the generating model today. Scaling improves individual responses but has not been shown to make conversation-level dynamics reliably self-observable; an external monitor does not depend on that improving."
+    experiment: "docs/product/THCP_FIDELITY_MONITOR_PRD.md Appendix E"
+    date_tested: "2026-04-22"
+
+  - name: "Static spacetime embeddings (Geometry of Meaning, Neural Spacetimes)"
+    rejected_because: "arXiv:2505.08795 demonstrates perfect Minkowski embeddings for hierarchical word structures, and Neural Spacetimes (arXiv:2408.13885) train pseudo-Riemannian manifolds for DAGs. Both apply to static structures, not dynamic conversation trajectories. Horizon applies the Minkowski insight dynamically: computing ds² per turn pair as the conversation evolves, classifying intervals, and using causal structure for proactive broken-reference prevention."
+    experiment: "Essay Appendix E.5 (Conjecture THCP-5); PRD §3.3 (4D competitive check)"
+    date_tested: "2026-04-22"
+
+  - name: "Temporal-only tool (Chronos, Memory-T1 approach)"
+    rejected_because: "Chronos and Memory-T1 solve temporal retrieval over memory — they help agents remember when things happened. They do not measure conversation dynamics, detect drift, compute fidelity trajectories, or emit signals. They are complementary infrastructure that Horizon's Persistent Dynamics Store can use, but they are not the product."
+    experiment: "Essay Appendix D.6 (conversation geodesics analysis)"
+    date_tested: "2026-04-22"
+
+# ----------------------------------------------------------------------------
+# RISKS
+# ----------------------------------------------------------------------------
+risks:
+  - condition: "Proxy metrics don't track theoretical constructs (rho < 0.5)"
+    action: "Swap specific underperforming proxy per fallback protocol. If no proxy achieves rho > 0.3 after three substitution attempts, abandon embedding-based approach and redesign metric engine."
+    monitor: "Validation dataset results"
+    severity: "high"
+
+  - condition: "Event signals fire at wrong times (precision or recall < 0.7 for any event type)"
+    action: "Tune detection thresholds per failing event type. If precision/recall cannot reach 0.7 after calibration, disable that event type from public API; do not allow it to ship with active: true under any circumstances."
+    monitor: "Labeled test set per-event type metrics"
+    severity: "high"
+
+  - condition: "Monitor doesn't outperform naive heuristics"
+    action: "If rho margin < 15% AND no structural failure class uniquely detected: ship as heuristic tool and retire THCP framing. Framework complexity not justified."
+    monitor: "Benchmark results against turn-count + keyword baseline"
+    severity: "high"
+
+  - condition: "Acting on signals makes conversations worse"
+    action: "Revise reference controllers that consume events, not the metrics themselves. Disable specific event types that correlate with negative outcomes per domain."
+    monitor: "A/B test human ratings across domains (p < 0.05 threshold)"
+    severity: "high"
+
+  - condition: "Metrics overfit to validation domains"
+    action: "Add domain-adaptive calibration layer. Expand validation set to cover broader domain distribution. If rho degrades > 40% relative, redesign embedding model selection."
+    monitor: "Cross-domain rho on held-out domains"
+    severity: "high"
+
+  - condition: "Temporal penalty gamma·Δτ doesn't correlate with human-perceived quality after gaps"
+    action: "If P8 fails (rho < 0.15 between gap duration and fidelity drop), remove temporal term from fidelity dynamics. Temporal events still fire (based on timestamps alone) but don't affect the composite score."
+    monitor: "P8 prediction in proof system"
+    severity: "medium"
+
+  - condition: "THCP epsilon > 0 claim proves false — scaling eliminates the ontological gap"
+    action: "Product still works as conversation quality optimizer. Becomes engineering tool rather than fundamental-bound tool. Degrades gracefully; reframe positioning, not the architecture."
+    monitor: "P1 prediction in proof system"
+    severity: "low"
+
+  - condition: "Anthropic Claude provides no logprobs API — AI uncertainty channel unavailable for major provider"
+    action: "AI uncertainty channel is opt-in enhancement, not core. Core pipeline operates without logprobs. Market the enhancement for open-source models and OpenAI deployments."
+    monitor: "Anthropic API changelog"
+    severity: "medium"
+
+  - condition: "Ambient human signals require client-side integration (browser/IDE plugins)"
+    action: "Core pipeline operates without client signals. Ambient signals are opt-in for first-party applications only initially."
+    monitor: "Integration partner availability"
+    severity: "medium"
+
+  - condition: "Circadian model assumes single chronotype (average population curve)"
+    action: "Configurable chronotype_offset in configure(). Over sessions, learn per-user circadian correlation from fidelity data. If P10 fails, remove circadian penalty from fidelity dynamics."
+    monitor: "P10 prediction in proof system"
+    severity: "low"
+
+  - condition: "Spacetime interval coefficients (α, β, γ, δ) uncalibrated pre-V4"
+    action: "Ship with all coefficients = 1.0. interval_class is experimental (observe mode). Calibrate via V4 A/B testing. If P11 fails (no predictive power), remove ds² from API."
+    monitor: "P11 prediction in proof system"
+    severity: "medium"
+
+  - condition: "IP geolocation unreliable due to VPN/proxy usage"
+    action: "MaxMind GeoIP2 provides accuracy_radius. When radius > threshold, location_class = 'unknown'. Spatial grounding falls back to timezone + device_type. Location is never required."
+    monitor: "GeoIP2 accuracy_radius distribution in production"
+    severity: "low"
+
+  - condition: "Deictic temporal resolution fails for ambiguous expressions ('later', 'soon')"
+    action: "Unresolvable expressions return null and trigger soft clarification suggestion, not hard error. System degrades gracefully."
+    monitor: "Deictic resolution success rate in production"
+    severity: "low"
+
+  - condition: "Conversation velocity noise from very short messages ('ok', 'yes')"
+    action: "Velocity computed on 3-turn rolling window. Gated by minimum message length threshold. signal.pace_shift suppressed for windows with < 3 substantive turns."
+    monitor: "False positive rate for signal.pace_shift"
+    severity: "low"
+
+# ----------------------------------------------------------------------------
+# IMPLEMENTATION
+# ----------------------------------------------------------------------------
+implementation:
+  current: "not yet implemented"
+  version: 1
+  tests:
+    - "tests/unit/test_session.py"
+    - "tests/unit/test_process_turn.py"
+    - "tests/unit/test_events.py"
+    - "tests/unit/test_configure.py"
+    - "tests/unit/test_privacy.py"
+    - "tests/unit/test_integration.py"
+    - "tests/unit/test_trajectory.py"
+    - "tests/unit/test_temporal.py"
+    - "tests/unit/test_spacetime.py"
+    - "tests/unit/test_circadian.py"
+    - "tests/unit/test_deictic.py"
+    - "tests/unit/test_spatial.py"
+    - "tests/unit/test_velocity.py"
+    - "tests/unit/test_light_cone.py"
+    - "tests/unit/test_properties.py"
+    - "tests/perf/test_performance.py"
+    - "tests/integration/test_export.py"
+    - "tests/validation/test_v1_proxy.py"
+    - "tests/validation/test_v2_signal_quality.py"
+    - "tests/validation/test_v3_baseline.py"
+    - "tests/validation/test_v5_generalization.py"
+  documentation:
+    - "docs/product/THCP_FIDELITY_MONITOR_PRD.md"
+
+# ----------------------------------------------------------------------------
+# VERIFICATION
+# ----------------------------------------------------------------------------
+verification:
+  test_cases:
+    - name: "single_turn_metrics_latency"
+      description: "Process one turn; verify all metric engines return valid scores within latency budget"
+      input:
+        session_id: "test-session-001"
+        human_message: "I need a notification system for our app."
+        agent_response: "Here's a full notification system architecture with WebSocket support, push notifications, email integration, and a message queue..."
+      expected_output:
+        igt_value: "> 0 (new conversation, high information gain)"
+        divergence_score: "in range [0, 1]"
+        twr_value: "in range [0, 1]"
+        consistency_score: "1.0 (only one turn; no prior turns to contradict)"
+        fidelity_score: "in range [0, 1]"
+        health_status: "one of: healthy | drifting | critical"
+        elapsed_ms: "< 50"
+      validates_constraint: "latency_core"
+
+    - name: "convergence_detection_observe_mode"
+      description: "After 8+ turns of diminishing IGT, signal.convergence fires with active: false in default config"
+      input:
+        session_id: "test-session-002"
+        conversation: "8-turn technical Q&A where last 3 turns add near-zero new information"
+      expected_output:
+        event_type: "signal.convergence"
+        event_active: false
+      validates_constraint: "observe_mode_default"
+
+    - name: "framework_agnostic_zero_imports"
+      description: "Import core library in an environment with no LangChain, no OpenAI SDK, no LlamaIndex; process_turn succeeds"
+      input:
+        environment: "clean Python 3.11 virtualenv with only horizon and sentence-transformers installed"
+        session_id: "test-session-003"
+        human_message: "hello"
+        agent_response: "hi there"
+      expected_output:
+        import_errors: "none"
+        fidelity_score: "in range [0, 1]"
+      validates_constraint: "framework_agnostic"
+
+    - name: "drift_type_classification_structural"
+      description: "Detect irreversible loss vs recoverable drift; verify the class of failure that naive heuristics cannot distinguish"
+      input:
+        session_id: "test-session-004"
+        conversation: "15-turn conversation where context compaction occurred at turn 10; human references a decision from turn 3 that the agent can no longer access"
+      expected_output:
+        degradation_type: "irreversible_loss"
+        event_type: "signal.broken_reference"
+      validates_constraint: "v3_beats_heuristics_structural"
+
+    - name: "session_isolation"
+      description: "Two concurrent sessions do not bleed state into each other"
+      input:
+        session_a: "5-turn coding conversation"
+        session_b: "3-turn poetry conversation run in parallel"
+      expected_output:
+        session_a_trajectory: "reflects coding domain metrics"
+        session_b_trajectory: "reflects poetry domain metrics; no cross-contamination"
+      validates_constraint: "framework_agnostic"
+
+    - name: "temporal_desync_after_gap"
+      description: "When timestamps show a 3-day gap between turns, signal.temporal_desync fires and estimated_retention reflects memory decay"
+      input:
+        session_id: "test-session-005"
+        turn_1_timestamp: "2026-04-19T10:00:00Z"
+        turn_2_timestamp: "2026-04-22T10:00:00Z"
+        human_message: "ok, back to this — where were we?"
+        agent_response: "We were discussing the database schema..."
+      expected_output:
+        gap_seconds: 259200
+        estimated_retention: "~0.125 (3 days with default h_c=24h)"
+        event_type: "signal.temporal_desync"
+        event_active: false
+        temporal_asymmetry: 259200
+      validates_constraint: "temporal_signals_optional"
+
+    - name: "no_temporal_signals_without_timestamp"
+      description: "When timestamp is omitted, no temporal/4D signals are computed and no temporal events fire"
+      input:
+        session_id: "test-session-006"
+        human_message: "hello"
+        agent_response: "hi there"
+        timestamp: null
+      expected_output:
+        gap_seconds: null
+        estimated_retention: null
+        circadian_factor: null
+        temporal_references: null
+        conversation_velocity: null
+        spacetime_interval: null
+        reachable_turns: null
+        temporal_events: "none"
+        fidelity_score: "in range [0, 1] (computed without gamma·Δτ or delta·(1-κ) terms)"
+      validates_constraint: "temporal_signals_optional"
+
+    - name: "circadian_factor_peak_vs_nadir"
+      description: "Circadian factor reflects time-of-day cognitive capacity"
+      input:
+        session_id: "test-session-007"
+        turn_1:
+          timestamp: "2026-04-22T11:00:00-04:00"
+          human_message: "Let's design the API"
+          agent_response: "Here's the proposed interface..."
+        turn_2:
+          timestamp: "2026-04-23T03:00:00-04:00"
+          human_message: "Actually let me rethink this"
+          agent_response: "Sure, what aspects..."
+        client_context:
+          timezone: "America/New_York"
+      expected_output:
+        turn_1_circadian_factor: "1.0 (11am = peak 1)"
+        turn_2_circadian_factor: "~0.43 (3am = nocturnal decline)"
+        turn_2_fidelity: "lower than turn_1 due to delta·(1-κ) penalty"
+      validates_constraint: "temporal_signals_optional"
+
+    - name: "deictic_temporal_resolution"
+      description: "Temporal expressions in messages are resolved to absolute datetimes"
+      input:
+        session_id: "test-session-008"
+        timestamp: "2026-04-22T14:00:00Z"
+        human_message: "We discussed this yesterday and need to ship by next Monday"
+        agent_response: "Based on our discussion..."
+      expected_output:
+        temporal_references:
+          - expression: "yesterday"
+            resolved: "2026-04-21"
+            type: "relative_past"
+          - expression: "next Monday"
+            resolved: "2026-04-27"
+            type: "relative_future"
+      validates_constraint: "temporal_signals_optional"
+
+    - name: "spatial_constraint_mobile_vs_desktop"
+      description: "Spatial constraint vector differs by device type"
+      input:
+        session_id: "test-session-009"
+        turn_1:
+          client_context: { device_type: "desktop", timezone: "America/New_York", location_class: "office" }
+        turn_2:
+          client_context: { device_type: "mobile", timezone: "America/New_York", location_class: "transit" }
+      expected_output:
+        turn_1_spatial_constraint: "high attention budget, large screen, high complexity ceiling"
+        turn_2_spatial_constraint: "low attention budget, small screen, lower complexity ceiling"
+        event_type: "signal.frame_shift"
+        spatial_frame_shift: "> 0 (ΔΦ detects device change)"
+      validates_constraint: "spatial_signals_optional"
+
+    - name: "conversation_velocity_and_pace_shift"
+      description: "Velocity and acceleration computed from semantic displacement per proper time"
+      input:
+        session_id: "test-session-010"
+        conversation: "5-turn conversation where turns 1-3 are rapid (30s gaps, high semantic change) and turns 4-5 decelerate (5min gaps, small semantic change)"
+      expected_output:
+        velocity_turns_1_3: "> 0 (substantial)"
+        velocity_turns_4_5: "< velocity_turns_1_3 (deceleration)"
+        acceleration_turn_4: "< 0 (pace shift detected)"
+        event_type: "signal.pace_shift"
+      validates_constraint: "temporal_signals_optional"
+
+    - name: "spacetime_interval_classification"
+      description: "ds² classifies turn pairs as timelike (re-anchor) vs spacelike (clarify)"
+      input:
+        session_id: "test-session-011"
+        scenario_a: "3-day gap, same topic, low D_JS"
+        scenario_b: "30s gap, completely new topic, high D_JS"
+      expected_output:
+        scenario_a_interval_class: "timelike (ds² < 0 — time dominates)"
+        scenario_b_interval_class: "spacelike (ds² > 0 — meaning dominates)"
+      validates_constraint: "temporal_signals_optional"
+
+    - name: "light_cone_collapse_detection"
+      description: "When reachable prior turns drop below threshold, signal.light_cone_collapse fires proactively"
+      input:
+        session_id: "test-session-012"
+        conversation: "20-turn conversation where context compaction occurs at turn 15, evicting turns 1-8"
+      expected_output:
+        reachable_turns_at_16: "< 12 (turns 1-8 evicted)"
+        reachable_fraction_at_16: "< 0.5 (less than half reachable)"
+        event_type: "signal.light_cone_collapse"
+        event_active: false
+      validates_constraint: "observe_mode_default"
+
+  property_tests:
+    - property: "determinism"
+      test: "Same conversation processed twice in separate sessions produces identical metrics and events"
+      verification: "tests/unit/test_properties.py::test_deterministic"
+
+    - property: "monotonic_fidelity_bounds"
+      test: "Fidelity score always in [0, 1]; trajectory array length == number of processed turns"
+      verification: "tests/unit/test_properties.py::test_fidelity_bounds"
+
+    - property: "observe_mode_safety"
+      test: "No event has active: true in default configuration regardless of input, conversation length, domain, or temporal gap"
+      verification: "tests/unit/test_properties.py::test_observe_mode_invariant"
+
+    - property: "session_statefulness"
+      test: "process_turn with unknown session_id raises SessionNotFoundError; turn order within a session is enforced"
+      verification: "tests/unit/test_properties.py::test_session_not_found_raises"
+
+    - property: "temporal_monotonicity"
+      test: "estimated_retention is monotonically decreasing as gap_seconds increases; temporal_asymmetry is always >= 0"
+      verification: "tests/unit/test_temporal.py::test_retention_monotonic"
+
+    - property: "circadian_bounds"
+      test: "circadian_factor is always in [0, 1]; kappa(peak) = 1.0; kappa(nadir) >= 0.3; monotonic within each segment"
+      verification: "tests/unit/test_circadian.py::test_kappa_bounds"
+
+    - property: "spacetime_signature"
+      test: "ds² has Minkowski signature (-,+,+,+): timelike (ds² < 0) when dτ² dominates; spacelike (ds² > 0) when semantic terms dominate"
+      verification: "tests/unit/test_spacetime.py::test_minkowski_signature"
+
+    - property: "light_cone_monotonic_eviction"
+      test: "reachable_fraction never increases when context is evicted (turns leave the light cone, they don't re-enter)"
+      verification: "tests/unit/test_light_cone.py::test_eviction_irreversible"
+
+    - property: "velocity_consistency"
+      test: "conversation_velocity equals semantic displacement / proper time delta; acceleration equals velocity delta between consecutive turns"
+      verification: "tests/unit/test_velocity.py::test_velocity_derivation"
+
+    - property: "deictic_idempotence"
+      test: "Same message processed twice with same timestamp produces identical temporal_references; unresolvable expressions return null, not error"
+      verification: "tests/unit/test_deictic.py::test_resolution_idempotent"
+
+# ----------------------------------------------------------------------------
+# CHANGELOG
+# ----------------------------------------------------------------------------
+changelog:
+  - version: 1
+    date: "2026-04-22"
+    change: "Initial intent artifact for Horizon Fidelity Monitor"
+    reason: "Translate THCP theoretical framework and PRD into IVD-structured intent for implementation"
+    evidence:
+      - "THCP theoretical essay (private workspace; not in OSS repo)"
+      - "THCP_FIDELITY_MONITOR_PRD.md (initial version, 4 phases, 5 validation gates V1-V5)"
+
+  - version: 2
+    date: "2026-04-22"
+    change: |
+      Full review pass — 14 issues resolved:
+      - Fixed parent_intent path (system_intent.yaml → null; top-level intent)
+      - Added session_id parameter to process_turn; added new_conversation() tool
+      - Added configure() and export_to() tools to complete public API surface
+      - Fixed test case constraint mappings
+      - Added V2/V5 validation gate constraints and risks
+      - Added authorship section, rejected inversions, session tests
+    reason: "Stress-test review per IVD Principle 6 Step 4 before implementation begins"
+    evidence: "Review performed against PRD and THCP framework v1.1"
+
+  - version: 3
+    date: "2026-04-22"
+    change: |
+      Major revision — product redefined as single V1 release:
+      - Collapsed all phases into unified V1 product definition (no timelines, no estimates)
+      - Added temporal context layer: timestamp + client_context params in process_turn,
+        3 new temporal events (signal.temporal_desync, signal.broken_reference, signal.frame_shift),
+        gamma·Δτ temporal asymmetry penalty in fidelity dynamics, conversation geodesics
+      - Added ontological gap defensibility: 3 no-go theorems (Tkemaladze, Spivack, Sigtermans),
+        SACD empirical confirmation, bounded self-certification
+      - Updated event count from 9 to 12
+      - Added 5th chosen inversion (temporal awareness), 3rd rejected alternative (wait for scaling)
+      - Added temporal_signals_optional constraint
+      - Added temporal test cases and property tests
+      - Added configure() params: context_half_life_hours, temporal_desync_threshold_seconds,
+        gamma weight in fidelity_weights
+      - Updated success metrics: 12 event types, 9 predictions (P1-P9)
+      - Added temporal risk (P8 failure)
+      - Added rejected alternative (temporal-only tools like Chronos/Memory-T1)
+      - Removed all phase references, delivery timelines, and effort estimates
+    reason: "Research completed (essay Appendices D+E, 46 new academic sources). Product definition distilled from research, not from engineering schedule."
+    evidence:
+      - "Essay Appendix D: Temporal-Spatial Grounding (references 119-141)"
+      - "Essay Appendix E: Ontological Gap and Structural Defensibility"
+      - "PRD updated: temporal context layer, fidelity dynamics, 12 events, P8-P9 predictions"
+
+  - version: 5
+    date: "2026-05-06"
+    change: |
+      FastMCP integration layer — full MCP server rebuild following spec best practices:
+      - Migrated mcp/server.py from low-level mcp.server.Server to mcp.server.fastmcp.FastMCP
+        (available natively in mcp>=1.13; no new dependency).
+      - Added server-level `instructions` field describing the recommended agent loop, safe
+        auto-run tools, and approval-required tools. Cursor/Claude Desktop surface this to
+        the model automatically — no per-project system prompt required.
+      - Redesigned all tool descriptions following Anthropic's agent-oriented guide:
+        primary use case, preconditions, steer-to-alternatives. Example accuracy improvements
+        from 72%→90% via 1-5 examples and negative guidance now applied to every tool.
+      - get_trajectory and get_events promoted from Tools to MCP Resources at URIs
+        horizon://session/{id}/trajectory and horizon://session/{id}/events. Resources are
+        passive, cacheable, and token-efficient — agents attach them as context without
+        spending a tool-call slot.
+      - Added monitor_conversation Prompt (user-triggered, /monitor_conversation slash command).
+        Creates a new session, generates the full agent-loop injection block, and wires the
+        monitoring loop via a single user action. Accepts domain and agent_name parameters.
+      - configure() MCP tool renamed to configure_session for clarity; explicitly marked
+        REQUIRES HUMAN APPROVAL in instructions and description.
+      - Registered horizon in ~/.cursor/mcp.json using python -m horizon.mcp.server pattern
+        (more portable than the 'horizon serve' entry point which requires PATH install).
+      - Shipped ~/.cursor/permissions.json with mcpAllowlist for new_conversation and
+        process_turn (auto-run without approval); configure_session excluded.
+      - Updated docs/integrations/CURSOR.md with full installation guide, three usage
+        patterns (system prompt / on-demand prompt / workspace rule), permissions.json
+        snippet, troubleshooting table, and enterprise/multi-user (Streamable HTTP) section.
+      - Added tests/e2e/test_mcp_fastmcp_e2e.py: 40+ assertions across all three MCP
+        primitive layers (tools, resources, prompt), full agent-loop integration test,
+        _dispatch shim backward-compat tests, FastMCP app-object assertions.
+      - Preserved _dispatch shim for backward compatibility with test_mcp_server_e2e.py.
+      - cli.py updated to use FastMCP .run() for all three transports (stdio, sse,
+        streamable-http) and to preload the embedding model on startup.
+    reason: |
+      Post-v0.2.0 audit identified MCP as the highest-leverage integration surface for
+      enterprise Cursor/Claude Desktop adoption. Research (Cursor docs, MCP spec, Anthropic
+      tool-writing guide) showed that: (a) thin tool descriptions cause agents to skip tools
+      that are available; (b) treating get_trajectory/get_events as Tools wastes tool-call
+      slots that should be spent on actions; (c) no Prompt means the agent has no one-click
+      path to start monitoring; (d) no permissions.json means every process_turn call
+      interrupts the user for approval. All four gaps closed in this revision.
+    evidence:
+      - "docs/integrations/CURSOR.md (updated integration guide)"
+      - "tests/e2e/test_mcp_fastmcp_e2e.py (40+ e2e assertions)"
+      - "~/.cursor/mcp.json (horizon server registered)"
+      - "~/.cursor/permissions.json (auto-run allowlist)"
+
+  - version: 4
+    date: "2026-04-22"
+    change: |
+      Full 4D spacetime layer — complete space-time-distance translation:
+      - Added 6th chosen inversion: "Build a full 4D translation layer, not just temporal signals"
+      - Added circadian cognitive factor κ(t): Valdez et al. 2012, 9-34% RT variation,
+        piecewise model, δ·(1-κ) penalty in fidelity dynamics
+      - Added deictic temporal resolution D(c,t): dateparser v1.4.0, datefinder v1.0.0,
+        HeidelTime, SUTime, TIMEX3 standard; resolved temporal_references[] in API return
+      - Added spatial grounding: client_context expanded with location_class, ip_address;
+        spatial constraint vector Φ(σ); MaxMind GeoIP2 v5.2.0; tzlocal v5.3.1
+      - Added conversation velocity v_t and acceleration a_t; signal.pace_shift event
+      - Added conversation spacetime interval ds² with Minkowski signature (-,+,+,+);
+        interval_class (timelike/spacelike/lightlike); Conjecture THCP-5
+      - Added causal reachability map J⁻(t_i); signal.light_cone_collapse event
+      - Updated event count from 12 to 14 (signal.pace_shift, signal.light_cone_collapse)
+      - Updated prediction count from 9 to 13 (P10: circadian quality, P11: ds² classification,
+        P12: light cone prediction, P13: velocity-engagement correlation)
+      - Added configure() params: temporal_weights, chronotype_offset, spacetime_coefficients,
+        pace_shift_threshold, light_cone_ratio_threshold
+      - Added spatial_signals_optional constraint
+      - Added 7 new test cases covering all 4D signals
+      - Added 6 new property tests (circadian bounds, spacetime signature, light cone monotonic,
+        velocity consistency, deictic idempotence)
+      - Added 6 new risks (chronotype, ds² calibration, geolocation, deictic ambiguity, velocity noise)
+      - Added rejected alternative (static spacetime embeddings)
+      - Updated reference count: 173 references across 5 appendices, 5 conjectures
+      - Added 6 new test files (test_spacetime, test_circadian, test_deictic, test_spatial,
+        test_velocity, test_light_cone)
+    reason: "Essay Appendix E completed (32 new academic sources, references 142-173). Full 4D spacetime model now operationalized from theory through PRD to intent."
+    evidence:
+      - "Essay Appendix E: 4D Conversation Spacetime (references 142-173)"
+      - "PRD updated: 4D Spacetime Layer, 14 events, 13 predictions, 6 new risks"
+      - "Full cross-check: research → PRD → intent verified for consistency"

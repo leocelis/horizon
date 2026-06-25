@@ -1,0 +1,14 @@
+# Local development + full test suite (pytest, ruff, black, MCP e2e).
+# Production / DO deploy uses requirements.txt ([mcp] only).
+-e ".[dev,mcp]"
+
+# ML stack pins — apply AFTER editable install (pyproject allows wide ranges).
+# Unpinned `sentence-transformers>=2.2.0` currently resolves to 5.6.0, which pulls
+# transformers 5.x while torch stays at 2.2.x → ~62 embedding tests error on model load.
+# numpy>=2 can break the torch 2.2 / scipy stack used in tests.
+transformers==4.40.2
+sentence-transformers==2.7.0
+numpy<2
+
+# Third-party corpus adapters (MT-Bench parquet on Hugging Face)
+pyarrow>=15.0.0
