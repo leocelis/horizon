@@ -1,6 +1,6 @@
 """Generate a synthetic validation corpus for the V1/V2/V5 gates.
 
-ADA playground copies: build_validation_corpus.py (rich) and build_oss_gate_corpus.py (OSS parity).
+OSS gate corpus generator — synthetic, deterministic, no proprietary data.
 
 WHY THIS EXISTS (Fix 4 + reproducibility): the v0.2.0 evidence pack referenced a
 `scripts/build_validation_corpus.py` that was never committed, so the gate tests

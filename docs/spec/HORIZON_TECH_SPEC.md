@@ -1287,7 +1287,7 @@ the repository root.
 horizon/                             # repository root
 ├── pyproject.toml
 ├── README.md · LICENSE · CHANGELOG.md · CONTRIBUTING.md
-├── .gitignore                       # ignores _private/ (local planning only)
+├── .gitignore                       # excludes .env, local DBs, downloaded corpora
 ├── src/
 │   └── horizon/                     # importable package
 │       ├── __init__.py              # public API: FidelityMonitor, Config, TurnResult

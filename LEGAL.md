@@ -432,7 +432,8 @@ survived peer review.
 
 ## 11. Sensitive Data and Version Control
 
-The `.gitignore` excludes `_private/`, `*.sqlite`, and `horizon.db` by default. These
+Private planning and research documents are maintained outside this repository.
+The `.gitignore` excludes `*.sqlite` and `horizon.db` by default. These
 protections do not automatically transfer when you fork or clone the repository into a
 new project. Verify that your SQLite database and any private configuration files are
 excluded from source control in every repository that contains a Horizon deployment.

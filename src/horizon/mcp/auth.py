@@ -10,7 +10,7 @@ Usage:
     Authorization: Bearer hzn_<username>_<token>
 
 Key generation:
-    python -c "import secrets; print('hzn_leo_' + secrets.token_urlsafe(24))"
+    python -c "import secrets; print('hzn_deploy_' + secrets.token_urlsafe(24))"
 """
 
 from __future__ import annotations

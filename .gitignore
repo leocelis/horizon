@@ -46,9 +46,6 @@ horizon.db
 .env
 .env.local
 
-# Local planning artifacts (never commit)
-_private/
-
 # Downloaded third-party validation inputs (large; fetch via adapt_external_corpus docstring)
 data/external_raw/*.parquet
 data/ood_corpus/

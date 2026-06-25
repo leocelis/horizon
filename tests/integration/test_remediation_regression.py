@@ -140,9 +140,11 @@ def test_leading_indicator_artifact_shape() -> None:
 # ── repo hygiene ──────────────────────────────────────────────────────────────
 
 
-def test_private_directory_gitignored() -> None:
+def test_no_private_directory_at_repo_root() -> None:
+    """Private docs must not live in the OSS repo tree."""
+    assert not (ROOT / "_private").is_dir()
     gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
-    assert "_private/" in gitignore
+    assert "_private/" not in gitignore
 
 
 def test_requirements_dev_has_ml_pins() -> None:
