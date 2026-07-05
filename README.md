@@ -453,10 +453,10 @@ pytest tests/ -v                         # full suite
 pytest tests/unit tests/integration tests/e2e -v   # fast path (~6 min)
 ruff check src/ tests/
 black --check src/ tests/
-./scripts/compliance/check.sh              # EU AI Act offline gate (Customer #0 phase 2)
+./scripts/compliance/check.sh              # EU AI Act offline gate
 ```
 
-### ComplyEdge TrustLint — EU AI Act (Customer #0)
+### ComplyEdge TrustLint — EU AI Act
 
 Horizon dogfoods **[ComplyEdge](https://complyedge.io)** on LLM-facing artifacts — same offline + runtime + trust pattern as [IVD](https://github.com/leocelis/ivd).
 
@@ -467,7 +467,7 @@ Horizon dogfoods **[ComplyEdge](https://complyedge.io)** on LLM-facing artifacts
 | **CI gate** | `.github/workflows/ci.yml` jobs `compliance` + optional `compliance-runtime` |
 | **Agent rule** | `<BEGIN-COMPLYEDGE v1.0>` in `docs/cursor-rules/horizon-monitor.mdc` |
 
-Canon: [`docs/COMPLYEDGE_CUSTOMER0.md`](docs/COMPLYEDGE_CUSTOMER0.md). CE adoption guide: [`oss-trustlint-adoption-guide.md`](https://github.com/ComplyEdge/complyedge-platform/blob/main/docs/development/oss-trustlint-adoption-guide.md).
+Integration guide: [`docs/integrations/COMPLYEDGE.md`](docs/integrations/COMPLYEDGE.md). CE adoption guide: [`oss-trustlint-adoption-guide.md`](https://github.com/ComplyEdge/complyedge-platform/blob/main/docs/development/oss-trustlint-adoption-guide.md).
 
 ---
 

@@ -2,7 +2,7 @@
 # scripts/compliance/check.sh
 #
 # Offline TrustLint compliance gate for Horizon LLM-facing artifacts.
-# Canonical pattern: REUSE (CLI + CI) + OpenSSF automated gates (IVD Customer #0).
+# Canonical pattern: REUSE (CLI + CI) + OpenSSF automated gates (see IVD + CE adoption guide).
 #
 # Usage (from repo root):
 #   ./scripts/compliance/check.sh

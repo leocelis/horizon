@@ -2,7 +2,7 @@
 # scripts/compliance/runtime_check.sh
 #
 # BYOK runtime compliance probe — POST /v1/check against ComplyEdge API.
-# Feeds the Horizon Customer #0 tenant audit trail (live badge + trust page).
+# Feeds the Horizon tenant audit trail (live badge + trust page).
 #
 # Usage (from repo root):
 #   export COMPLYEDGE_API_KEY=ce_live_...   # never commit
@@ -24,7 +24,7 @@ cd "$REPO_ROOT"
 
 API_URL="${COMPLYEDGE_API_URL:-https://api.complyedge.io}"
 AGENT_ID="${COMPLYEDGE_AGENT_ID:-horizon-customer0}"
-PROBE_TEXT="${COMPLYEDGE_RUNTIME_PROBE_TEXT:-Horizon Customer #0 runtime probe — EU compliance check on representative LLM-facing artifact text.}"
+PROBE_TEXT="${COMPLYEDGE_RUNTIME_PROBE_TEXT:-Horizon runtime compliance probe — EU check on representative LLM-facing artifact text.}"
 
 if [ -z "${COMPLYEDGE_API_KEY:-}" ]; then
   echo "ERROR: COMPLYEDGE_API_KEY not set (BYOK — env only, never commit)." >&2

@@ -71,7 +71,7 @@ jobs:
         run: chmod +x scripts/compliance/check.sh && ./scripts/compliance/check.sh
 
   compliance-runtime:
-    name: ComplyEdge runtime (Customer #0 BYOK)
+    name: ComplyEdge runtime (BYOK)
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 

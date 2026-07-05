@@ -26,6 +26,7 @@ Extended PRD, market research, and THCP research essays are **not** in this repo
 
 | Integration | Guide |
 |-------------|-------|
+| ComplyEdge TrustLint | [`integrations/COMPLYEDGE.md`](./integrations/COMPLYEDGE.md) — offline gate, optional runtime BYOK, public trust |
 | Cursor (MCP) | [`integrations/CURSOR.md`](./integrations/CURSOR.md) — includes [`cursor-rules/horizon-monitor.mdc`](./cursor-rules/horizon-monitor.mdc) |
 | Claude Desktop (MCP) | [`integrations/CLAUDE_DESKTOP.md`](./integrations/CLAUDE_DESKTOP.md) |
 | Claude Code (MCP) | [`integrations/CLAUDE_CODE.md`](./integrations/CLAUDE_CODE.md) |

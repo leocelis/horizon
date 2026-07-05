@@ -1,7 +1,7 @@
 # ==============================================================================
 # Horizon Recipe: ComplyEdge TrustLint — EU AI Act Compliance Gate (Offline)
 # ==============================================================================
-# Customer #0 phase 2 — same offline gate as IVD, scoped to Horizon LLM-facing
+# Same offline gate as IVD, scoped to Horizon LLM-facing
 # artifacts (intent YAML + Cursor agent rule). No API key in repo.
 #
 # Status: Canonical
@@ -85,8 +85,8 @@ repo_files:
   ci_workflow: ".github/workflows/ci.yml"
 
 integrations:
-  - pattern: "IVD compliance-trustlint (Customer #0 phase 1)"
-    relationship: "Same offline CLI + CI architecture; Horizon is phase 2 OSS proof."
+  - pattern: "IVD compliance-trustlint"
+    relationship: "Same offline CLI + CI architecture; Horizon mirrors the IVD integration pattern."
 
   - pattern: "complyedge-platform/docs/development/oss-trustlint-adoption-guide.md"
     relationship: "CE canonical adoption guide — IVD reference + Horizon variant."

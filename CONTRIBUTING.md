@@ -77,7 +77,7 @@ pip install 'trustlint>=2.0.1'
 ```
 
 CI job `compliance` runs the same gate on every push/PR. Recipe:
-`recipes/compliance-trustlint.yaml`. Operator canon: [`docs/COMPLYEDGE_CUSTOMER0.md`](docs/COMPLYEDGE_CUSTOMER0.md).
+`recipes/compliance-trustlint.yaml`. Integration guide: [`docs/integrations/COMPLYEDGE.md`](docs/integrations/COMPLYEDGE.md).
 CE OSS adoption guide: `complyedge-platform/docs/development/oss-trustlint-adoption-guide.md`.
 
 ## Code style
