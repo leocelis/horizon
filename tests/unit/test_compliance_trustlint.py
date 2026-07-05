@@ -98,6 +98,7 @@ class TestComplyEdgeIntegration:
         assert "runtime_check.sh" in text
         assert "trust.complyedge.io/horizon" in text
         assert "Customer #0" not in text
+        assert "dogfood" not in text.lower()
 
     def test_runtime_check_script_exists(self) -> None:
         script = ROOT / "scripts" / "compliance" / "runtime_check.sh"

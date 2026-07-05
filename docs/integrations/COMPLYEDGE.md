@@ -1,6 +1,6 @@
 # ComplyEdge TrustLint — Horizon integration
 
-Horizon dogfoods [ComplyEdge](https://complyedge.io) on LLM-facing artifacts: offline EU AI Act screening, optional runtime checks, and a public trust surface.
+Horizon uses [ComplyEdge](https://complyedge.io) TrustLint on LLM-facing artifacts: offline EU AI Act screening, optional runtime checks, and a public trust surface.
 
 **Tenant slug:** `horizon`
 

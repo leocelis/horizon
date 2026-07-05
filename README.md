@@ -458,7 +458,7 @@ black --check src/ tests/
 
 ### ComplyEdge TrustLint — EU AI Act
 
-Horizon dogfoods **[ComplyEdge](https://complyedge.io)** on LLM-facing artifacts — same offline + runtime + trust pattern as [IVD](https://github.com/leocelis/ivd).
+Horizon integrates **[ComplyEdge](https://complyedge.io)** TrustLint on LLM-facing artifacts — same offline + runtime + trust pattern as [IVD](https://github.com/leocelis/ivd).
 
 | Layer | What |
 |-------|------|
