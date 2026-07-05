@@ -69,3 +69,22 @@ jobs:
 
       - name: Scan LLM-facing artifacts
         run: chmod +x scripts/compliance/check.sh && ./scripts/compliance/check.sh
+
+  compliance-runtime:
+    name: ComplyEdge runtime (Customer #0 BYOK)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Runtime /v1/check probe
+        env:
+          COMPLYEDGE_API_KEY: ${{ secrets.COMPLYEDGE_API_KEY }}
+        run: |
+          if [ -z "${COMPLYEDGE_API_KEY:-}" ]; then
+            echo "COMPLYEDGE_API_KEY not configured — skipping runtime probe"
+            exit 0
+          fi
+          chmod +x scripts/compliance/runtime_check.sh
+          ./scripts/compliance/runtime_check.sh

@@ -2,6 +2,13 @@
 
 > **"Quality is not a model property — it is a conversation property."**
 
+<p align="center">
+  <a href="https://github.com/leocelis/horizon/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/leocelis/horizon/ci.yml?branch=main&style=flat-square&label=tests" alt="Tests"></a>
+  <a href="https://trust.complyedge.io/horizon" rel="noopener noreferrer">
+    <img src="https://api.complyedge.io/v1/public/badge/horizon.svg" alt="ComplyEdge — runtime enforcement status" height="26">
+  </a>
+</p>
+
 Horizon is a real-time conversation health monitor for AI agents. It tracks the **structural dynamics** of multi-turn conversations — semantic drift, information gain, ontological gap width, temporal desynchronisation, circadian cognitive load, conversation velocity, and causal reachability — dimensions that LLMs do not reliably surface from inside the conversation.
 
 Horizon is **not** a manipulation, sycophancy, or human-influence detector — it measures conversation *dynamics*, not whether an agent is steering or flattering the user. See [LEGAL.md §1](LEGAL.md#1-what-horizon-is--and-is-not).
@@ -449,17 +456,18 @@ black --check src/ tests/
 ./scripts/compliance/check.sh              # EU AI Act offline gate (Customer #0 phase 2)
 ```
 
-### ComplyEdge TrustLint — EU AI Act (Customer #0 phase 2)
+### ComplyEdge TrustLint — EU AI Act (Customer #0)
 
-Horizon dogfoods **[ComplyEdge](https://complyedge.io)** offline TrustLint on LLM-facing artifacts — same REUSE CLI + CI pattern as [IVD](https://github.com/leocelis/ivd).
+Horizon dogfoods **[ComplyEdge](https://complyedge.io)** on LLM-facing artifacts — same offline + runtime + trust pattern as [IVD](https://github.com/leocelis/ivd).
 
 | Layer | What |
 |-------|------|
 | **Offline (required)** | `./scripts/compliance/check.sh` — scans `horizon_intent.yaml` + `horizon-monitor.mdc` |
-| **CI gate** | `.github/workflows/ci.yml` job `compliance` |
+| **Runtime (BYOK)** | `./scripts/compliance/runtime_check.sh` — feeds [live seal](https://api.complyedge.io/v1/public/badge/horizon.svg) + [trust page](https://trust.complyedge.io/horizon) |
+| **CI gate** | `.github/workflows/ci.yml` jobs `compliance` + optional `compliance-runtime` |
 | **Agent rule** | `<BEGIN-COMPLYEDGE v1.0>` in `docs/cursor-rules/horizon-monitor.mdc` |
 
-Runtime badge and trust page live on the IVD tenant (`trust.complyedge.io/ivd`). Canon: [`docs/COMPLYEDGE_CUSTOMER0.md`](docs/COMPLYEDGE_CUSTOMER0.md). CE adoption guide: [`oss-trustlint-adoption-guide.md`](https://github.com/ComplyEdge/complyedge-platform/blob/main/docs/development/oss-trustlint-adoption-guide.md).
+Canon: [`docs/COMPLYEDGE_CUSTOMER0.md`](docs/COMPLYEDGE_CUSTOMER0.md). CE adoption guide: [`oss-trustlint-adoption-guide.md`](https://github.com/ComplyEdge/complyedge-platform/blob/main/docs/development/oss-trustlint-adoption-guide.md).
 
 ---
 

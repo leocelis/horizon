@@ -89,6 +89,25 @@ class TestComplianceCheckScript:
         assert "EU_AI_ACT" in combined or "SOCIAL" in combined
 
 
+class TestCustomerZeroCanon:
+    def test_customer0_doc_exists(self) -> None:
+        doc = ROOT / "docs" / "COMPLYEDGE_CUSTOMER0.md"
+        assert doc.is_file()
+        text = doc.read_text(encoding="utf-8")
+        assert "horizon" in text
+        assert "runtime_check.sh" in text
+        assert "trust.complyedge.io/horizon" in text
+
+    def test_runtime_check_script_exists(self) -> None:
+        script = ROOT / "scripts" / "compliance" / "runtime_check.sh"
+        assert script.is_file()
+
+    def test_readme_live_badge_embed(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        assert "api.complyedge.io/v1/public/badge/horizon.svg" in readme
+        assert "trust.complyedge.io/horizon" in readme
+
+
 class TestAgentRuleBlock:
     def test_cursor_rule_has_complyedge_block(self) -> None:
         text = CURSOR_RULE.read_text(encoding="utf-8")

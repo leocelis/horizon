@@ -25,7 +25,7 @@ recipe:
     - Local: `./scripts/compliance/check.sh`
     - CI: job `compliance` in `.github/workflows/ci.yml`
 
-    No `COMPLYEDGE_API_KEY` in this repo. Runtime BYOK lives on IVD (tenant `ivd`).
+    No `COMPLYEDGE_API_KEY` in git. Runtime BYOK uses tenant slug `horizon` (see `runtime_check.sh`).
 
   applies_to:
     - "docs/spec/*_intent.yaml"
@@ -81,6 +81,7 @@ install_targets:
 repo_files:
   config: ".trustlint.yaml"
   check_script: "scripts/compliance/check.sh"
+  runtime_script: "scripts/compliance/runtime_check.sh"
   ci_workflow: ".github/workflows/ci.yml"
 
 integrations:
