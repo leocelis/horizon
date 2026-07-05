@@ -25,7 +25,30 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      - name: Cache embedding model
+        uses: actions/cache@v4
+        with:
+          path: .cache/models
+          key: horizon-minilm-v1-${{ runner.os }}-${{ hashFiles('requirements-dev.txt', 'pyproject.toml') }}
+
+      - name: Pre-cache embedding model (offline tests)
+        run: |
+          export SENTENCE_TRANSFORMERS_HOME="${{ github.workspace }}/.cache/models"
+          export HF_HOME="${{ github.workspace }}/.cache/models"
+          mkdir -p "$SENTENCE_TRANSFORMERS_HOME"
+          python - <<'PY'
+          import os
+          from sentence_transformers import SentenceTransformer
+          cache = os.environ["SENTENCE_TRANSFORMERS_HOME"]
+          m = SentenceTransformer("all-MiniLM-L6-v2", cache_folder=cache)
+          m.encode(["warmup"])
+          print(f"Model cached: {cache}")
+          PY
+
       - name: Run unit tests
+        env:
+          SENTENCE_TRANSFORMERS_HOME: ${{ github.workspace }}/.cache/models
+          HF_HOME: ${{ github.workspace }}/.cache/models
         run: pytest tests/unit -q
 
   compliance:
