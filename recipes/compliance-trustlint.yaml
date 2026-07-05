@@ -1,0 +1,96 @@
+# ==============================================================================
+# Horizon Recipe: ComplyEdge TrustLint — EU AI Act Compliance Gate (Offline)
+# ==============================================================================
+# Customer #0 phase 2 — same offline gate as IVD, scoped to Horizon LLM-facing
+# artifacts (intent YAML + Cursor agent rule). No API key in repo.
+#
+# Status: Canonical
+# Version: 1.0
+# Created: 2026-07-05
+# ==============================================================================
+
+recipe:
+  name: "ComplyEdge TrustLint — EU AI Act Compliance Gate (Horizon)"
+  version: "1.0"
+  category: "compliance"
+  status: "canonical"
+  complexity: "low"
+  created: "2026-07-05"
+
+  description: |
+    Horizon ships LLM-facing intent and agent contracts that agents load at runtime.
+    TrustLint screens those artifacts for EU AI Act Article 5(1) prohibited practices.
+
+    Offline, free tier:
+    - Local: `./scripts/compliance/check.sh`
+    - CI: job `compliance` in `.github/workflows/ci.yml`
+
+    No `COMPLYEDGE_API_KEY` in this repo. Runtime BYOK lives on IVD (tenant `ivd`).
+
+  applies_to:
+    - "docs/spec/*_intent.yaml"
+    - "docs/cursor-rules/*.mdc (agent contract)"
+
+  when_to_use:
+    - "After editing horizon_intent.yaml or horizon-monitor.mdc"
+    - "On every PR touching LLM-facing agent artifacts (CI)"
+
+workflow:
+  name: "Horizon + TrustLint loop"
+  steps:
+    - step: 1
+      action: "Edit intent or agent rule (.mdc)"
+    - step: 2
+      action: "./scripts/compliance/check.sh on changed LLM-facing files"
+    - step: 3
+      action: "Fix critical/high violations before declaring done; CI repeats on push/PR"
+
+  acceptance: |
+    Merge blocked if TrustLint reports critical/high EU violations on
+    docs/spec/**/*_intent.yaml or docs/cursor-rules/**/*.mdc.
+
+agent_rules_block:
+  cursorrules_format: |
+    # <BEGIN-COMPLYEDGE v1.0>
+    # ==============================================================================
+    # ComplyEdge TrustLint — EU AI Act compliance gate (offline / free tier)
+    # ==============================================================================
+    # Source: horizon/recipes/compliance-trustlint.yaml v1.0
+    # Tool: pip install 'trustlint>=2.0.1' · https://complyedge.io
+
+    ## ComplyEdge Rule CE-1: TrustLint after intent / agent-rule edits
+
+    After editing `docs/spec/*_intent.yaml` or `docs/cursor-rules/horizon-monitor.mdc`:
+
+    1. RUN `./scripts/compliance/check.sh` (or `trustlint check <file> -j EU`)
+       on every changed LLM-facing artifact BEFORE declaring the work done.
+    2. If TrustLint reports critical/high violations — FIX the content, re-run until clean.
+    3. Do NOT embed `COMPLYEDGE_API_KEY` or call `trustlint scan` unless the
+       user explicitly opts into BYOK cloud audit.
+
+    CI enforces the same gate on push/PR — local check is not optional ergonomics.
+    # <END-COMPLYEDGE v1.0>
+
+block_markers:
+  begin: "<BEGIN-COMPLYEDGE v1.0>"
+  end: "<END-COMPLYEDGE v1.0>"
+
+install_targets:
+  cursor: "docs/cursor-rules/horizon-monitor.mdc"
+
+repo_files:
+  config: ".trustlint.yaml"
+  check_script: "scripts/compliance/check.sh"
+  ci_workflow: ".github/workflows/ci.yml"
+
+integrations:
+  - pattern: "IVD compliance-trustlint (Customer #0 phase 1)"
+    relationship: "Same offline CLI + CI architecture; Horizon is phase 2 OSS proof."
+
+  - pattern: "complyedge-platform/docs/development/oss-trustlint-adoption-guide.md"
+    relationship: "CE canonical adoption guide — IVD reference + Horizon variant."
+
+changelog:
+  - version: "1.0"
+    date: "2026-07-05"
+    change: "Initial Horizon gate — intent + .mdc scan; CI compliance job."

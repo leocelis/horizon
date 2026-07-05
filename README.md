@@ -446,7 +446,20 @@ pytest tests/ -v                         # full suite
 pytest tests/unit tests/integration tests/e2e -v   # fast path (~6 min)
 ruff check src/ tests/
 black --check src/ tests/
+./scripts/compliance/check.sh              # EU AI Act offline gate (Customer #0 phase 2)
 ```
+
+### ComplyEdge TrustLint — EU AI Act (Customer #0 phase 2)
+
+Horizon dogfoods **[ComplyEdge](https://complyedge.io)** offline TrustLint on LLM-facing artifacts — same REUSE CLI + CI pattern as [IVD](https://github.com/leocelis/ivd).
+
+| Layer | What |
+|-------|------|
+| **Offline (required)** | `./scripts/compliance/check.sh` — scans `horizon_intent.yaml` + `horizon-monitor.mdc` |
+| **CI gate** | `.github/workflows/ci.yml` job `compliance` |
+| **Agent rule** | `<BEGIN-COMPLYEDGE v1.0>` in `docs/cursor-rules/horizon-monitor.mdc` |
+
+Runtime badge and trust page live on the IVD tenant (`trust.complyedge.io/ivd`). Canon: [`docs/COMPLYEDGE_CUSTOMER0.md`](docs/COMPLYEDGE_CUSTOMER0.md). CE adoption guide: [`oss-trustlint-adoption-guide.md`](https://github.com/ComplyEdge/complyedge-platform/blob/main/docs/development/oss-trustlint-adoption-guide.md).
 
 ---
 

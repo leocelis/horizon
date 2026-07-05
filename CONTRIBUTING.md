@@ -66,6 +66,20 @@ See [`docs/reviews/V0_2_0_EVIDENCE.md`](docs/reviews/V0_2_0_EVIDENCE.md) and
 [CONTRIBUTING.md](CONTRIBUTING.md) for validation reproduction recipes.
 Third-party downloads live under `data/` (gitignored).
 
+## EU AI Act compliance (ComplyEdge TrustLint)
+
+Horizon scans **LLM-facing** artifacts only (`docs/spec/*_intent.yaml`,
+`docs/cursor-rules/*.mdc`) with offline TrustLint — no API key in repo.
+
+```bash
+pip install 'trustlint>=2.0.1'
+./scripts/compliance/check.sh
+```
+
+CI job `compliance` runs the same gate on every push/PR. Recipe:
+`recipes/compliance-trustlint.yaml`. Operator canon: [`docs/COMPLYEDGE_CUSTOMER0.md`](docs/COMPLYEDGE_CUSTOMER0.md).
+CE OSS adoption guide: `complyedge-platform/docs/development/oss-trustlint-adoption-guide.md`.
+
 ## Code style
 
 - `ruff` for linting (`ruff check src tests`)
@@ -76,6 +90,7 @@ Third-party downloads live under `data/` (gitignored).
 
 - [ ] Tests added or updated for the change
 - [ ] `pytest` passes locally
+- [ ] `./scripts/compliance/check.sh` passes when LLM-facing YAML or `.mdc` changed
 - [ ] `ruff check` passes
 - [ ] Public API changes documented in `CHANGELOG.md` (under `[Unreleased]`)
 - [ ] No outbound network calls added to the core library (privacy constraint)

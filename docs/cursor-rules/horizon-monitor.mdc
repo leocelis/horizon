@@ -51,3 +51,23 @@ the duplication that occurs when calling it mid-stream or at the end of a turn.
 **Safe to auto-run:** `new_conversation`, `process_turn`
 
 **Requires explicit user request — never call automatically:** `configure_session`
+
+# <BEGIN-COMPLYEDGE v1.0>
+# ==============================================================================
+# ComplyEdge TrustLint — EU AI Act compliance gate (offline / free tier)
+# ==============================================================================
+# Source: horizon/recipes/compliance-trustlint.yaml v1.0
+# Tool: pip install 'trustlint>=2.0.1' · https://complyedge.io
+
+## ComplyEdge Rule CE-1: TrustLint after intent / agent-rule edits
+
+After editing `docs/spec/*_intent.yaml` or `docs/cursor-rules/horizon-monitor.mdc`:
+
+1. RUN `./scripts/compliance/check.sh` (or `trustlint check <file> -j EU`)
+   on every changed LLM-facing artifact BEFORE declaring the work done.
+2. If TrustLint reports critical/high violations — FIX the content, re-run until clean.
+3. Do NOT embed `COMPLYEDGE_API_KEY` or call `trustlint scan` unless the
+   user explicitly opts into BYOK cloud audit.
+
+CI enforces the same gate on push/PR — local check is not optional ergonomics.
+# <END-COMPLYEDGE v1.0>

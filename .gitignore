@@ -50,3 +50,6 @@ horizon.db
 data/external_raw/*.parquet
 data/ood_corpus/
 
+# TrustLint rules bootstrap cache (offline EU gate)
+.trustlint-cache/
+

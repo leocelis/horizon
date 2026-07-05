@@ -12,3 +12,6 @@ numpy<2
 
 # Third-party corpus adapters (MT-Bench parquet on Hugging Face)
 pyarrow>=15.0.0
+
+# EU AI Act offline compliance gate (scripts/compliance/check.sh + CI)
+trustlint>=2.0.1
