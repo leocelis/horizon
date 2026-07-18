@@ -2,7 +2,7 @@
 
 Public API::
 
-    from horizon import FidelityMonitor, Config
+    from horizon_monitor import FidelityMonitor, Config
 
     monitor = FidelityMonitor()
     session_id = monitor.new_conversation(metadata={"domain": "technical"})
@@ -16,14 +16,16 @@ Public API::
     print(result.events)
 """
 
-from horizon.config import Config
-from horizon.engines.embedding import EmbeddingModelError
-from horizon.grounding import (
+from importlib.metadata import PackageNotFoundError, version
+
+from horizon_monitor.config import Config
+from horizon_monitor.engines.embedding import EmbeddingModelError
+from horizon_monitor.grounding import (
     GroundingHookError,
     GroundingResult,
     ToolHook,
 )
-from horizon.models import (
+from horizon_monitor.models import (
     ConfigResult,
     ConfigWarning,
     Event,
@@ -33,9 +35,15 @@ from horizon.models import (
     TemporalReference,
     TurnResult,
 )
-from horizon.monitor import FidelityMonitor, SessionNotFoundError
+from horizon_monitor.monitor import FidelityMonitor, SessionNotFoundError
 
-__version__ = "0.2.0"
+try:
+    __version__ = version("horizon-monitor")
+except PackageNotFoundError:
+    # Not installed as a package (e.g. running from a source checkout
+    # without `pip install -e .`) — avoid hand-duplicating the version
+    # that lives in pyproject.toml.
+    __version__ = "0.0.0+unknown"
 
 __all__ = [
     "FidelityMonitor",

@@ -15,13 +15,13 @@ explicit assertion that a unmocked monitor never invokes a hook).
 
 from __future__ import annotations
 
-from horizon import (
+from horizon_monitor import (
     Config,
     FidelityMonitor,
     GroundingHookError,
     GroundingResult,
 )
-from horizon.grounding import call_hook, estimate_grounding_need
+from horizon_monitor.grounding import call_hook, estimate_grounding_need
 
 
 def test_estimate_grounding_need_zero_for_empty_draft() -> None:
@@ -78,12 +78,8 @@ def test_register_grounding_hook_triggers_event_and_evidence() -> None:
 
     assert len(calls) == 1, "hook should be invoked when grounding-need crosses threshold"
     assert result.grounding_need >= 0.5
-    assert result.grounding_evidence == [
-        "postgres docs §14.4: pg_prewarm warms the buffer cache"
-    ]
-    assert result.grounding_sources == [
-        "https://www.postgresql.org/docs/current/pgprewarm.html"
-    ]
+    assert result.grounding_evidence == ["postgres docs §14.4: pg_prewarm warms the buffer cache"]
+    assert result.grounding_sources == ["https://www.postgresql.org/docs/current/pgprewarm.html"]
     assert any(e.type == "signal.grounding_required" for e in result.events)
 
 

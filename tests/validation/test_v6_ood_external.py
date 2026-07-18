@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 from tests.validation._helpers import load_jsonl
 
 # Lenient floor: OOD correlation is expected to degrade vs in-domain (V1 uses

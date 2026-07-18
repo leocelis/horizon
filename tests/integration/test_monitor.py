@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from horizon import Config, FidelityMonitor
+from horizon_monitor import Config, FidelityMonitor
 from tests.conftest import (
     TIMESTAMP_1,
     TIMESTAMP_2,
@@ -109,7 +109,7 @@ def test_sqlite_persistence() -> None:
     import os
     import tempfile
 
-    from horizon.storage.sqlite import PersistentDynamicsStore
+    from horizon_monitor.storage.sqlite import PersistentDynamicsStore
 
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = os.path.join(tmpdir, "test.db")
@@ -146,7 +146,7 @@ def test_openai_wrap_with_timestamp_and_context_providers() -> None:
     import types
     from datetime import datetime, timedelta, timezone
 
-    from horizon.integrations.openai import HorizonWrappedOpenAI
+    from horizon_monitor.integrations.openai import HorizonWrappedOpenAI
 
     canned_replies = [
         "Python uses reference counting plus a cyclic garbage collector for reference cycles.",

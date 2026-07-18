@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from horizon.config import Config
-from horizon.session import Session
+from horizon_monitor.config import Config
+from horizon_monitor.session import Session
 
 
 def _on_topic_igt(igt: float, consistency: float) -> float:
@@ -117,13 +117,10 @@ def compute_health(
     # disqualifies convergence.
     if (
         igt_trend < config.convergence_threshold
-        and session.turn_count + (1 if current_igt is not None else 0)
-        >= config.convergence_window
+        and session.turn_count + (1 if current_igt is not None else 0) >= config.convergence_window
     ):
         prior_igt = [t.igt_value for t in session.turns[-(config.convergence_window - 1) :]]
-        recent_igt = (
-            prior_igt + [current_igt] if current_igt is not None else prior_igt
-        )
+        recent_igt = prior_igt + [current_igt] if current_igt is not None else prior_igt
         recent_igt = recent_igt[-config.convergence_window :]
         if all(v < config.convergence_igt_ceiling for v in recent_igt):
             return "converged"

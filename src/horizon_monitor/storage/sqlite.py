@@ -283,13 +283,11 @@ class PersistentDynamicsStore:
             if session_ids:
                 placeholders = ",".join("?" * len(session_ids))
                 conn.execute(
-                    "DELETE FROM turn_snapshots"
-                    f" WHERE session_id IN ({placeholders})",
+                    "DELETE FROM turn_snapshots" f" WHERE session_id IN ({placeholders})",
                     session_ids,
                 )
                 conn.execute(
-                    "DELETE FROM sessions"
-                    f" WHERE session_id IN ({placeholders})",
+                    "DELETE FROM sessions" f" WHERE session_id IN ({placeholders})",
                     session_ids,
                 )
             conn.execute(

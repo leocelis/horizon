@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 
 # ── Heuristic baselines ──────────────────────────────────────────────────────
 #

@@ -22,7 +22,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 
 
 def print_turn_summary(turn_idx: int, human: str, agent: str, result: Any) -> None:

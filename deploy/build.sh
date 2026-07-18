@@ -62,7 +62,7 @@ PY
 
 echo ""
 echo "[build:3/4] Verifying horizon package..."
-python -c "from horizon import __version__; print(f'  horizon-monitor {__version__}  OK')"
+python -c "from horizon_monitor import __version__; print(f'  horizon-monitor {__version__}  OK')"
 
 # ---------------------------------------------------------------------------
 # 4. Verify the MCP server and auth modules import cleanly
@@ -71,11 +71,11 @@ python -c "from horizon import __version__; print(f'  horizon-monitor {__version
 echo ""
 echo "[build:4/4] Verifying MCP server imports..."
 python - <<'PY'
-from horizon.mcp.server import create_app
-from horizon.mcp.auth import HorizonAuthMiddleware, generate_api_key
+from horizon_monitor.mcp.server import create_app
+from horizon_monitor.mcp.auth import HorizonAuthMiddleware, generate_api_key
 app = create_app()
-print("  horizon.mcp.server  OK")
-print("  horizon.mcp.auth    OK")
+print("  horizon_monitor.mcp.server  OK")
+print("  horizon_monitor.mcp.auth    OK")
 PY
 
 echo ""

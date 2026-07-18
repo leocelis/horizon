@@ -17,10 +17,13 @@ from __future__ import annotations
 
 import contextvars
 import hashlib
+import hmac
 import logging
 import os
 import secrets
-from typing import Optional, Tuple
+
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 # ── Per-request context: key_id of the currently authenticated caller ─────────
 # Set by HorizonAuthMiddleware after successful auth; read by tool handlers
@@ -30,10 +33,7 @@ current_key_id: contextvars.ContextVar[str] = contextvars.ContextVar(
     "horizon_current_key_id", default="local"
 )
 
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-
-_log = logging.getLogger("horizon.mcp.auth")
+_log = logging.getLogger("horizon_monitor.mcp.auth")
 
 # ── Key store ─────────────────────────────────────────────────────────────────
 
@@ -84,40 +84,75 @@ class HorizonAuthMiddleware:
 # ── Validation helpers ────────────────────────────────────────────────────────
 
 
-def _extract_and_validate(scope) -> Tuple[Optional[dict], Optional[str]]:
+def _extract_and_validate(scope) -> tuple[dict | None, str | None]:
     """
     Extract and validate the Bearer token from scope headers.
+
+    Fails closed: if the server has no HORIZON_API_KEYS configured, every
+    request is rejected (a clear 401 config error) unless the operator has
+    explicitly opted into HORIZON_AUTH_DISABLED=true for local dev. This
+    mirrors HorizonAuthMiddleware / validate_api_key, which already check
+    AUTH_DISABLED before reaching this function — checked again here so this
+    function is safe to call on its own.
 
     Returns:
         (error_body, key_id) — error_body is None on success.
     """
+    path = scope.get("path", "")
+
+    if not VALID_API_KEYS and not AUTH_DISABLED:
+        _log.warning("AUTH  no_keys_configured  path=%s  — rejecting (fail-closed)", path)
+        return {
+            "error": (
+                "Server has no API keys configured (HORIZON_API_KEYS is unset). "
+                "Refusing all requests. Set HORIZON_API_KEYS, or "
+                "HORIZON_AUTH_DISABLED=true for local dev only."
+            )
+        }, None
+
     headers: dict[bytes, bytes] = dict(scope.get("headers", []))
     raw_auth: str = headers.get(b"authorization", b"").decode("utf-8", errors="replace")
 
     if not raw_auth:
-        _log.warning("AUTH  missing_header  path=%s", scope.get("path", ""))
+        _log.warning("AUTH  missing_header  path=%s", path)
         return {"error": "Missing Authorization header"}, None
 
     if not raw_auth.startswith("Bearer "):
-        _log.warning("AUTH  bad_format  path=%s", scope.get("path", ""))
+        _log.warning("AUTH  bad_format  path=%s", path)
         return {"error": "Invalid Authorization header. Expected: Bearer <token>"}, None
 
     api_key = raw_auth[7:].strip()
 
     if not api_key:
-        _log.warning("AUTH  empty_key  path=%s", scope.get("path", ""))
+        _log.warning("AUTH  empty_key  path=%s", path)
         return {"error": "Empty API key"}, None
 
-    if not VALID_API_KEYS:
-        # No keys configured at all — allow (mirrors local dev behaviour).
-        _log.warning("AUTH  no_keys_configured  path=%s  — allowing", scope.get("path", ""))
+    if AUTH_DISABLED and not VALID_API_KEYS:
+        # Explicit dev-mode opt-in with no keys configured — allow.
+        _log.warning(
+            "AUTH  no_keys_configured  path=%s  — allowed (HORIZON_AUTH_DISABLED=true)", path
+        )
         return None, "unconfigured"
 
-    if api_key not in VALID_API_KEYS:
-        _log.warning("AUTH  invalid_key  key_prefix=%s  path=%s", api_key[:8], scope.get("path", ""))
+    if not _key_matches(api_key):
+        _log.warning("AUTH  invalid_key  key_prefix=%s  path=%s", api_key[:8], path)
         return {"error": "Invalid API key"}, None
 
     return None, _key_id(api_key)
+
+
+def _key_matches(candidate: str) -> bool:
+    """Constant-time membership check of `candidate` against VALID_API_KEYS.
+
+    Uses hmac.compare_digest per key (and never short-circuits early) instead
+    of `candidate in VALID_API_KEYS`, so comparison time does not vary with
+    which key matched or how many leading characters two keys share.
+    """
+    matched = False
+    for valid_key in VALID_API_KEYS:
+        if hmac.compare_digest(candidate, valid_key):
+            matched = True
+    return matched
 
 
 def _key_id(api_key: str) -> str:
@@ -128,7 +163,7 @@ def _key_id(api_key: str) -> str:
 # ── Starlette route-level helper (used by deploy/wsgi.py) ─────────────────────
 
 
-async def validate_api_key(request: Request) -> Tuple[Optional[JSONResponse], Optional[str]]:
+async def validate_api_key(request: Request) -> tuple[JSONResponse | None, str | None]:
     """
     Validate the API key from a Starlette Request object.
 

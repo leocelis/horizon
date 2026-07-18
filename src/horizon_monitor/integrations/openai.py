@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
-from horizon.models import TurnResult
-from horizon.monitor import FidelityMonitor
+from horizon_monitor.models import TurnResult
+from horizon_monitor.monitor import FidelityMonitor
+
+_log = logging.getLogger(__name__)
 
 TimestampProvider = Callable[[], str | None]
 """Callable returning an ISO 8601 timestamp (or None to disable temporal signals)."""
@@ -25,7 +28,7 @@ class HorizonWrappedOpenAI:
     Usage::
 
         from openai import OpenAI
-        from horizon import FidelityMonitor
+        from horizon_monitor import FidelityMonitor
 
         monitor = FidelityMonitor()
         session_id = monitor.new_conversation()
@@ -186,8 +189,11 @@ class _WrappedCompletions:
                 logprobs=logprobs,
             )
             self._wrapper.last_result = result
-        except Exception:
-            pass
+        except Exception as exc:
+            # Monitoring must never break the wrapped LLM call — the response
+            # has already been returned to the caller by the time this runs.
+            # Log loudly instead of swallowing so failures are visible.
+            _log.warning("horizon monitoring failed: %s", exc, exc_info=True)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._completions, name)

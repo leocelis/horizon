@@ -7,13 +7,13 @@ and add no runtime cost.
 
 from __future__ import annotations
 
-from horizon.analysis.interventional_ab import (
+from horizon_monitor.analysis.interventional_ab import (
     DEFAULT_ACTIONABLE,
     OUTCOME_METRIC,
     run_interventional_ab,
     sign_test,
 )
-from horizon.analysis.leading_indicator import (
+from horizon_monitor.analysis.leading_indicator import (
     EventLeadStats,
     LeadingIndicatorReport,
     analyze_leading_indicator,

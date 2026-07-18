@@ -31,7 +31,7 @@ def _load_script(name: str):
 
 
 def test_analysis_package_exports() -> None:
-    import horizon.analysis as analysis
+    import horizon_monitor.analysis as analysis
 
     for name in (
         "analyze_leading_indicator",
@@ -49,7 +49,9 @@ def test_analysis_package_exports() -> None:
 # ── CLI scripts (Fix 3) ───────────────────────────────────────────────────────
 
 
-def test_measure_leading_indicator_demo_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_measure_leading_indicator_demo_cli(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     mli = _load_script("measure_leading_indicator")
     out = tmp_path / "leading_demo.json"
     monkeypatch.setattr(
@@ -97,7 +99,7 @@ def test_run_interventional_ab_demo_cli(tmp_path: Path, monkeypatch: pytest.Monk
 def test_interventional_ab_demo_reproduces_committed_artifact() -> None:
     """Demo CLI must match the checked-in evidence artifact (deterministic demo)."""
     committed = json.loads((REVIEWS / "interventional_ab_demo.json").read_text(encoding="utf-8"))
-    from horizon.analysis.interventional_ab import DEFAULT_ACTIONABLE, run_interventional_ab
+    from horizon_monitor.analysis.interventional_ab import DEFAULT_ACTIONABLE, run_interventional_ab
 
     ab_mod = _load_script("run_interventional_ab")
     result = run_interventional_ab(ab_mod._demo_conversations(), set(DEFAULT_ACTIONABLE))
@@ -123,10 +125,7 @@ def test_committed_evidence_artifacts(name: str) -> None:
     data = json.loads((REVIEWS / name).read_text(encoding="utf-8"))
     assert "caveat" in data
     caveat = data["caveat"].lower()
-    assert any(
-        word in caveat
-        for word in ("production", "synthetic", "intervention", "corpus")
-    )
+    assert any(word in caveat for word in ("production", "synthetic", "intervention", "corpus"))
 
 
 def test_leading_indicator_artifact_shape() -> None:
@@ -156,10 +155,19 @@ def test_requirements_dev_has_ml_pins() -> None:
 # ── landing / social preview (Fix 1 + honest claims) ─────────────────────────
 
 
+def test_docs_index_is_redirect_stub() -> None:
+    """docs/index.html is a plain redirect to the canonical docs/site/ landing page."""
+    text = (ROOT / "docs" / "index.html").read_text(encoding="utf-8").lower()
+    assert 'http-equiv="refresh"' in text
+    assert "site/index.html" in text
+    # The stub must not carry marketing claims of its own.
+    assert "+15.7%" not in text
+
+
 @pytest.mark.parametrize(
     "path",
-    [ROOT / "docs" / "index.html", ROOT / "docs" / "site" / "index.html"],
-    ids=["docs-index", "site-index"],
+    [ROOT / "docs" / "site" / "index.html"],
+    ids=["site-index"],
 )
 def test_landing_og_meta_no_uncaveated_lift(path: Path) -> None:
     text = path.read_text(encoding="utf-8").lower()
@@ -171,8 +179,8 @@ def test_landing_og_meta_no_uncaveated_lift(path: Path) -> None:
 
 @pytest.mark.parametrize(
     "path",
-    [ROOT / "docs" / "index.html", ROOT / "docs" / "site" / "index.html"],
-    ids=["docs-index", "site-index"],
+    [ROOT / "docs" / "site" / "index.html"],
+    ids=["site-index"],
 )
 def test_landing_stats_label_synthetic(path: Path) -> None:
     text = path.read_text(encoding="utf-8").lower()

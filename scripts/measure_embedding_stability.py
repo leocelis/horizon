@@ -26,7 +26,7 @@ from pathlib import Path
 
 import numpy as np
 
-from horizon import Config, FidelityMonitor
+from horizon_monitor import Config, FidelityMonitor
 
 # Local-only sentence-transformers backends — no network at inference time
 # beyond the initial model download. Each is downloaded once and cached.

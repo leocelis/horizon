@@ -34,6 +34,7 @@ which is also used by [arize-phoenix](https://github.com/Arize-ai/phoenix),
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt
+pip install -e ".[mcp]"
 ```
 
 The editable install is required because `src/` layout prevents accidental
@@ -62,9 +63,9 @@ Validation gates in `tests/validation/` auto-skip unless env vars point to local
 | `HORIZON_VALIDATION_DATA` | V1/V2/V3/V5 + leading indicator | `python scripts/build_validation_corpus.py --out data/validation_corpus` (synthetic), or adapt a third-party corpus |
 | `HORIZON_OOD_DATA` | V6 OOD ρ | `python scripts/adapt_external_corpus.py --format mt-bench-human --in data/external_raw/mt_bench_human.parquet --out data/ood_corpus --limit 80` |
 
-See [`docs/reviews/V0_2_0_EVIDENCE.md`](docs/reviews/V0_2_0_EVIDENCE.md) and
-[CONTRIBUTING.md](CONTRIBUTING.md) for validation reproduction recipes.
-Third-party downloads live under `data/` (gitignored).
+See [`docs/reviews/V0_2_0_EVIDENCE.md`](docs/reviews/V0_2_0_EVIDENCE.md) for
+validation reproduction recipes. Third-party downloads live under `data/`
+(gitignored).
 
 ## EU AI Act compliance (ComplyEdge TrustLint)
 

@@ -11,7 +11,7 @@ CURSOR_RULE = ROOT / "docs" / "cursor-rules" / "horizon-monitor.mdc"
 
 
 def _load_server_instructions() -> str:
-    from horizon.mcp import server as mcp_server
+    from horizon_monitor.mcp import server as mcp_server
 
     return mcp_server._INSTRUCTIONS
 
@@ -51,7 +51,9 @@ def test_mcp_instructions_match_cursor_rule(phrase: str) -> None:
 
 
 def test_process_turn_tool_description_uses_deferred_wording() -> None:
-    source = (ROOT / "src" / "horizon" / "mcp" / "server.py").read_text(encoding="utf-8").lower()
+    source = (
+        (ROOT / "src" / "horizon_monitor" / "mcp" / "server.py").read_text(encoding="utf-8").lower()
+    )
     assert "deferred recording" in source
     assert "previous turn" in source
     assert "call after every round-trip" not in source

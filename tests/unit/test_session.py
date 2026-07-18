@@ -6,7 +6,7 @@ import uuid
 
 import pytest
 
-from horizon import FidelityMonitor, SessionNotFoundError
+from horizon_monitor import FidelityMonitor, SessionNotFoundError
 from tests.conftest import TURN_1_AGENT, TURN_1_HUMAN
 
 

@@ -49,7 +49,10 @@ PRD = ROOT / "docs" / "product" / "THCP_FIDELITY_MONITOR_PRD.md"
 
 CONTENT_MARKETING = [
     ROOT / "docs" / "content" / "naming-the-category-conversation-dynamics-monitoring.md",
-    ROOT / "docs" / "content" / "why-every-production-agent-needs-conversation-dynamics-monitoring.md",
+    ROOT
+    / "docs"
+    / "content"
+    / "why-every-production-agent-needs-conversation-dynamics-monitoring.md",
 ]
 
 
@@ -122,7 +125,9 @@ def test_readme_has_empirical_and_metaphor_framing() -> None:
 def test_interval_docstring_labels_metaphor() -> None:
     """The spacetime interval source must flag itself as metaphor + metadata-only."""
     text = (
-        (ROOT / "src" / "horizon" / "spacetime" / "interval.py").read_text(encoding="utf-8").lower()
+        (ROOT / "src" / "horizon_monitor" / "spacetime" / "interval.py")
+        .read_text(encoding="utf-8")
+        .lower()
     )
     assert "metaphor" in text
     assert "metadata only" in text
@@ -130,7 +135,7 @@ def test_interval_docstring_labels_metaphor() -> None:
 
 def test_light_cone_docstring_labels_metaphor() -> None:
     text = (
-        (ROOT / "src" / "horizon" / "spacetime" / "light_cone.py")
+        (ROOT / "src" / "horizon_monitor" / "spacetime" / "light_cone.py")
         .read_text(encoding="utf-8")
         .lower()
     )

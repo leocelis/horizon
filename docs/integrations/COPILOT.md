@@ -1,5 +1,11 @@
 # Horizon with GitHub Copilot
 
+> **Experimental — recipe, not a working integration yet.** Pattern 1 below is
+> pseudocode against a VS Code Copilot Chat API surface that is still
+> evolving; it has not been built or tested end-to-end. Patterns 2 and 3 use
+> only stable, documented interfaces (Horizon's own API and generic gateway
+> hooks) and are safe to build against today.
+
 Copilot itself doesn't call external tools during chat, but you can still
 monitor Copilot-driven conversations through three patterns.
 
@@ -42,7 +48,7 @@ Copilot writes transcripts to VS Code's telemetry output. Collect them (with
 user consent) and replay through Horizon:
 
 ```python
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 
 monitor = FidelityMonitor()
 sid = monitor.new_conversation(metadata={"source": "copilot_log"})

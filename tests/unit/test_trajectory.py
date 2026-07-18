@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from horizon import FidelityMonitor, FidelityTrajectory
+from horizon_monitor import FidelityMonitor, FidelityTrajectory
 from tests.conftest import (
     TIMESTAMP_1,
     TIMESTAMP_2,

@@ -22,8 +22,8 @@ from pathlib import Path
 
 import pytest
 
-from horizon import FidelityMonitor
-from horizon.spacetime.spatial import infer_location_class
+from horizon_monitor import FidelityMonitor
+from horizon_monitor.spacetime.spatial import infer_location_class
 
 pytest.importorskip("geoip2")
 
@@ -59,9 +59,7 @@ def _require_fixtures() -> None:
 def test_geoip_high_precision_returns_inferred(ip: str, expected: str) -> None:
     """Real lookup against the City DB must classify high-precision records
     as ``inferred``."""
-    loc = infer_location_class(
-        {"ip_address": ip, "geoip_db_path": str(CITY_DB)}
-    )
+    loc = infer_location_class({"ip_address": ip, "geoip_db_path": str(CITY_DB)})
     assert loc == expected, (
         f"IP {ip} resolved to {loc!r} (expected {expected!r}) — "
         "the spatial pipeline may have regressed against real MaxMind data."
@@ -82,9 +80,7 @@ def test_geoip_high_precision_returns_inferred(ip: str, expected: str) -> None:
 def test_geoip_low_precision_returns_unknown(ip: str) -> None:
     """Real lookup against the City DB must reject records whose accuracy
     radius exceeds the 100 km cut-off."""
-    loc = infer_location_class(
-        {"ip_address": ip, "geoip_db_path": str(CITY_DB)}
-    )
+    loc = infer_location_class({"ip_address": ip, "geoip_db_path": str(CITY_DB)})
     assert loc == "unknown", (
         f"IP {ip} resolved to {loc!r} (expected 'unknown') — "
         "the accuracy-radius gate may be miscalibrated."
@@ -94,9 +90,7 @@ def test_geoip_low_precision_returns_unknown(ip: str) -> None:
 def test_geoip_unknown_address_falls_back_to_unknown() -> None:
     """Real ``AddressNotFoundError`` from the City DB must collapse to
     ``unknown`` (fail-soft contract)."""
-    loc = infer_location_class(
-        {"ip_address": "203.0.113.99", "geoip_db_path": str(CITY_DB)}
-    )
+    loc = infer_location_class({"ip_address": "203.0.113.99", "geoip_db_path": str(CITY_DB)})
     assert loc == "unknown"
 
 
@@ -176,9 +170,9 @@ def test_geoip_real_lookup_flows_into_monitor_result() -> None:
         timestamp="2026-04-25T15:00:00+00:00",
     )
 
-    assert result.location_class == "inferred", (
-        f"Real-DB IP did not propagate: location_class={result.location_class!r}"
-    )
+    assert (
+        result.location_class == "inferred"
+    ), f"Real-DB IP did not propagate: location_class={result.location_class!r}"
     # Spatial constraint must be derived from (device_type, location_class)
     # — i.e. the GeoIP result actively shapes downstream signals.
     assert result.spatial_constraint is not None

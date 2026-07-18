@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 
 
 def _build_session_with_turns(turns: int = 3) -> tuple[FidelityMonitor, str]:
@@ -40,7 +40,7 @@ def test_json_export() -> None:
 
 def test_export_json_is_serializable() -> None:
     """The JSON payload exposed by get_json_data round-trips through json.dumps."""
-    from horizon.integrations.export import get_json_data
+    from horizon_monitor.integrations.export import get_json_data
 
     monitor, sid = _build_session_with_turns(2)
     session = monitor._sessions[sid]
@@ -99,7 +99,7 @@ def test_export_arize_is_registered_target() -> None:
 
 def test_export_after_multi_turn_session_includes_all_events() -> None:
     """Every event emitted during the conversation must appear in the export."""
-    from horizon.integrations.export import get_json_data
+    from horizon_monitor.integrations.export import get_json_data
 
     monitor, sid = _build_session_with_turns(3)
     payload = get_json_data(monitor._sessions[sid])

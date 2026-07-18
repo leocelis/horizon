@@ -17,8 +17,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from horizon import FidelityMonitor
-from horizon.integrations.openai import HorizonWrappedOpenAI
+from horizon_monitor import FidelityMonitor
+from horizon_monitor.integrations.openai import HorizonWrappedOpenAI
 
 
 def _wrap(monitor: FidelityMonitor, client: object, sid: str) -> HorizonWrappedOpenAI:

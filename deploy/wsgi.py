@@ -33,15 +33,15 @@ for _p in (_repo, _src):
 # ── Env: signal production mode so server.py logs to stdout ──────────────────
 os.environ.setdefault("HORIZON_ENV", "production")
 
-from horizon.mcp.auth import HorizonAuthMiddleware  # noqa: E402
-from horizon.mcp.server import create_app           # noqa: E402
+from horizon_monitor.mcp.auth import HorizonAuthMiddleware  # noqa: E402
+from horizon_monitor.mcp.server import create_app           # noqa: E402
 
 import uvicorn                                       # noqa: E402
 from starlette.applications import Starlette         # noqa: E402
 from starlette.responses import JSONResponse         # noqa: E402
 from starlette.routing import Mount, Route           # noqa: E402
 
-from horizon import __version__                      # noqa: E402
+from horizon_monitor import __version__                      # noqa: E402
 
 
 # ── Workaround: auto-initialize SSE sessions skipped by Cursor's CallMcpTool ──
@@ -102,7 +102,7 @@ def build_app():
     # seconds, not minutes.
     def _bg_preload() -> None:
         try:
-            from horizon.mcp.server import _get_monitor as _get_horizon_monitor
+            from horizon_monitor.mcp.server import _get_monitor as _get_horizon_monitor
             report = _get_horizon_monitor().preload_models()
             print(f"[Horizon MCP] Model preloaded: {report}", flush=True)
         except Exception as exc:

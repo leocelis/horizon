@@ -9,7 +9,7 @@ from __future__ import annotations
 import socket
 from unittest.mock import patch
 
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 
 
 class OutboundNetworkError(AssertionError):

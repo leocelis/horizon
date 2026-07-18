@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from horizon import Config, FidelityMonitor
+from horizon_monitor import Config, FidelityMonitor
 from tests.conftest import TIMESTAMP_1, TIMESTAMP_DAYS_LATER, TURN_1_AGENT, TURN_1_HUMAN
 
 ALL_EVENT_TYPES = {

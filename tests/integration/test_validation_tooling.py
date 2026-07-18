@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 
 SCRIPTS = Path(__file__).resolve().parents[2] / "scripts"
 
@@ -130,7 +130,7 @@ def test_adapt_skips_unrated_and_normalizes_scale() -> None:
 
 
 def test_interventional_ab_runs_and_reports() -> None:
-    from horizon.analysis.interventional_ab import DEFAULT_ACTIONABLE, run_interventional_ab
+    from horizon_monitor.analysis.interventional_ab import DEFAULT_ACTIONABLE, run_interventional_ab
 
     convo = [
         {
@@ -158,7 +158,7 @@ def test_interventional_ab_runs_and_reports() -> None:
 
 
 def test_sign_test_math() -> None:
-    from horizon.analysis.interventional_ab import sign_test
+    from horizon_monitor.analysis.interventional_ab import sign_test
 
     wins, losses, p = sign_test([0.1, 0.2, 0.3, 0.4, 0.5])
     assert (wins, losses) == (5, 0)

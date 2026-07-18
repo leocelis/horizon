@@ -43,7 +43,7 @@ pip install 'horizon-monitor[mcp]'
 
 Verify:
 ```bash
-python -m horizon.mcp.server --help 2>/dev/null || python -c "from horizon.mcp.server import mcp; print('OK', mcp.name)"
+python -m horizon_monitor.mcp.server --help 2>/dev/null || python -c "from horizon_monitor.mcp.server import mcp; print('OK', mcp.name)"
 ```
 
 Add to `~/.cursor/mcp.json` — replace the Python path with your actual venv or system Python:
@@ -53,7 +53,7 @@ Add to `~/.cursor/mcp.json` — replace the Python path with your actual venv or
   "mcpServers": {
     "horizon": {
       "command": "/path/to/venv/bin/python",
-      "args": ["-m", "horizon.mcp.server"],
+      "args": ["-m", "horizon_monitor.mcp.server"],
       "env": {}
     }
   }
@@ -76,7 +76,7 @@ Useful when you want Horizon only in one project:
   "mcpServers": {
     "horizon": {
       "command": "${workspaceFolder}/.venv/bin/python",
-      "args": ["-m", "horizon.mcp.server"],
+      "args": ["-m", "horizon_monitor.mcp.server"],
       "env": {
         "PYTHONPATH": "${workspaceFolder}/src"
       }
@@ -184,7 +184,7 @@ Horizon stores embeddings and metrics — raw text is **never** persisted off-de
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `command not found` when using `horizon serve` | Script not installed | Use `python -m horizon.mcp.server` instead, or `pip install 'horizon-monitor[mcp]'` |
+| `command not found` when using `horizon serve` | Script not installed | Use `python -m horizon_monitor.mcp.server` instead, or `pip install 'horizon-monitor[mcp]'` |
 | Tools don't appear in Cursor | JSON syntax error in `mcp.json` | Run `python -m json.tool ~/.cursor/mcp.json` to validate |
 | First `process_turn` takes a few seconds | Model warming up in background thread after server start | Normal — subsequent calls are ≈100 ms; model stays warm in memory |
 | `ImportError: MCP support requires...` | Missing `[mcp]` extra | `pip install 'horizon-monitor[mcp]'` |

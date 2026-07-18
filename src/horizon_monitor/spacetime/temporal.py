@@ -2,8 +2,61 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
+
+
+class TimestampParseError(ValueError):
+    """Raised when a caller-supplied timestamp cannot be parsed as ISO 8601.
+
+    Horizon accepts ISO 8601 strings, including the trailing "Z" (Zulu/UTC)
+    suffix. This is raised instead of letting a bare ``ValueError`` /
+    ``TypeError`` propagate from ``datetime.fromisoformat`` or from mixing
+    naive and timezone-aware datetimes in subtraction.
+    """
+
+
+def parse_timestamp(ts: str) -> datetime:
+    """Parse a caller-supplied ISO 8601 timestamp into a UTC-aware datetime.
+
+    Normalizes two sources of fragility before delegating to
+    ``datetime.fromisoformat``:
+
+    - A trailing "Z" (Zulu/UTC suffix) is rewritten to "+00:00". Python's
+      ``fromisoformat`` only accepts a bare "Z" natively from 3.11 onward;
+      Horizon supports Python 3.10+, so a "Z"-suffixed timestamp would
+      otherwise raise ``ValueError`` on 3.10.
+    - A naive timestamp (no UTC offset) is treated as UTC and made
+      timezone-aware, so that later subtraction between two parsed
+      timestamps never raises ``TypeError`` from mixing naive and aware
+      datetimes (e.g. one turn logged with an offset, the next without).
+
+    Use this helper (not ``datetime.fromisoformat`` directly) everywhere a
+    timestamp arrives from ``process_turn`` input.
+
+    Raises:
+        TimestampParseError: if `ts` is not a valid ISO 8601 string even
+            after normalization.
+    """
+    if not isinstance(ts, str) or not ts.strip():
+        raise TimestampParseError(f"Timestamp must be a non-empty ISO 8601 string, got {ts!r}")
+
+    normalized = ts.strip()
+    if normalized[-1:] in ("Z", "z"):
+        normalized = normalized[:-1] + "+00:00"
+
+    try:
+        dt = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise TimestampParseError(
+            f"Could not parse timestamp {ts!r} as ISO 8601 "
+            f"(normalized form: {normalized!r}): {exc}"
+        ) from exc
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    return dt
 
 
 def compute_temporal_gap(
@@ -13,12 +66,15 @@ def compute_temporal_gap(
     """Compute seconds between two ISO 8601 timestamps and classify the gap.
 
     Returns (gap_seconds, gap_class).
+
+    Raises:
+        TimestampParseError: if either timestamp cannot be parsed.
     """
     if prev_ts is None:
         return 0.0, "realtime"
 
-    current = datetime.fromisoformat(current_ts)
-    prev = datetime.fromisoformat(prev_ts)
+    current = parse_timestamp(current_ts)
+    prev = parse_timestamp(prev_ts)
     gap = (current - prev).total_seconds()
 
     return gap, classify_gap(gap)

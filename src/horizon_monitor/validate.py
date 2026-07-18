@@ -10,7 +10,7 @@ Invoke via the installed console script::
 
 or directly::
 
-    python -m horizon.validate
+    python -m horizon_monitor.validate
 
 Exit code is 0 if every scenario behaves as expected, 1 otherwise. This is a
 "smoke test" for users to confirm that an installed copy of the library is
@@ -26,7 +26,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from horizon import Config, FidelityMonitor
+from horizon_monitor import Config, FidelityMonitor
 
 # ── Pretty-print helpers ──────────────────────────────────────────────────
 
@@ -349,7 +349,7 @@ def main() -> int:
     # Pre-load the embedding model so per-scenario timings exclude the cold-start cost.
     print("Loading embedding model...", end=" ", flush=True)
     t0 = time.perf_counter()
-    from horizon.engines.embedding import EmbeddingEngine
+    from horizon_monitor.engines.embedding import EmbeddingEngine
 
     EmbeddingEngine(model_name=Config().embedding_model).ensure_loaded()
     print(f"{GREEN}done{RESET} ({(time.perf_counter() - t0) * 1000:.0f}ms)")

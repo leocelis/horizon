@@ -1,32 +1,42 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+# setuptools>=77.0.3 required for the PEP 639 SPDX `license = "MIT"` string form
+# below (77.0.0 added license-expression support; 77.0.3 fixed the license-files
+# glob/import edge cases). Bumped from >=68 specifically to make that field safe.
+requires = ["setuptools>=77.0.3", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "horizon-monitor"
-version = "0.2.0"
+version = "0.2.1"
 description = "THCP Fidelity Monitor — 4D conversation dynamics for AI agents"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = "MIT"
 authors = [{name = "Leo Celis"}]
-keywords = ["ai", "conversation", "fidelity", "monitoring", "nlp", "spacetime"]
+keywords = ["ai", "conversation", "fidelity", "monitoring", "nlp", "spacetime", "mcp", "agent", "observability", "llm", "conversation-quality"]
 classifiers = [
+    "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
 dependencies = [
-    "sentence-transformers>=2.2.0",
-    "numpy>=1.24",
+    "sentence-transformers>=2.2.0,<3",
+    "transformers<5",
+    "numpy>=1.24,<2",
     "dateparser>=1.2.0",
     "tzlocal>=5.0",
 ]
+
+[project.urls]
+Homepage = "https://leocelis.github.io/horizon/"
+Repository = "https://github.com/leocelis/horizon"
+Issues = "https://github.com/leocelis/horizon/issues"
+Changelog = "https://github.com/leocelis/horizon/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 geoip = ["geoip2>=4.0"]
@@ -55,15 +65,15 @@ dev = [
 full = ["horizon-monitor[geoip,nli,mcp,langsmith,langfuse,otel,arize]"]
 
 [project.scripts]
-horizon = "horizon.mcp.cli:main"
-horizon-validate = "horizon.validate:main"
+horizon = "horizon_monitor.mcp.cli:main"
+horizon-validate = "horizon_monitor.validate:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["horizon*"]
+include = ["horizon_monitor*"]
 
 [tool.setuptools.package-data]
-horizon = ["py.typed"]
+horizon_monitor = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

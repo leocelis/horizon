@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from horizon.engines.coherence import compute_bipredictability
+from horizon_monitor.engines.coherence import compute_bipredictability
 
 
 def make_unit(v: list[float]) -> np.ndarray:

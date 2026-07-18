@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from horizon import FidelityMonitor, SessionNotFoundError
+from horizon_monitor import FidelityMonitor, SessionNotFoundError
 
 
 def _run_conversation(

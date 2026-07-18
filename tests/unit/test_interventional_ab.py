@@ -1,10 +1,10 @@
-"""Unit tests for horizon.analysis.interventional_ab."""
+"""Unit tests for horizon_monitor.analysis.interventional_ab."""
 
 from __future__ import annotations
 
 import pytest
 
-from horizon.analysis.interventional_ab import (
+from horizon_monitor.analysis.interventional_ab import (
     DEFAULT_ACTIONABLE,
     run_interventional_ab,
     sign_test,

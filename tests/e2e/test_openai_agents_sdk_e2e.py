@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 
 
 @dataclass

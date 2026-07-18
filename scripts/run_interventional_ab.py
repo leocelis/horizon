@@ -1,4 +1,4 @@
-"""Interventional A/B CLI — thin wrapper over horizon.analysis.interventional_ab.
+"""Interventional A/B CLI — thin wrapper over horizon_monitor.analysis.interventional_ab.
 
 Usage:
   python scripts/run_interventional_ab.py --demo
@@ -13,7 +13,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from horizon.analysis.interventional_ab import DEFAULT_ACTIONABLE, run_interventional_ab
+from horizon_monitor.analysis.interventional_ab import DEFAULT_ACTIONABLE, run_interventional_ab
 
 
 def _demo_conversations() -> list[list[dict]]:

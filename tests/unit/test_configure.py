@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from horizon import Config, ConfigResult, FidelityMonitor, SessionNotFoundError
+from horizon_monitor import Config, ConfigResult, FidelityMonitor, SessionNotFoundError
 
 
 def test_configure_global_applies_to_existing_sessions() -> None:

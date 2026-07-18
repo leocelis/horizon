@@ -1052,7 +1052,7 @@ changelog:
         monitoring loop via a single user action. Accepts domain and agent_name parameters.
       - configure() MCP tool renamed to configure_session for clarity; explicitly marked
         REQUIRES HUMAN APPROVAL in instructions and description.
-      - Registered horizon in ~/.cursor/mcp.json using python -m horizon.mcp.server pattern
+      - Registered horizon in ~/.cursor/mcp.json using python -m horizon_monitor.mcp.server pattern
         (more portable than the 'horizon serve' entry point which requires PATH install).
       - Shipped ~/.cursor/permissions.json with mcpAllowlist for new_conversation and
         process_turn (auto-run without approval); configure_session excluded.

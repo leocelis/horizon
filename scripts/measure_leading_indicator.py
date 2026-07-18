@@ -5,7 +5,7 @@ fires at turn t, does fidelity degrade in the next k turns (leading), or does th
 event only trail a drop that already happened (lagging)? It runs the actual
 ``FidelityMonitor`` over a corpus, collects each conversation's fidelity
 trajectory and event log, and pools them through
-``horizon.analysis.leading_indicator``.
+``horizon_monitor.analysis.leading_indicator``.
 
 This measures *prediction*, not *intervention value*. Whether acting on a leading
 event improves outcomes is a separate question answered by
@@ -31,8 +31,8 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from horizon import FidelityMonitor
-from horizon.analysis import analyze_leading_indicator
+from horizon_monitor import FidelityMonitor
+from horizon_monitor.analysis import analyze_leading_indicator
 
 
 def _run_conversation(

@@ -10,13 +10,13 @@ Events are emitted in observe mode by default. Each event carries:
 
 from __future__ import annotations
 
-from horizon.config import Config
-from horizon.engines.claim_consistency import (
+from horizon_monitor.config import Config
+from horizon_monitor.engines.claim_consistency import (
     detect_contradictions,
     summarise_conflicts,
 )
-from horizon.models import Event, TurnResult
-from horizon.session import Session, TurnState
+from horizon_monitor.models import Event, TurnResult
+from horizon_monitor.session import Session, TurnState
 
 
 def evaluate_events(
@@ -143,7 +143,6 @@ def evaluate_events(
     # fraction of the running peak. v0.1 used a t-star projection that
     # required pathologically steep decay to ever fire.
     if session.turn_count >= 5 and result.igt_trend < 0:
-        recent_igt = [t.igt_value for t in session.turns[-config.convergence_window :]]
         peak_igt = max(t.igt_value for t in session.turns) if session.turns else 0.0
         if peak_igt > 0 and (result.igt_value / peak_igt) <= config.optimal_length_decay:
             emit(
@@ -300,11 +299,7 @@ def evaluate_events(
     # plausibly complete, and (c) the user did not say they completed it.
     # The agent should re-confirm completion before treating the reply as a
     # post-action result.
-    if (
-        session.turn_count >= 2
-        and result.gap_seconds is not None
-        and result.gap_seconds > 0
-    ):
+    if session.turn_count >= 2 and result.gap_seconds is not None and result.gap_seconds > 0:
         prev_turn = session.turns[-2]
         prev_hint = prev_turn.agent_pacing_hint
         if (

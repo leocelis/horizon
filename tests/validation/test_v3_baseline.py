@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 from tests.validation._helpers import load_jsonl, require_dataset
 from tests.validation.test_v1_proxy import _spearman
 

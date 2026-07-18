@@ -10,15 +10,19 @@ permissions:
 
 jobs:
   test:
-    name: Tests
+    name: Tests (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
@@ -29,7 +33,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .cache/models
-          key: horizon-minilm-v1-${{ runner.os }}-${{ hashFiles('requirements-dev.txt', 'pyproject.toml') }}
+          key: horizon-minilm-v1-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('requirements-dev.txt', 'pyproject.toml') }}
 
       - name: Pre-cache embedding model (offline tests)
         run: |
@@ -45,11 +49,33 @@ jobs:
           print(f"Model cached: {cache}")
           PY
 
-      - name: Run unit tests
+      - name: Lint (ruff)
+        run: ruff check src/ tests/
+
+      - name: Format check (black)
+        run: black --check src/ tests/
+
+      - name: Run tests
         env:
           SENTENCE_TRANSFORMERS_HOME: ${{ github.workspace }}/.cache/models
           HF_HOME: ${{ github.workspace }}/.cache/models
-        run: pytest tests/unit -q
+        run: |
+          pytest tests/unit tests/integration tests/e2e -q \
+            --cov=horizon_monitor --cov-report=term-missing --cov-report=xml
+
+      - name: Coverage report
+        if: always()
+        run: |
+          echo "## Coverage summary (py${{ matrix.python-version }})" >> "$GITHUB_STEP_SUMMARY"
+          coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml-py${{ matrix.python-version }}
+          path: coverage.xml
+          if-no-files-found: ignore
 
   compliance:
     name: TrustLint (EU AI Act)

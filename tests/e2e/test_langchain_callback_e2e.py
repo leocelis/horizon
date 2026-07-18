@@ -13,8 +13,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from horizon import FidelityMonitor
-from horizon.integrations.langchain import HorizonCallback
+from horizon_monitor import FidelityMonitor
+from horizon_monitor.integrations.langchain import HorizonCallback
 
 
 def _chat_gen(text: str) -> SimpleNamespace:

@@ -14,8 +14,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from horizon import FidelityMonitor
-from horizon.integrations.anthropic import HorizonWrappedAnthropic
+from horizon_monitor import FidelityMonitor
+from horizon_monitor.integrations.anthropic import HorizonWrappedAnthropic
 
 
 def _wrap(monitor: FidelityMonitor, client: object, sid: str) -> HorizonWrappedAnthropic:

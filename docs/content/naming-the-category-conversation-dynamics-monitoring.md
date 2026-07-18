@@ -12,9 +12,9 @@ Here is what it covers, why it is distinct from everything adjacent to it, and w
 
 The LLM observability market reached $2.69 billion in 2026 and is growing at 36% annually toward $9.26 billion by 2030. Five major platforms compete for that spend: LangSmith, Langfuse, Arize Phoenix, DeepEval, and Datadog LLM Observability.
 
-All five measure the same layer. They measure infrastructure: latency, token cost, request count, error rate. Some extend into per-response quality: hallucination likelihood, toxicity, relevance of a single response to a single prompt.
+All five measure the same layer. They measure infrastructure: latency, token cost, request count, error rate. Some extend into per-response quality: hallucination likelihood, toxicity, relevance of a single response to a single prompt. DeepEval ships sampled multi-turn conversational metrics (knowledge retention, conversation completeness), and Langfuse and Arize Phoenix support session-level LLM-judge evaluation.
 
-None of them measure what happens to a conversation across turns.
+None of them measure conversation dynamics the way Horizon does: deterministic, zero-LLM-call arithmetic computed on every single turn, in real time. The alternatives above run LLM-judge evaluation on a sample of sessions, at a cost per sample, typically offline or async.
 
 This is not a gap in implementation. It is a gap in design axioms. These tools were built to answer infrastructure questions: did the system respond? how fast? how much did it cost? is this response appropriate? These are the right questions for a system that treats each request as independent.
 
@@ -79,7 +79,7 @@ A category requires three things to become real in analyst reports and procureme
 
 The named definition is above.
 
-The measurable distinction: conversation dynamics monitoring measures session-level fidelity trajectory, multi-turn consistency, temporal gap signals, and context eviction events. Zero tools in the adjacent categories measure any of these four things on the same conversation data. This is verifiable by reading the product documentation of any incumbent tool.
+The measurable distinction: conversation dynamics monitoring measures session-level fidelity trajectory, multi-turn consistency, temporal gap signals, and context eviction events — deterministically, with zero LLM calls, on every turn. Adjacent categories that touch multi-turn quality (DeepEval's sampled conversational metrics, Langfuse's and Phoenix's session-level LLM-judge evaluation) do so via LLM-judge sampling: cost per sample, typically offline or async, not real time. This is verifiable by reading the product documentation of any incumbent tool.
 
 The validated evidence: four **synthetic, scripted** controlled A/B scenarios (165 turns, hand-tuned re-grounding controller — not production traffic) show a composite quality lift of +15.7% (CI95 entirely above zero, p = 0.0002) and an 87% reduction in constraint hallucinations when conversation dynamics signals drive targeted interventions. Treat this as promising in-house mechanism evidence, not a guaranteed production outcome. Separately, the underlying library passes four independent **correlational** validation gates including cross-domain generalization to five held-out domains not used during development.
 

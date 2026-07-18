@@ -42,7 +42,7 @@ pip install 'horizon-monitor[mcp]'
 
 ```bash
 # User scope — available in every project
-claude mcp add horizon -- python -m horizon.mcp.server --scope user
+claude mcp add horizon -- python -m horizon_monitor.mcp.server --scope user
 ```
 
 ### Option C — Project scope (`.mcp.json`)
@@ -149,7 +149,7 @@ The MCP server is tested in `tests/e2e/test_mcp_server_e2e.py`, which exercises 
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `command not found` when using `horizon serve` | Script not installed | Use `python -m horizon.mcp.server` instead, or `pip install 'horizon-monitor[mcp]'` |
+| `command not found` when using `horizon serve` | Script not installed | Use `python -m horizon_monitor.mcp.server` instead, or `pip install 'horizon-monitor[mcp]'` |
 | Tools don't appear | MCP server not registered or wrong scope | Run `claude mcp list` to check; re-add with correct `--scope` |
 | Per-call approval dialogs every turn | No allowlist in `settings.json` | Add the `permissions.allow` snippet from §3 |
 | `new_conversation` never fires | Instructions not in `~/.claude/CLAUDE.md` | Append the monitoring block from §2 |

@@ -21,10 +21,9 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from horizon import Config, FidelityMonitor
-from horizon.mcp.server import (
+from horizon_monitor import Config, FidelityMonitor
+from horizon_monitor.mcp.server import (
     _dispatch,
-    _get_monitor,
     configure_session,
     get_events,
     get_trajectory,
@@ -32,8 +31,7 @@ from horizon.mcp.server import (
     new_conversation,
     process_turn,
 )
-from horizon.monitor import SessionNotFoundError
-
+from horizon_monitor.monitor import SessionNotFoundError
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -41,7 +39,7 @@ from horizon.monitor import SessionNotFoundError
 @pytest.fixture(autouse=True)
 def _reset_global_monitor(monkeypatch):
     """Give each test a clean FidelityMonitor so sessions don't bleed across tests."""
-    import horizon.mcp.server as srv
+    import horizon_monitor.mcp.server as srv
 
     fresh = FidelityMonitor(Config())
     monkeypatch.setattr(srv, "_monitor", fresh)
@@ -76,7 +74,8 @@ class TestNewConversation:
             agent_response="High blood pressure can cause headaches, dizziness, and chest pain.",
             timestamp=ts,
         )
-        assert "fidelity_score" in turn
+        assert "error" not in turn
+        assert turn["ok"] in (True, False)
 
     def test_metadata_domain_affects_domain_in_trajectory(self):
         sid = new_conversation(metadata={"domain": "legal"})["session_id"]
@@ -99,7 +98,9 @@ class TestNewConversation:
 
 
 class TestProcessTurn:
-    def test_returns_full_turn_result_fields(self):
+    def test_returns_minimal_action_signal(self):
+        """process_turn returns the minimal {ok, ...} contract — full metrics
+        live in the trajectory/events Resources, not the tool response."""
         sid = new_conversation()["session_id"]
         ts = datetime.now(timezone.utc).isoformat()
         result = process_turn(
@@ -108,12 +109,16 @@ class TestProcessTurn:
             agent_response="async functions return coroutines; awaiting suspends execution.",
             timestamp=ts,
         )
-        assert "fidelity_score" in result
-        assert "igt_value" in result
-        assert "health_status" in result
-        assert "events" in result
-        assert isinstance(result["events"], list)
-        assert result["health_status"] in {"healthy", "degrading", "critical", "converged"}
+        assert "error" not in result
+        if result["ok"]:
+            assert set(result) == {"ok", "turn"}
+            assert result["turn"] == 1
+        else:
+            assert set(result) == {"ok", "health_status", "active_events"}
+            assert result["health_status"] in {"degrading", "critical", "converged", "healthy"}
+            for ev in result["active_events"]:
+                assert "type" in ev
+                assert "suggested_behavior" in ev
 
     def test_fidelity_score_in_range(self):
         sid = new_conversation()["session_id"]
@@ -126,7 +131,11 @@ class TestProcessTurn:
         for i, (h, a) in enumerate(pairs):
             ts = (base + timedelta(minutes=i + 1)).isoformat()
             r = process_turn(session_id=sid, human_message=h, agent_response=a, timestamp=ts)
-            score = r["fidelity_score"]
+            assert "error" not in r
+        # Full per-turn fidelity scores are exposed via the trajectory Resource.
+        traj = json.loads(get_trajectory(session_id=sid))
+        assert len(traj["scores"]) == len(pairs)
+        for i, score in enumerate(traj["scores"]):
             assert 0.0 <= score <= 1.0, f"Turn {i+1} fidelity out of range: {score}"
 
     def test_unknown_session_returns_error_dict(self):
@@ -155,9 +164,16 @@ class TestProcessTurn:
             agent_response="Follow-up answer.",
             timestamp=(base + timedelta(minutes=30)).isoformat(),
         )
-        assert r["gap_seconds"] is not None
-        assert r["gap_class"] is not None
-        assert r["estimated_retention"] is not None
+        assert "error" not in r
+        # Timestamps must have flowed through the tool into session state,
+        # enabling temporal signals (gap/retention computed in the pipeline).
+        import horizon_monitor.mcp.server as srv
+
+        session = srv._get_monitor()._sessions[sid]
+        assert session.turns[-1].timestamp_epoch is not None
+        assert session.turns[-1].timestamp_epoch - session.turns[
+            0
+        ].timestamp_epoch == pytest.approx(30 * 60)
 
     def test_auto_timestamps_when_timestamp_omitted(self):
         # When timestamp is omitted, process_turn uses datetime.now(utc) so it
@@ -168,8 +184,12 @@ class TestProcessTurn:
             human_message="No timestamp provided.",
             agent_response="Still works.",
         )
-        assert "fidelity_score" in result
         assert "error" not in result
+        assert result["ok"] in (True, False)
+        # Auto-generated timestamp must have been recorded in session state.
+        import horizon_monitor.mcp.server as srv
+
+        assert srv._get_monitor()._sessions[sid].turns[-1].timestamp_epoch is not None
 
     def test_client_context_spatial_signals(self):
         sid = new_conversation()["session_id"]
@@ -183,10 +203,14 @@ class TestProcessTurn:
                 "timezone": "America/Sao_Paulo",
             },
         )
-        assert result.get("spatial_constraint") is not None
-        sc = result["spatial_constraint"]
-        assert sc["screen_capacity"] in {"large", "medium", "small"}
-        assert sc["max_response_length"] > 0
+        assert "error" not in result
+        # client_context must have flowed through the tool into session state,
+        # where the spatial engine consumes it.
+        import horizon_monitor.mcp.server as srv
+
+        stored = srv._get_monitor()._sessions[sid].turns[-1].client_context
+        assert stored is not None
+        assert stored["device_type"] == "mobile"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -241,11 +265,16 @@ class TestTrajectoryResource:
     def test_returns_json_with_trajectory_fields(self):
         sid = new_conversation()["session_id"]
         base = datetime(2026, 5, 6, 10, 0, tzinfo=timezone.utc)
-        for i, (h, a) in enumerate([
-            ("What is Redis?", "An in-memory key-value store."),
-            ("How does Redis replication work?", "Primary sends replication stream to replicas."),
-            ("What is Redis Sentinel?", "Sentinel provides automatic failover for Redis."),
-        ]):
+        for i, (h, a) in enumerate(
+            [
+                ("What is Redis?", "An in-memory key-value store."),
+                (
+                    "How does Redis replication work?",
+                    "Primary sends replication stream to replicas.",
+                ),
+                ("What is Redis Sentinel?", "Sentinel provides automatic failover for Redis."),
+            ]
+        ):
             process_turn(
                 session_id=sid,
                 human_message=h,
@@ -389,18 +418,23 @@ class TestMonitorConversationPrompt:
         result = monitor_conversation()
         assert "process_turn" in result
 
-    def test_contains_resource_uris(self):
+    def test_contains_response_contract(self):
+        """The prompt wires the deferred-recording loop and the minimal
+        {ok, ...} response contract, and keeps Resources reactive-only."""
         result = monitor_conversation()
-        assert "horizon://session/" in result
-        assert "/trajectory" in result
-        assert "/events" in result
+        assert "process_turn" in result
+        assert "ok: true" in result
+        assert "ok: false" in result
+        assert "suggested_behavior" in result
+        # Invisibility contract: resources are read reactively, never proactively.
+        assert "Never read Resources proactively" in result
 
     def test_contains_event_action_guidance(self):
         result = monitor_conversation()
         # Must explain what to do for key events
         assert "alert.drift" in result
         assert "alert.contradiction" in result
-        assert "degrading" in result
+        assert "signal.convergence" in result
 
     def test_domain_appears_in_prompt(self):
         result = monitor_conversation(domain="medical", agent_name="health-bot")
@@ -429,8 +463,8 @@ class TestMonitorConversationPrompt:
             agent_response="Use a fidelity monitor that tracks 4D conversation dynamics.",
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
-        assert "fidelity_score" in result
         assert "error" not in result
+        assert result["ok"] in (True, False)
 
     def test_privacy_note_present(self):
         result = monitor_conversation()
@@ -452,12 +486,23 @@ class TestFullFlow:
 
         base = datetime(2026, 5, 6, 14, 0, tzinfo=timezone.utc)
         pairs = [
-            ("What is a Bloom filter?", "A probabilistic data structure for set membership with no false negatives."),
-            ("What's the false positive rate?", "It depends on the number of hash functions and the bit-array size."),
-            ("How do you choose hash function count?", "Optimally k = (m/n) * ln(2) where m is bit count and n is expected elements."),
-            ("Can Bloom filters be deleted from?", "Standard ones can't; Counting Bloom filters extend the design to support deletes."),
+            (
+                "What is a Bloom filter?",
+                "A probabilistic data structure for set membership with no false negatives.",
+            ),
+            (
+                "What's the false positive rate?",
+                "It depends on the number of hash functions and the bit-array size.",
+            ),
+            (
+                "How do you choose hash function count?",
+                "Optimally k = (m/n) * ln(2) where m is bit count and n is expected elements.",
+            ),
+            (
+                "Can Bloom filters be deleted from?",
+                "Standard ones can't; Counting Bloom filters extend the design to support deletes.",
+            ),
         ]
-        fidelity_scores = []
         for i, (h, a) in enumerate(pairs):
             r = process_turn(
                 session_id=sid,
@@ -465,16 +510,16 @@ class TestFullFlow:
                 agent_response=a,
                 timestamp=(base + timedelta(minutes=i + 1)).isoformat(),
             )
-            assert "fidelity_score" in r
-            fidelity_scores.append(r["fidelity_score"])
+            assert "error" not in r
+            if r["ok"]:
+                assert r["turn"] == i + 1
 
-        # All fidelity scores should be in valid range
-        assert all(0.0 <= s <= 1.0 for s in fidelity_scores)
-
-        # Read trajectory resource
+        # Read trajectory resource — per-turn fidelity lives here, not in the
+        # minimal process_turn response.
         traj = json.loads(get_trajectory(session_id=sid))
         assert traj["turn_count"] == 4
         assert len(traj["scores"]) == 4
+        assert all(0.0 <= s <= 1.0 for s in traj["scores"])
         assert traj["health_status"] in {"healthy", "degrading", "critical", "converged"}
 
         # Read events resource
@@ -507,10 +552,12 @@ class TestFullFlow:
             agent_response="Start with the validation helper; it has the most nested conditions.",
             timestamp=(base + timedelta(minutes=2)).isoformat(),
         )
-        assert 0.0 <= r["fidelity_score"] <= 1.0
+        assert "error" not in r
+        assert r["ok"] in (True, False)
 
         traj = json.loads(get_trajectory(session_id=sid))
         assert traj["turn_count"] == 2
+        assert all(0.0 <= s <= 1.0 for s in traj["scores"])
 
     def test_monitor_conversation_prompt_creates_usable_session_for_full_flow(self):
         """Full integration: prompt creates session → process_turn works →
@@ -528,18 +575,24 @@ class TestFullFlow:
         assert sid is not None
 
         base = datetime(2026, 5, 6, 10, 0, tzinfo=timezone.utc)
-        for i, (h, a) in enumerate([
-            ("I can't log in to my account.", "I can help — are you getting an error message?"),
-            ("It says 'invalid credentials'.", "Let me reset your password. Can you confirm your email?"),
-            ("It's user@example.com.", "I've sent a reset link to user@example.com."),
-        ]):
+        for i, (h, a) in enumerate(
+            [
+                ("I can't log in to my account.", "I can help — are you getting an error message?"),
+                (
+                    "It says 'invalid credentials'.",
+                    "Let me reset your password. Can you confirm your email?",
+                ),
+                ("It's user@example.com.", "I've sent a reset link to user@example.com."),
+            ]
+        ):
             r = process_turn(
                 session_id=sid,
                 human_message=h,
                 agent_response=a,
                 timestamp=(base + timedelta(minutes=i + 1)).isoformat(),
             )
-            assert "fidelity_score" in r
+            assert "error" not in r
+            assert r["ok"] in (True, False)
 
         traj = json.loads(get_trajectory(session_id=sid))
         assert traj["turn_count"] == 3
@@ -628,12 +681,12 @@ class TestDispatchShim:
 
 class TestFastMCPAppObject:
     def test_mcp_name(self):
-        from horizon.mcp.server import mcp as app
+        from horizon_monitor.mcp.server import mcp as app
 
         assert app.name == "horizon-fidelity-monitor"
 
     def test_mcp_instructions_contain_loop(self):
-        from horizon.mcp.server import _INSTRUCTIONS
+        from horizon_monitor.mcp.server import _INSTRUCTIONS
 
         assert "new_conversation" in _INSTRUCTIONS
         assert "process_turn" in _INSTRUCTIONS
@@ -641,14 +694,14 @@ class TestFastMCPAppObject:
         assert "health_status" in _INSTRUCTIONS
 
     def test_mcp_instructions_mark_safe_tools(self):
-        from horizon.mcp.server import _INSTRUCTIONS
+        from horizon_monitor.mcp.server import _INSTRUCTIONS
 
         assert "auto-run" in _INSTRUCTIONS.lower() or "SAFE TO AUTO-RUN" in _INSTRUCTIONS
 
     def test_create_app_returns_fastmcp(self):
         from mcp.server.fastmcp import FastMCP
 
-        from horizon.mcp.server import create_app
+        from horizon_monitor.mcp.server import create_app
 
         app = create_app()
         assert isinstance(app, FastMCP)

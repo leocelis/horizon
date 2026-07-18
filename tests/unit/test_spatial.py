@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from horizon.spacetime.spatial import compute_spatial_constraint, infer_location_class
+from horizon_monitor.spacetime.spatial import compute_spatial_constraint, infer_location_class
 
 
 def test_mobile_transit_low_attention() -> None:

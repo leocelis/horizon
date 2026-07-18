@@ -6,7 +6,7 @@ Schmidt et al. (2007) — dual-peak model with post-lunch dip.
 
 from __future__ import annotations
 
-from datetime import datetime
+from horizon_monitor.spacetime.temporal import parse_timestamp
 
 
 def compute_circadian_factor(
@@ -24,7 +24,7 @@ def compute_circadian_factor(
     chronotype_offset shifts the entire curve (positive = night owl,
     negative = morning lark). Units: hours.
     """
-    dt = datetime.fromisoformat(timestamp)
+    dt = parse_timestamp(timestamp)
 
     if timezone_str:
         try:

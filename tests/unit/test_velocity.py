@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from horizon.spacetime.velocity import compute_acceleration, compute_velocity
+from horizon_monitor.spacetime.velocity import compute_acceleration, compute_velocity
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from horizon.models import SpatialConstraint
+from horizon_monitor.models import SpatialConstraint
 
 SPATIAL_PROFILES: dict[tuple[str, str], SpatialConstraint] = {
     ("desktop", "office"): SpatialConstraint("high", "large", 2000, "high"),

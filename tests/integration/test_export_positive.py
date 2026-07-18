@@ -20,8 +20,7 @@ import types
 
 import pytest
 
-from horizon import FidelityMonitor
-
+from horizon_monitor import FidelityMonitor
 
 # ── Shared session fixture ──────────────────────────────────────────────────
 
@@ -42,7 +41,7 @@ def _build_session(turns: int = 3) -> tuple[FidelityMonitor, str]:
 
 
 class _FakeLangSmithClient:
-    instances: list["_FakeLangSmithClient"] = []
+    instances: list[_FakeLangSmithClient] = []
 
     def __init__(self, *, api_key: str) -> None:
         self.api_key = api_key
@@ -59,9 +58,7 @@ def test_langsmith_export_round_trip(monkeypatch: pytest.MonkeyPatch) -> None:
     _FakeLangSmithClient.instances.clear()
 
     monitor, sid = _build_session(turns=4)
-    result = monitor.export_to(
-        sid, target="langsmith", connection={"api_key": "test-key"}
-    )
+    result = monitor.export_to(sid, target="langsmith", connection={"api_key": "test-key"})
 
     assert result.status == "success"
     assert result.records_exported == 4
@@ -99,7 +96,7 @@ class _FakeLangfuseTrace:
 
 
 class _FakeLangfuse:
-    instances: list["_FakeLangfuse"] = []
+    instances: list[_FakeLangfuse] = []
 
     def __init__(self, *, public_key: str, secret_key: str, host: str) -> None:
         self.public_key = public_key
@@ -156,7 +153,7 @@ class _FakeSpan:
         self.name = name
         self.attributes: dict[str, object] = {}
 
-    def __enter__(self) -> "_FakeSpan":
+    def __enter__(self) -> _FakeSpan:
         return self
 
     def __exit__(self, *_: object) -> None:
@@ -167,7 +164,7 @@ class _FakeSpan:
 
 
 class _FakeTracer:
-    instances: list["_FakeTracer"] = []
+    instances: list[_FakeTracer] = []
 
     def __init__(self) -> None:
         self.spans: list[_FakeSpan] = []
@@ -213,9 +210,7 @@ def test_otel_export_round_trip(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_sdk_trace_export = types.SimpleNamespace(
         BatchSpanProcessor=lambda exp: types.SimpleNamespace(exporter=exp)
     )
-    monkeypatch.setitem(
-        sys.modules, "opentelemetry.sdk.trace.export", fake_sdk_trace_export
-    )
+    monkeypatch.setitem(sys.modules, "opentelemetry.sdk.trace.export", fake_sdk_trace_export)
 
     fake_sdk_trace = types.SimpleNamespace(TracerProvider=_FakeProvider)
     monkeypatch.setitem(sys.modules, "opentelemetry.sdk.trace", fake_sdk_trace)
@@ -228,7 +223,13 @@ def test_otel_export_round_trip(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(
         sys.modules,
         "opentelemetry.exporter",
-        types.SimpleNamespace(otlp=types.SimpleNamespace(proto=types.SimpleNamespace(http=types.SimpleNamespace(trace_exporter=fake_exporter_mod)))),
+        types.SimpleNamespace(
+            otlp=types.SimpleNamespace(
+                proto=types.SimpleNamespace(
+                    http=types.SimpleNamespace(trace_exporter=fake_exporter_mod)
+                )
+            )
+        ),
     )
 
     monitor, sid = _build_session(turns=2)
@@ -257,7 +258,7 @@ def test_otel_export_round_trip(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 class _FakeArizeClient:
-    instances: list["_FakeArizeClient"] = []
+    instances: list[_FakeArizeClient] = []
 
     def __init__(self, *, space_id: str, api_key: str) -> None:
         self.space_id = space_id
@@ -287,12 +288,8 @@ def test_arize_export_round_trip(monkeypatch: pytest.MonkeyPatch) -> None:
         DEVELOPMENT="development",
     )
     fake_model_types = types.SimpleNamespace(SCORE_CATEGORICAL="score_categorical")
-    fake_utils_types = types.SimpleNamespace(
-        Environments=fake_envs, ModelTypes=fake_model_types
-    )
-    monkeypatch.setitem(
-        sys.modules, "arize.utils", types.SimpleNamespace(types=fake_utils_types)
-    )
+    fake_utils_types = types.SimpleNamespace(Environments=fake_envs, ModelTypes=fake_model_types)
+    monkeypatch.setitem(sys.modules, "arize.utils", types.SimpleNamespace(types=fake_utils_types))
     monkeypatch.setitem(sys.modules, "arize.utils.types", fake_utils_types)
 
     _FakeArizeClient.instances.clear()

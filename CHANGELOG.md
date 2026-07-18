@@ -8,6 +8,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **BREAKING — import renamed `horizon` → `horizon_monitor`:** the import name now matches
+  the distribution name (`pip install horizon-monitor` / `import horizon_monitor`) and no
+  longer collides with OpenStack Horizon's top-level `horizon` package. The PyPI name, CLI
+  commands (`horizon`, `horizon-validate`), env vars (`HORIZON_*`), and MCP resource URIs
+  (`horizon://…`) are unchanged. No compatibility shim is shipped — the package predates
+  its first PyPI release.
+- **MCP auth now fails closed:** when `HORIZON_API_KEYS` is unset and
+  `HORIZON_AUTH_DISABLED` is not set, requests are rejected with a configuration error
+  instead of being allowed with a warning. Key comparison is constant-time
+  (`hmac.compare_digest`).
+- **`FidelityMonitor.end_conversation(session_id)` / `delete_session(session_id)`:** new
+  session-cleanup API for long-running servers (session state no longer grows unboundedly).
+- **CLI:** `--preload` is now a paired flag (`--preload/--no-preload`) so preloading can
+  actually be disabled.
+
+### Fixed
+- **Version sync:** `pyproject.toml` bumped `0.2.0` → `0.2.1` to match `server.json` and the
+  live hosted MCP server/registry entry, which were already at `0.2.1`.
+- **Irreversible-loss units bug:** context-window eviction now reports evicted **tokens**
+  (was: evicted turn count) so `min_eviction_threshold` (a token count) is compared
+  unit-consistently and the `irreversible_loss` degradation channel can actually fire.
+- **Timestamp parsing:** `process_turn` accepts `Z`-suffixed ISO 8601 timestamps on
+  Python 3.10 and normalizes naive timestamps to UTC; malformed timestamps raise a
+  documented `TimestampParseError` instead of an arbitrary crash.
+- **Integrations no longer swallow errors silently:** OpenAI/LangChain wrappers log a
+  warning (with traceback) when monitoring fails; monitoring failures still never break
+  the wrapped LLM call. `HorizonCallback` now subclasses LangChain's
+  `BaseCallbackHandler` when `langchain-core` is installed.
+- **`__version__` reads from package metadata** (single-sourced from `pyproject.toml`)
+  instead of a hand-duplicated string.
+
+## [0.2.1] - 2026-07-17
+
+### Changed
 - **Public docs scope:** full internal PRD, research essays, and session handoffs removed
   from this repo — the OSS tree ships product overview, spec, integrations, validation
   evidence, and public content only.

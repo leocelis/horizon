@@ -21,7 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 
 SUSTAINED_TURNS = 200
 CONCURRENT_SESSIONS = 8

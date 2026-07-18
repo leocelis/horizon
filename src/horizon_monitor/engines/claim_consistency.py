@@ -28,8 +28,8 @@ off restores v0.1 behaviour exactly.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
 
 # Patterns that mark a fact-claim worth tracking. Each pattern captures
 # (a) the value, (b) optional unit/scale, so we can normalise and compare.
@@ -38,7 +38,13 @@ _CLAIM_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("percent", re.compile(r"\b(\d+(?:\.\d+)?)\s*%")),
     ("currency", re.compile(r"\$\s*(\d+(?:[\.,]\d+)*)")),
     ("year", re.compile(r"\b(19|20)(\d{2})\b")),
-    ("count", re.compile(r"\b(\d{2,})\s+(?:users|customers|requests|errors|seconds|ms|milliseconds|minutes|hours|days|months)\b", re.IGNORECASE)),
+    (
+        "count",
+        re.compile(
+            r"\b(\d{2,})\s+(?:users|customers|requests|errors|seconds|ms|milliseconds|minutes|hours|days|months)\b",
+            re.IGNORECASE,
+        ),
+    ),
 )
 
 # Phrases whose presence indicates the claim is a *retraction* of a prior
@@ -56,15 +62,68 @@ _RETRACTION_MARKERS: tuple[str, ...] = (
 )
 
 _TOPIC_STOPWORDS = {
-    "the", "a", "an", "is", "are", "was", "were", "of", "to", "for",
-    "in", "on", "at", "by", "and", "or", "but", "with", "about", "as",
-    "approximately", "approx", "around", "roughly", "actually",
-    "reflection", "closer", "earlier", "previously", "now", "still",
-    "really", "actually", "really", "very", "much", "more", "less",
-    "wrong", "right", "correct", "number", "value", "count", "amount",
-    "it", "its", "that", "this", "these", "those", "be", "been",
-    "have", "has", "had", "from", "into", "than", "then", "so",
-    "no", "not", "yes",
+    "the",
+    "a",
+    "an",
+    "is",
+    "are",
+    "was",
+    "were",
+    "of",
+    "to",
+    "for",
+    "in",
+    "on",
+    "at",
+    "by",
+    "and",
+    "or",
+    "but",
+    "with",
+    "about",
+    "as",
+    "approximately",
+    "approx",
+    "around",
+    "roughly",
+    "actually",
+    "reflection",
+    "closer",
+    "earlier",
+    "previously",
+    "now",
+    "still",
+    "really",
+    "very",
+    "much",
+    "more",
+    "less",
+    "wrong",
+    "right",
+    "correct",
+    "number",
+    "value",
+    "count",
+    "amount",
+    "it",
+    "its",
+    "that",
+    "this",
+    "these",
+    "those",
+    "be",
+    "been",
+    "have",
+    "has",
+    "had",
+    "from",
+    "into",
+    "than",
+    "then",
+    "so",
+    "no",
+    "not",
+    "yes",
 }
 
 # Domain-specific anchor words pre-empt the "nearest content word" heuristic.
@@ -72,10 +131,31 @@ _TOPIC_STOPWORDS = {
 # key — gives stable matching across rephrasings ("2x speedup" / "4x faster
 # speedup" / "no speedup" all key to "speedup").
 _TOPIC_ANCHORS: tuple[str, ...] = (
-    "speedup", "speed", "latency", "throughput", "price", "cost", "fee",
-    "revenue", "users", "customers", "errors", "version", "release",
-    "rollout", "date", "deadline", "size", "memory", "storage",
-    "accuracy", "precision", "recall", "f1", "score", "rating",
+    "speedup",
+    "speed",
+    "latency",
+    "throughput",
+    "price",
+    "cost",
+    "fee",
+    "revenue",
+    "users",
+    "customers",
+    "errors",
+    "version",
+    "release",
+    "rollout",
+    "date",
+    "deadline",
+    "size",
+    "memory",
+    "storage",
+    "accuracy",
+    "precision",
+    "recall",
+    "f1",
+    "score",
+    "rating",
 )
 
 
@@ -84,9 +164,9 @@ class ClaimRecord:
     """One agent-asserted value, paired with the topic key it referred to."""
 
     topic_key: str
-    kind: str              # one of "scale", "percent", "currency", "year", "count"
+    kind: str  # one of "scale", "percent", "currency", "year", "count"
     value: float
-    raw_text: str          # the original matched claim, for diagnostics
+    raw_text: str  # the original matched claim, for diagnostics
     turn_number: int
 
 
@@ -179,7 +259,7 @@ def extract_claims(text: str, turn_number: int) -> list[ClaimRecord]:
     return out
 
 
-def _is_contradiction(prior: "ClaimRecord", fresh: "ClaimRecord", relative_tolerance: float) -> bool:
+def _is_contradiction(prior: ClaimRecord, fresh: ClaimRecord, relative_tolerance: float) -> bool:
     """Kind-aware contradiction test.
 
     * year claims: any non-zero integer difference is a contradiction

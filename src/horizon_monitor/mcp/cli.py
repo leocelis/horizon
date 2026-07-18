@@ -3,7 +3,7 @@
 Usage::
 
     # stdio transport (for Cursor / Claude Desktop) — default
-    python -m horizon.mcp.server
+    python -m horizon_monitor.mcp.server
 
     # Or via the installed script:
     horizon serve
@@ -49,11 +49,15 @@ def main() -> None:
     )
     @click.option("--port", default=3847, help="Port for SSE / streamable-http transport.")
     @click.option("--host", default="127.0.0.1", help="Host for SSE / streamable-http transport.")
-    @click.option("--preload", is_flag=True, default=True, help="Preload embedding model on startup.")
+    @click.option(
+        "--preload/--no-preload",
+        default=True,
+        help="Preload embedding model on startup (default: enabled). Use --no-preload to skip.",
+    )
     def serve(transport: str, port: int, host: str, preload: bool) -> None:
         """Start the Horizon MCP server."""
         try:
-            from horizon.mcp.server import create_app
+            from horizon_monitor.mcp.server import create_app
 
             app = create_app()
 
@@ -61,7 +65,8 @@ def main() -> None:
                 # Warm the embedding model before the first client call so
                 # process_turn latency is predictable from turn 1 onwards.
                 try:
-                    from horizon.mcp.server import _get_monitor
+                    from horizon_monitor.mcp.server import _get_monitor
+
                     _get_monitor().preload_models()
                 except Exception:
                     pass  # non-fatal; model loads on first call instead
@@ -89,7 +94,7 @@ def main() -> None:
     @cli.command()
     def version() -> None:
         """Print Horizon version."""
-        from horizon import __version__
+        from horizon_monitor import __version__
 
         click.echo(f"horizon-monitor {__version__}")
 

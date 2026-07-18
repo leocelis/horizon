@@ -32,8 +32,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from horizon import Config, FidelityMonitor
-
+from horizon_monitor import Config, FidelityMonitor
 
 # ── Shared corpus ────────────────────────────────────────────────────────────
 # A short, realistic project-management thread. Keeps semantic content
@@ -83,9 +82,7 @@ def test_real_temporal_gap_classification_across_turns(
     # Turn 3: 5 min later → "minutes"
     r3 = monitor.process_turn(sid, HUMANS[2], AGENTS[2], timestamp=_ts(base, 30 + 300))
     # Turn 4: 2 h later → "hours"
-    r4 = monitor.process_turn(
-        sid, HUMANS[3], AGENTS[3], timestamp=_ts(base, 30 + 300 + 7200)
-    )
+    r4 = monitor.process_turn(sid, HUMANS[3], AGENTS[3], timestamp=_ts(base, 30 + 300 + 7200))
     # Turn 5: 2 days later → "days"
     r5 = monitor.process_turn(
         sid,
@@ -111,12 +108,8 @@ def test_real_retention_decreases_monotonically_with_gap(
     sid = monitor.new_conversation()
 
     monitor.process_turn(sid, HUMANS[0], AGENTS[0], timestamp=_ts(base, 0))
-    short_gap = monitor.process_turn(
-        sid, HUMANS[1], AGENTS[1], timestamp=_ts(base, 60)
-    )
-    medium_gap = monitor.process_turn(
-        sid, HUMANS[2], AGENTS[2], timestamp=_ts(base, 60 + 3600)
-    )
+    short_gap = monitor.process_turn(sid, HUMANS[1], AGENTS[1], timestamp=_ts(base, 60))
+    medium_gap = monitor.process_turn(sid, HUMANS[2], AGENTS[2], timestamp=_ts(base, 60 + 3600))
     long_gap = monitor.process_turn(
         sid, HUMANS[3], AGENTS[3], timestamp=_ts(base, 60 + 3600 + 86400)
     )
@@ -163,9 +156,9 @@ def test_real_circadian_factor_matches_hour_of_day(
 
     assert r.circadian_factor is not None
     lo, hi = expected_band
-    assert lo <= r.circadian_factor <= hi, (
-        f"hour={hour} tz={tz} → κ={r.circadian_factor!r} (expected {lo}-{hi})"
-    )
+    assert (
+        lo <= r.circadian_factor <= hi
+    ), f"hour={hour} tz={tz} → κ={r.circadian_factor!r} (expected {lo}-{hi})"
 
 
 def test_real_circadian_lowers_retention_at_nadir(
@@ -181,21 +174,31 @@ def test_real_circadian_lowers_retention_at_nadir(
     night_base = datetime(2026, 4, 25, 4, 0, 0, tzinfo=timezone.utc)
 
     monitor.process_turn(
-        sid_day, HUMANS[0], AGENTS[0], timestamp=day_base.isoformat(),
+        sid_day,
+        HUMANS[0],
+        AGENTS[0],
+        timestamp=day_base.isoformat(),
         client_context={"timezone": "UTC"},
     )
     r_day = monitor.process_turn(
-        sid_day, HUMANS[1], AGENTS[1],
+        sid_day,
+        HUMANS[1],
+        AGENTS[1],
         timestamp=(day_base + timedelta(hours=4)).isoformat(),
         client_context={"timezone": "UTC"},
     )
 
     monitor.process_turn(
-        sid_night, HUMANS[0], AGENTS[0], timestamp=night_base.isoformat(),
+        sid_night,
+        HUMANS[0],
+        AGENTS[0],
+        timestamp=night_base.isoformat(),
         client_context={"timezone": "UTC"},
     )
     r_night = monitor.process_turn(
-        sid_night, HUMANS[1], AGENTS[1],
+        sid_night,
+        HUMANS[1],
+        AGENTS[1],
         timestamp=(night_base + timedelta(hours=4)).isoformat(),
         client_context={"timezone": "UTC"},
     )
@@ -237,9 +240,9 @@ def test_real_velocity_inversely_proportional_to_gap(
     assert r_slow.conversation_velocity is not None
     # 100x gap → ~100x lower velocity (tolerate noise from tiny
     # embedding-similarity drift, but the ratio must clearly hold)
-    assert r_fast.conversation_velocity > 10 * r_slow.conversation_velocity, (
-        f"fast={r_fast.conversation_velocity} slow={r_slow.conversation_velocity}"
-    )
+    assert (
+        r_fast.conversation_velocity > 10 * r_slow.conversation_velocity
+    ), f"fast={r_fast.conversation_velocity} slow={r_slow.conversation_velocity}"
 
 
 # ── 4. The headline composition: ds² interval class ──────────────────────────
@@ -268,9 +271,9 @@ def test_real_long_gap_small_shift_is_timelike(monitor: FidelityMonitor) -> None
     )
 
     assert r.spacetime_interval is not None
-    assert r.interval_class == "timelike", (
-        f"Expected timelike, got {r.interval_class} ds²={r.spacetime_interval}"
-    )
+    assert (
+        r.interval_class == "timelike"
+    ), f"Expected timelike, got {r.interval_class} ds²={r.spacetime_interval}"
     assert r.spacetime_interval < 0
 
 
@@ -309,9 +312,9 @@ def test_real_sub_second_gap_topic_jump_is_spacelike(
     )
 
     assert r.spacetime_interval is not None
-    assert r.interval_class == "spacelike", (
-        f"Expected spacelike, got {r.interval_class} ds²={r.spacetime_interval}"
-    )
+    assert (
+        r.interval_class == "spacelike"
+    ), f"Expected spacelike, got {r.interval_class} ds²={r.spacetime_interval}"
     assert r.spacetime_interval > 0
 
 
@@ -353,7 +356,7 @@ def test_real_ds2_flips_sign_with_growing_gap(monitor: FidelityMonitor) -> None:
 def test_real_deictic_resolution_anchored_to_turn_timestamp(
     monitor: FidelityMonitor,
 ) -> None:
-    """"yesterday" must resolve relative to the *turn's* ISO timestamp,
+    """ "yesterday" must resolve relative to the *turn's* ISO timestamp,
     not the wall clock the test runs at. Anchors deictic_refs to the
     full pipeline contract."""
     sid = monitor.new_conversation()
@@ -371,17 +374,15 @@ def test_real_deictic_resolution_anchored_to_turn_timestamp(
         (t for t in r.temporal_references if "yesterday" in t.expression.lower()),
         None,
     )
-    assert yday is not None, (
-        f"expected 'yesterday' resolved, got {[t.expression for t in r.temporal_references]}"
-    )
+    assert (
+        yday is not None
+    ), f"expected 'yesterday' resolved, got {[t.expression for t in r.temporal_references]}"
     assert yday.resolved is not None
     resolved_dt = datetime.fromisoformat(yday.resolved)
     # Must be 24h ± 6h before the turn timestamp (dateparser may anchor to
     # a slightly different time-of-day than the base, so allow slack).
     delta_hours = (base - resolved_dt).total_seconds() / 3600
-    assert 18 <= delta_hours <= 30, (
-        f"yesterday resolved {delta_hours:.1f}h before turn timestamp"
-    )
+    assert 18 <= delta_hours <= 30, f"yesterday resolved {delta_hours:.1f}h before turn timestamp"
 
 
 # ── 6. Light-cone reachability composition ───────────────────────────────────
@@ -400,7 +401,9 @@ def test_real_light_cone_collapse_after_long_gap(monitor: FidelityMonitor) -> No
     # Build a thread of 5 turns 30 s apart — small reachable_fraction baseline
     for i in range(5):
         monitor.process_turn(
-            sid, HUMANS[i % len(HUMANS)], AGENTS[i % len(AGENTS)],
+            sid,
+            HUMANS[i % len(HUMANS)],
+            AGENTS[i % len(AGENTS)],
             timestamp=_ts(base, i * 30),
         )
 
@@ -416,9 +419,9 @@ def test_real_light_cone_collapse_after_long_gap(monitor: FidelityMonitor) -> No
     assert r_collapsed.reachable_turns is not None
     # After 5 days with a 2h half-life, retention is ~0 → almost no prior
     # turn should be reachable.
-    assert r_collapsed.reachable_fraction <= 0.2, (
-        f"reachable_fraction={r_collapsed.reachable_fraction} after 5d/2h half-life"
-    )
+    assert (
+        r_collapsed.reachable_fraction <= 0.2
+    ), f"reachable_fraction={r_collapsed.reachable_fraction} after 5d/2h half-life"
 
 
 def test_real_short_gap_keeps_high_reachability(monitor: FidelityMonitor) -> None:
@@ -430,7 +433,9 @@ def test_real_short_gap_keeps_high_reachability(monitor: FidelityMonitor) -> Non
 
     for i in range(5):
         monitor.process_turn(
-            sid, HUMANS[i % len(HUMANS)], AGENTS[i % len(AGENTS)],
+            sid,
+            HUMANS[i % len(HUMANS)],
+            AGENTS[i % len(AGENTS)],
             timestamp=_ts(base, i * 5),
         )
 
@@ -442,9 +447,9 @@ def test_real_short_gap_keeps_high_reachability(monitor: FidelityMonitor) -> Non
     )
 
     assert r.reachable_fraction is not None
-    assert r.reachable_fraction >= 0.5, (
-        f"realtime thread should keep most turns reachable, got {r.reachable_fraction}"
-    )
+    assert (
+        r.reachable_fraction >= 0.5
+    ), f"realtime thread should keep most turns reachable, got {r.reachable_fraction}"
 
 
 # ── 7. Cross-feature: composed signals fire downstream events ────────────────
@@ -459,7 +464,10 @@ def test_real_long_gap_emits_temporal_desync_event(monitor: FidelityMonitor) -> 
 
     monitor.process_turn(sid, HUMANS[0], AGENTS[0], timestamp=_ts(base, 0))
     r = monitor.process_turn(
-        sid, HUMANS[1], AGENTS[1], timestamp=_ts(base, 3 * 86400),
+        sid,
+        HUMANS[1],
+        AGENTS[1],
+        timestamp=_ts(base, 3 * 86400),
     )
 
     desync = [e for e in r.events if e.type == "signal.temporal_desync"]
@@ -481,7 +489,9 @@ def test_real_long_gap_emits_light_cone_collapse_event() -> None:
     # (0.3) checks are both meaningful
     for i in range(8):
         monitor.process_turn(
-            sid, HUMANS[i % len(HUMANS)], AGENTS[i % len(AGENTS)],
+            sid,
+            HUMANS[i % len(HUMANS)],
+            AGENTS[i % len(AGENTS)],
             timestamp=_ts(base, i * 10),
         )
 

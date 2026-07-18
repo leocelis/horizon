@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
-from horizon.models import TemporalReference
+from horizon_monitor.models import TemporalReference
+from horizon_monitor.spacetime.temporal import parse_timestamp
 
 
 def resolve_deictic_expressions(
@@ -23,7 +22,7 @@ def resolve_deictic_expressions(
     except ImportError:
         return []
 
-    base_dt = datetime.fromisoformat(reference_timestamp)
+    base_dt = parse_timestamp(reference_timestamp)
 
     try:
         results = dateparser.search.search_dates(

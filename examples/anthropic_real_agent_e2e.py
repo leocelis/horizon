@@ -34,7 +34,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 
 
 CHEAP_MODEL = "claude-haiku-4-5"

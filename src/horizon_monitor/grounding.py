@@ -22,8 +22,9 @@ outbound calls (the privacy invariant from the intent is preserved).
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Protocol
+from typing import Protocol
 
 
 class GroundingHookError(RuntimeError):

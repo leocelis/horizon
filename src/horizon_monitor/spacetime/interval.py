@@ -26,7 +26,7 @@ from __future__ import annotations
 import math
 from typing import Literal
 
-from horizon.config import Config
+from horizon_monitor.config import Config
 
 
 def compute_spacetime_interval(

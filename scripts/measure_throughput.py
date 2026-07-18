@@ -37,7 +37,7 @@ try:
 except ImportError:
     resource = None
 
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 
 TEMPLATES: list[tuple[str, str]] = [
     (

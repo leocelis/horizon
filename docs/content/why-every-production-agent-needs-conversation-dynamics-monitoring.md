@@ -38,9 +38,9 @@ Klarna is not unique. It is the only one that became public. The same dynamics a
 
 If you are using LangSmith, Langfuse, Arize Phoenix, Datadog LLM Observability, or any combination of them, you have excellent coverage of one layer: infrastructure.
 
-You know how many tokens each request consumed. You know latency. You know error rates. You know cost per session. Some of these tools add per-response quality scores — hallucination likelihood, toxicity, relevance — evaluated on each response in isolation.
+You know how many tokens each request consumed. You know latency. You know error rates. You know cost per session. Some of these tools add per-response quality scores — hallucination likelihood, toxicity, relevance — evaluated on each response in isolation. A few (Langfuse, Arize Phoenix) offer session-level LLM-judge evaluation, sampled and run offline or async.
 
-None of them measure what happens across turns.
+None of them measure what happens across turns the way Horizon does: deterministic, zero-LLM-call arithmetic on every single turn, in real time, at effectively no marginal cost.
 
 The ICLR paper identified four failure mechanisms that drive multi-turn degradation: premature answer locking (the agent commits to an answer at turn three and cannot update it), context rot (information buried earlier in the conversation loses influence), conversational inertia (the agent imitates its own prior responses and stops exploring), and instruction dilution (system prompt constraints erode gradually until formatting rules break and tone shifts).
 
@@ -104,7 +104,7 @@ The framing matters. A conversation dynamics monitor is not a plugin you add to 
 
 You would not run a production service without knowing its error rate. You would not ship code without a test suite. You would not operate a database without monitoring query performance. Running production AI agents without conversation dynamics monitoring is the same category of decision: you are operating blind on the failure mode that is most likely to damage your users and your brand.
 
-The ICLR paper is peer-reviewed and award-winning. The Klarna failure is public record. Gartner forecasts that 40% of agentic AI projects will fail by 2027. The gap in the current monitoring stack is confirmed by five incumbent tools that all measure infrastructure and none of which measure what happens across turns.
+The ICLR paper is peer-reviewed and award-winning. The Klarna failure is public record. Gartner forecasts that 40% of agentic AI projects will fail by 2027. The gap in the current monitoring stack is confirmed by five incumbent tools that all measure infrastructure first, with only sampled, offline LLM-judge coverage of what happens across turns.
 
 The question is not whether you need this. The question is whether you build it yourself or use something that already passes the validation gates.
 
@@ -117,7 +117,7 @@ Horizon Fidelity Monitor is an open-source Python library that integrates as an 
 It ships with four validated dimensions (Time, Space, Memory, Fidelity), 16 event types that trigger across conversation scenarios, and production throughput of 11 turns/second at p99 < 150ms — adding no perceptible latency to agent replies.
 
 ```python
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 
 monitor = FidelityMonitor()
 session_id = monitor.new_conversation()

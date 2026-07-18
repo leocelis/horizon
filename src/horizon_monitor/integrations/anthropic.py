@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from horizon.models import TurnResult
-from horizon.monitor import FidelityMonitor
+from horizon_monitor.models import TurnResult
+from horizon_monitor.monitor import FidelityMonitor
 
 
 class HorizonWrappedAnthropic:
@@ -15,7 +15,7 @@ class HorizonWrappedAnthropic:
     Usage::
 
         import anthropic
-        from horizon import FidelityMonitor
+        from horizon_monitor import FidelityMonitor
 
         monitor = FidelityMonitor()
         session_id = monitor.new_conversation()

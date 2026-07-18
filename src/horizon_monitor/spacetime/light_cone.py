@@ -20,9 +20,9 @@ from __future__ import annotations
 import numpy as np
 from numpy import ndarray
 
-from horizon.config import Config
-from horizon.session import Session
-from horizon.spacetime.temporal import compute_retention
+from horizon_monitor.config import Config
+from horizon_monitor.session import Session
+from horizon_monitor.spacetime.temporal import compute_retention
 
 
 def compute_reachability(

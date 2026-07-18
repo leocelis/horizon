@@ -20,7 +20,7 @@ os.environ.setdefault("HF_HUB_OFFLINE", "1")
 os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 # ── MCP tool/resource functions (same code Cursor calls over stdio) ──────────
-from horizon.mcp.server import (
+from horizon_monitor.mcp.server import (
     configure_session,
     get_events,
     get_trajectory,

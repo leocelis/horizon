@@ -1,4 +1,4 @@
-"""Tests for horizon.spacetime.pacing — deferred-action detection.
+"""Tests for horizon_monitor.spacetime.pacing — deferred-action detection.
 
 Covers:
   • detect_deferred_action — positive, negative, and false-positive (opinion) cases.
@@ -12,9 +12,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from horizon import FidelityMonitor
-from horizon.spacetime.pacing import detect_completion_marker, detect_deferred_action
-
+from horizon_monitor import FidelityMonitor
+from horizon_monitor.spacetime.pacing import detect_completion_marker, detect_deferred_action
 
 # ── detect_deferred_action ─────────────────────────────────────────────────────
 
@@ -24,8 +23,10 @@ from horizon.spacetime.pacing import detect_completion_marker, detect_deferred_a
     [
         ("Try the migration on staging and let me know what happens.", "test_or_run"),
         ("Run the test suite and tell me which ones fail.", "test_or_run"),
-        ("Read through the design doc and tell me which sections need clarifying.",
-         "watch_or_review"),
+        (
+            "Read through the design doc and tell me which sections need clarifying.",
+            "watch_or_review",
+        ),
         ("Once you're done with the install, ping me.", "report_back"),
         ("Wait 5 minutes for the cache to warm up, then come back.", "wait_or_observe"),
         ("Give it 10 minutes and check again.", "wait_or_observe"),
@@ -57,9 +58,9 @@ def test_detects_deferred_actions(agent_text: str, expected_action: str) -> None
 def test_does_not_fire_on_opinion_or_no_action(agent_text: str) -> None:
     """Opinion invitations and plain answers must NOT count as deferred actions."""
     hint = detect_deferred_action(agent_text)
-    assert hint.has_deferred_action is False, (
-        f"Should NOT detect deferred action in: {agent_text!r}"
-    )
+    assert (
+        hint.has_deferred_action is False
+    ), f"Should NOT detect deferred action in: {agent_text!r}"
 
 
 def test_deferred_action_not_suppressed_when_also_contains_opinion_language() -> None:
@@ -94,9 +95,9 @@ def test_deferred_action_not_suppressed_when_also_contains_opinion_language() ->
     ],
 )
 def test_detects_completion_markers(user_text: str) -> None:
-    assert detect_completion_marker(user_text) is True, (
-        f"Should detect completion in: {user_text!r}"
-    )
+    assert (
+        detect_completion_marker(user_text) is True
+    ), f"Should detect completion in: {user_text!r}"
 
 
 @pytest.mark.parametrize(
@@ -114,9 +115,9 @@ def test_detects_completion_markers(user_text: str) -> None:
 )
 def test_does_not_falsely_mark_in_progress_messages(user_text: str) -> None:
     """In-progress / question messages must NOT be flagged as completion."""
-    assert detect_completion_marker(user_text) is False, (
-        f"Should NOT detect completion in: {user_text!r}"
-    )
+    assert (
+        detect_completion_marker(user_text) is False
+    ), f"Should NOT detect completion in: {user_text!r}"
 
 
 # ── End-to-end: signal.pace_premature_report ───────────────────────────────────
@@ -148,9 +149,9 @@ def test_pace_premature_report_fires_on_implausibly_fast_reply() -> None:
     )
 
     fired = [e.type for e in result.events]
-    assert "signal.pace_premature_report" in fired, (
-        f"Expected signal.pace_premature_report in {fired}"
-    )
+    assert (
+        "signal.pace_premature_report" in fired
+    ), f"Expected signal.pace_premature_report in {fired}"
 
     pace = next(e for e in result.events if e.type == "signal.pace_premature_report")
     assert pace.metadata["gap_seconds"] == 4.0
@@ -179,9 +180,9 @@ def test_pace_premature_report_suppressed_by_completion_marker() -> None:
     )
 
     fired = [e.type for e in result.events]
-    assert "signal.pace_premature_report" not in fired, (
-        f"Should suppress when user signals completion; got events: {fired}"
-    )
+    assert (
+        "signal.pace_premature_report" not in fired
+    ), f"Should suppress when user signals completion; got events: {fired}"
 
 
 def test_pace_premature_report_suppressed_when_gap_is_large() -> None:
@@ -205,9 +206,9 @@ def test_pace_premature_report_suppressed_when_gap_is_large() -> None:
     )
 
     fired = [e.type for e in result.events]
-    assert "signal.pace_premature_report" not in fired, (
-        f"Should not fire on slow replies; got: {fired}"
-    )
+    assert (
+        "signal.pace_premature_report" not in fired
+    ), f"Should not fire on slow replies; got: {fired}"
 
 
 def test_pace_premature_report_suppressed_when_no_deferred_action() -> None:
@@ -231,6 +232,6 @@ def test_pace_premature_report_suppressed_when_no_deferred_action() -> None:
     )
 
     fired = [e.type for e in result.events]
-    assert "signal.pace_premature_report" not in fired, (
-        f"Should not fire when no deferred action existed; got: {fired}"
-    )
+    assert (
+        "signal.pace_premature_report" not in fired
+    ), f"Should not fire when no deferred action existed; got: {fired}"

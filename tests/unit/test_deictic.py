@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from horizon.spacetime.deictic import resolve_deictic_expressions
+from horizon_monitor.spacetime.deictic import resolve_deictic_expressions
 
 REF_TS = "2026-04-22T10:00:00+00:00"
 

@@ -25,7 +25,7 @@ Cursor integration (.cursor/mcp.json):
       "mcpServers": {
         "horizon": {
           "command": "/path/to/venv/bin/python",
-          "args": ["-m", "horizon.mcp.server"],
+          "args": ["-m", "horizon_monitor.mcp.server"],
           "env": {}
         }
       }
@@ -47,11 +47,9 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
-from horizon import __version__
-
-from horizon import Config, FidelityMonitor
-from horizon.monitor import SessionNotFoundError
-from horizon.mcp.auth import current_key_id
+from horizon_monitor import Config, FidelityMonitor, __version__
+from horizon_monitor.mcp.auth import current_key_id
+from horizon_monitor.monitor import SessionNotFoundError
 
 # ── Structured log — file for local Cursor use, stdout for DO/production ──────
 _LOG_PATH = os.path.expanduser("~/.cursor/horizon_mcp.log")
@@ -65,18 +63,16 @@ else:
     except OSError:
         _handlers.append(logging.StreamHandler())
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(message)s", handlers=_handlers)
-_log = logging.getLogger("horizon.mcp")
+_log = logging.getLogger("horizon_monitor.mcp")
 
 try:
     from mcp.server.fastmcp import FastMCP
     from mcp.server.sse import TransportSecuritySettings
 except ImportError as exc:
-    raise ImportError(
-        "MCP support requires: pip install 'horizon-monitor[mcp]'"
-    ) from exc
+    raise ImportError("MCP support requires: pip install 'horizon-monitor[mcp]'") from exc
 
 
-def _transport_security() -> "TransportSecuritySettings | None":
+def _transport_security() -> TransportSecuritySettings | None:
     """
     Build TransportSecuritySettings for production deployments.
 
@@ -99,6 +95,7 @@ def _transport_security() -> "TransportSecuritySettings | None":
         )
     # No explicit list: disable DNS rebinding protection — auth middleware gates access
     return TransportSecuritySettings(enable_dns_rebinding_protection=False)
+
 
 # ── Server-level instructions ─────────────────────────────────────────────────
 #
@@ -197,7 +194,12 @@ def new_conversation(
     """Create a new Horizon session. Returns {session_id: str}."""
     monitor = _get_monitor()
     sid = monitor.new_conversation(metadata=metadata)
-    _log.info("TOOL  new_conversation  key=%s  session=%s  metadata=%s", current_key_id.get(), sid[:8] + "…", metadata)
+    _log.info(
+        "TOOL  new_conversation  key=%s  session=%s  metadata=%s",
+        current_key_id.get(),
+        sid[:8] + "…",
+        metadata,
+    )
     return {"session_id": sid}
 
 
@@ -274,7 +276,11 @@ def process_turn(
             d["fidelity_score"],
             d["health_status"],
             d.get("gap_class", "n/a"),
-            f"{d['estimated_retention']:.0%}" if d.get("estimated_retention") is not None else "n/a",
+            (
+                f"{d['estimated_retention']:.0%}"
+                if d.get("estimated_retention") is not None
+                else "n/a"
+            ),
             [e["type"] for e in active_evs] if active_evs else "none",
         )
         is_healthy = d["health_status"] == "healthy" and not active_evs
@@ -348,7 +354,12 @@ def configure_session(
     try:
         result = monitor.configure(session_id=session_id, **kwargs)
         d = dataclasses.asdict(result)
-        _log.info("TOOL  configure_session  key=%s  session=%s  applied=%s", current_key_id.get(), str(session_id)[:8], d["applied"])
+        _log.info(
+            "TOOL  configure_session  key=%s  session=%s  applied=%s",
+            current_key_id.get(),
+            str(session_id)[:8],
+            d["applied"],
+        )
         return d
     except SessionNotFoundError as exc:
         _log.warning("TOOL  configure_session  key=%s  ERROR: %s", current_key_id.get(), exc)
@@ -385,7 +396,11 @@ def get_trajectory(session_id: str) -> str:
         d = dataclasses.asdict(traj)
         _log.info(
             "RESOURCE  trajectory  key=%s  session=%s  turns=%s  health=%s  fidelity=%.3f",
-            current_key_id.get(), session_id[:8] + "…", d["turn_count"], d["health_status"], d["current_fidelity"],
+            current_key_id.get(),
+            session_id[:8] + "…",
+            d["turn_count"],
+            d["health_status"],
+            d["current_fidelity"],
         )
         return json.dumps(d, indent=2, default=str)
     except SessionNotFoundError as exc:
@@ -415,7 +430,10 @@ def get_events(session_id: str) -> str:
         all_events = [dataclasses.asdict(e) for e in events]
         _log.info(
             "RESOURCE  events  key=%s  session=%s  total=%s  active=%s  active_types=%s",
-            current_key_id.get(), session_id[:8] + "…", len(all_events), len(active),
+            current_key_id.get(),
+            session_id[:8] + "…",
+            len(all_events),
+            len(active),
             [e["type"] for e in active] if active else "none",
         )
         return json.dumps(
@@ -463,11 +481,15 @@ def monitor_conversation(
         agent_name: Identifier for the agent in trajectory reports.
     """
     monitor = _get_monitor()
-    sid = monitor.new_conversation(
-        metadata={"domain": domain, "agent_name": agent_name}
-    )
+    sid = monitor.new_conversation(metadata={"domain": domain, "agent_name": agent_name})
     ts = datetime.now(timezone.utc).isoformat()
-    _log.info("PROMPT  monitor_conversation  key=%s  session=%s  domain=%s  agent=%s", current_key_id.get(), sid[:8] + "…", domain, agent_name)
+    _log.info(
+        "PROMPT  monitor_conversation  key=%s  session=%s  domain=%s  agent=%s",
+        current_key_id.get(),
+        sid[:8] + "…",
+        domain,
+        agent_name,
+    )
 
     return f"""Horizon Fidelity Monitor is now active for this conversation.
 
@@ -526,13 +548,15 @@ async def health_check(request) -> Any:
 
     monitor = _get_monitor()
     session_count = len(monitor._sessions) if hasattr(monitor, "_sessions") else 0
-    return JSONResponse({
-        "status": "healthy",
-        "server": "horizon-monitor",
-        "version": __version__,
-        "sessions_active": session_count,
-        "transports": ["streamable-http", "sse"],
-    })
+    return JSONResponse(
+        {
+            "status": "healthy",
+            "server": "horizon-monitor",
+            "version": __version__,
+            "sessions_active": session_count,
+            "transports": ["streamable-http", "sse"],
+        }
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -581,7 +605,7 @@ def _dispatch(monitor: FidelityMonitor, name: str, args: dict) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Entry point — allows `python -m horizon.mcp.server` for Cursor mcp.json
+# Entry point — allows `python -m horizon_monitor.mcp.server` for Cursor mcp.json
 # ─────────────────────────────────────────────────────────────────────────────
 
 

@@ -29,7 +29,6 @@ class Config:
     'plateaued'. v0.1 reused convergence_threshold for both checks, which
     required IGT ≈ 0 — unrealistic for real conversations. v0.2 splits
     these so convergence fires on a real plateau, not a numerical zero."""
-    """IGT trend below this (and all recent IGT values) = converging."""
 
     drift_window: int = 4
     """Consecutive fidelity-declining turns before declaring degrading/critical."""
@@ -38,6 +37,7 @@ class Config:
     """TWR above this → alert.verbosity."""
 
     consistency_threshold: float = 0.6
+    """Bipredictability below this → alert.contradiction."""
 
     # ── Event trigger thresholds (v0.2 tightening) ──────────────────────────
     comprehension_trend_threshold: float = -0.05
@@ -61,7 +61,6 @@ class Config:
     this fraction of the running peak — i.e., the conversation has
     delivered most of its information already. v0.1 used a t-star
     projection that required impossible decay rates to fire."""
-    """Bipredictability below this → alert.contradiction."""
 
     consistency_method: Literal["fast", "nli"] = "fast"
     """fast = Tier 1 (bipredictability only); nli = adds Tier 3 cross-encoder."""

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import time
 
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 
 
 def test_preload_models_returns_timing_report() -> None:

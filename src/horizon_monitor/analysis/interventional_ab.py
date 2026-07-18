@@ -12,8 +12,8 @@ from typing import Any
 
 import numpy as np
 
-from horizon import FidelityMonitor
-from horizon.engines.embedding import EmbeddingEngine
+from horizon_monitor import FidelityMonitor
+from horizon_monitor.engines.embedding import EmbeddingEngine
 
 DEFAULT_ACTIONABLE: frozenset[str] = frozenset(
     {

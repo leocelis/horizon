@@ -15,7 +15,7 @@ import types
 
 import pytest
 
-from horizon.spacetime.spatial import infer_location_class
+from horizon_monitor.spacetime.spatial import infer_location_class
 
 # ── Fake geoip2.database module ──────────────────────────────────────────────
 
@@ -53,7 +53,7 @@ class _FakeReader:
         )
         self._raise = raise_on_lookup
 
-    def __enter__(self) -> "_FakeReader":
+    def __enter__(self) -> _FakeReader:
         return self
 
     def __exit__(self, *_: object) -> None:
@@ -106,9 +106,7 @@ def test_geoip_returns_unknown_for_low_accuracy_lookup(
         ),
     )
 
-    loc = infer_location_class(
-        {"ip_address": "8.8.8.8", "geoip_db_path": "/dev/null"}
-    )
+    loc = infer_location_class({"ip_address": "8.8.8.8", "geoip_db_path": "/dev/null"})
     assert loc == "unknown"
 
 
@@ -123,9 +121,7 @@ def test_geoip_anonymous_vpn_marked_unknown(
         ),
     )
 
-    loc = infer_location_class(
-        {"ip_address": "8.8.8.8", "geoip_db_path": "/dev/null"}
-    )
+    loc = infer_location_class({"ip_address": "8.8.8.8", "geoip_db_path": "/dev/null"})
     assert loc == "unknown"
 
 
@@ -141,9 +137,7 @@ def test_geoip_hosting_provider_marked_unknown(
         ),
     )
 
-    loc = infer_location_class(
-        {"ip_address": "8.8.8.8", "geoip_db_path": "/dev/null"}
-    )
+    loc = infer_location_class({"ip_address": "8.8.8.8", "geoip_db_path": "/dev/null"})
     assert loc == "unknown"
 
 
@@ -158,9 +152,7 @@ def test_geoip_lookup_failure_falls_back_to_unknown(
         ),
     )
 
-    loc = infer_location_class(
-        {"ip_address": "8.8.8.8", "geoip_db_path": "/dev/null"}
-    )
+    loc = infer_location_class({"ip_address": "8.8.8.8", "geoip_db_path": "/dev/null"})
     assert loc == "unknown"
 
 

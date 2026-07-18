@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from numpy import ndarray
 
-from horizon.session import Session
+from horizon_monitor.session import Session
 
 
 def detect_conversation_mode(

@@ -8,7 +8,7 @@ from collections.abc import Callable
 import numpy as np
 from numpy import ndarray
 
-from horizon.session import Session
+from horizon_monitor.session import Session
 
 
 def split_sentences(text: str) -> list[str]:

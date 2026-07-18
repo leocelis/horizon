@@ -1,0 +1,32 @@
+# Keep the Docker build context small — the Dockerfile only needs
+# pyproject.toml, README.md, LICENSE, and src/ (see deploy/docker/Dockerfile).
+# Build context is the repo root (docker-compose.yml build.context: ../..).
+
+.venv/
+venv/
+env/
+.cache/
+.git/
+data/
+tests/
+docs/
+
+# Byte-compiled / caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local-only artifacts
+.github/
+deploy/
+examples/
+recipes/
+scripts/
+dist/
+build/
+*.egg-info/

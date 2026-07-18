@@ -1,4 +1,4 @@
-"""Unit tests for horizon.analysis.leading_indicator.
+"""Unit tests for horizon_monitor.analysis.leading_indicator.
 
 These use hand-constructed trajectories with a *known* ground truth so the
 classifier's leading / lagging / no-signal verdicts are checkable exactly.
@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from horizon.analysis import (
+from horizon_monitor.analysis import (
     analyze_leading_indicator,
     analyze_session_leading_indicator,
 )

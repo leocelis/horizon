@@ -7,7 +7,7 @@ Gate (from horizon_intent.yaml::constraints[v1_proxy_correlation]):
 
 from __future__ import annotations
 
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 from tests.validation._helpers import load_jsonl, require_dataset
 
 

@@ -2,21 +2,38 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from horizon.models import TurnResult
-from horizon.monitor import FidelityMonitor
+from horizon_monitor.models import TurnResult
+from horizon_monitor.monitor import FidelityMonitor
+
+_log = logging.getLogger(__name__)
+
+# LangChain is an optional dependency (see test_zero_framework_imports_in_core /
+# test_langchain_callback_e2e.py — Horizon must work with zero langchain install).
+# Lazily resolve the real BaseCallbackHandler when langchain-core is present so
+# that `ChatOpenAI(callbacks=[HorizonCallback(...)])` is actually compatible
+# with LangChain's callback manager (isinstance checks, default no-op methods,
+# etc). Fall back to a plain object base when it is not installed — the class
+# still satisfies the callback protocol by duck-typing the same method names.
+try:
+    from langchain_core.callbacks.base import BaseCallbackHandler as _BaseCallbackHandler
+except ImportError:  # pragma: no cover - exercised only without langchain-core installed
+
+    class _BaseCallbackHandler:  # type: ignore[no-redef]
+        """Fallback stand-in used when langchain-core is not installed."""
 
 
-class HorizonCallback:
+class HorizonCallback(_BaseCallbackHandler):
     """LangChain BaseCallbackHandler that auto-calls process_turn after each LLM invocation.
 
     Usage with LangChain::
 
         from langchain_openai import ChatOpenAI
-        from horizon import FidelityMonitor
-        from horizon.integrations.langchain import HorizonCallback
+        from horizon_monitor import FidelityMonitor
+        from horizon_monitor.integrations.langchain import HorizonCallback
 
         monitor = FidelityMonitor()
         session_id = monitor.new_conversation()
@@ -35,6 +52,7 @@ class HorizonCallback:
         include_timestamps: bool = True,
         client_context: dict | None = None,
     ) -> None:
+        super().__init__()
         self._monitor = monitor
         self._session_id = session_id
         self._include_timestamps = include_timestamps
@@ -59,8 +77,10 @@ class HorizonCallback:
                 if content:
                     self._pending_human_message = str(content)
                     break
-        except Exception:
-            pass
+        except Exception as exc:
+            # Never break the wrapped LLM call over a monitoring-side parse
+            # failure — log loudly instead of swallowing silently.
+            _log.warning("horizon monitoring failed: %s", exc, exc_info=True)
 
     def on_llm_end(self, response: Any, **kwargs: Any) -> None:
         """Process the completed turn after the LLM response is available."""
@@ -91,12 +111,15 @@ class HorizonCallback:
             )
             self.last_result = result
             self.results.append(result)
-        except Exception:
-            pass
+        except Exception as exc:
+            # Never break the wrapped LLM call over a monitoring failure —
+            # log loudly instead of swallowing silently.
+            _log.warning("horizon monitoring failed: %s", exc, exc_info=True)
         finally:
             self._pending_human_message = None
 
-    # Make the class usable as a LangChain callback by duck-typing the protocol
-    # (avoids requiring langchain as a hard dependency)
+    # Legacy no-op shim retained for older callback-manager code paths that
+    # call the handler instance directly rather than dispatching by method
+    # name. Harmless when the real BaseCallbackHandler is the base class.
     def __call__(self, *args: Any, **kwargs: Any) -> None:
         pass

@@ -70,23 +70,45 @@ _DEFERRED_PATTERNS: list[tuple[str, float, str, bool]] = [
     (r"\bcome\s+back\s+(in|after)\b", 300.0, "wait_or_observe", True),
     # "report back when X happens / once you Y" — state change.
     (r"\breport\s+back\b", 60.0, "report_back", True),
-    (r"\bonce\s+you[\u2019']?(?:re|ve|d)?\s+(done|finished|ready|tried|tested)\b", 60.0,
-     "report_back", True),
+    (
+        r"\bonce\s+you[\u2019']?(?:re|ve|d)?\s+(done|finished|ready|tried|tested)\b",
+        60.0,
+        "report_back",
+        True,
+    ),
     (r"\bwhen\s+you[\u2019']?(?:re|ve|d)?\s+(done|finished|ready)\b", 60.0, "report_back", True),
     (r"\bafter\s+you\s+\w+", 60.0, "report_back", True),
     # "try X and tell me / run X and let me know" — execution.
-    (r"\b(try|run|execute|test|deploy|launch|install)\b[^!?\n]{0,200}\b"
-     r"(and|then)\s+(let|tell)\s+me\b", 30.0, "test_or_run", True),
+    (
+        r"\b(try|run|execute|test|deploy|launch|install)\b[^!?\n]{0,200}\b"
+        r"(and|then)\s+(let|tell)\s+me\b",
+        30.0,
+        "test_or_run",
+        True,
+    ),
     # Multi-step instruction trailing with "let me know".
-    (r"\b(read|review|check|look\s+at|skim|go\s+through|study|watch)\b[^!?\n]{0,200}"
-     r"\b(let|tell)\s+me\b", 60.0, "watch_or_review", True),
+    (
+        r"\b(read|review|check|look\s+at|skim|go\s+through|study|watch)\b[^!?\n]{0,200}"
+        r"\b(let|tell)\s+me\b",
+        60.0,
+        "watch_or_review",
+        True,
+    ),
     # Generic deferred prompts — opinion_safe=False because these patterns
     # overlap with "let me know what you think" style invitations. The negative
     # gate is applied before testing these.
-    (r"\blet\s+me\s+know\s+(when|once|how|what|whether|if\s+(it|that|you)\s+\w+)\b", 60.0,
-     "report_back", False),
-    (r"\btell\s+me\s+(when|once|how|what|whether|if\s+(it|that|you)\s+\w+)\b", 60.0,
-     "report_back", False),
+    (
+        r"\blet\s+me\s+know\s+(when|once|how|what|whether|if\s+(it|that|you)\s+\w+)\b",
+        60.0,
+        "report_back",
+        False,
+    ),
+    (
+        r"\btell\s+me\s+(when|once|how|what|whether|if\s+(it|that|you)\s+\w+)\b",
+        60.0,
+        "report_back",
+        False,
+    ),
 ]
 
 

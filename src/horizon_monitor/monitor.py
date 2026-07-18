@@ -5,8 +5,55 @@ from __future__ import annotations
 import dataclasses
 import logging
 import uuid
-from datetime import datetime
 from typing import Any
+
+import numpy as np
+
+from horizon_monitor.config import Config
+from horizon_monitor.context.window import update_context_window
+from horizon_monitor.engines.coherence import compute_bipredictability
+from horizon_monitor.engines.divergence import compute_divergence
+from horizon_monitor.engines.embedding import EmbeddingEngine, update_history
+from horizon_monitor.engines.epsilon import estimate_epsilon
+from horizon_monitor.engines.fidelity import (
+    compute_dynamic_fidelity,
+    compute_health,
+    compute_snapshot_fidelity,
+)
+from horizon_monitor.engines.igt import compute_igt, compute_igt_trend
+from horizon_monitor.engines.mode import detect_conversation_mode
+from horizon_monitor.engines.twr import compute_twr, split_sentences
+from horizon_monitor.events.evaluator import evaluate_events
+from horizon_monitor.grounding import (
+    GroundingHookError,
+    GroundingResult,
+    ToolHook,
+    call_hook,
+    estimate_grounding_need,
+)
+from horizon_monitor.models import (
+    ConfigResult,
+    ConfigWarning,
+    Event,
+    ExportResult,
+    FidelityTrajectory,
+    TurnResult,
+)
+from horizon_monitor.session import Session, TurnState
+from horizon_monitor.spacetime.circadian import compute_circadian_factor
+from horizon_monitor.spacetime.deictic import resolve_deictic_expressions
+from horizon_monitor.spacetime.interval import compute_spacetime_interval
+from horizon_monitor.spacetime.light_cone import compute_reachability
+from horizon_monitor.spacetime.pacing import detect_completion_marker, detect_deferred_action
+from horizon_monitor.spacetime.spatial import compute_spatial_constraint, infer_location_class
+from horizon_monitor.spacetime.temporal import (
+    compute_resumption_cost,
+    compute_retention,
+    compute_temporal_asymmetry_penalty,
+    compute_temporal_gap,
+    parse_timestamp,
+)
+from horizon_monitor.spacetime.velocity import compute_acceleration, compute_velocity
 
 _log = logging.getLogger(__name__)
 
@@ -16,53 +63,6 @@ _log = logging.getLogger(__name__)
 _UNGATED_EVENTS: frozenset[str] = frozenset(
     {"signal.grounding_required", "signal.pace_premature_report"}
 )
-
-import numpy as np
-
-from horizon.config import Config
-from horizon.context.window import update_context_window
-from horizon.engines.coherence import compute_bipredictability
-from horizon.engines.divergence import compute_divergence
-from horizon.engines.embedding import EmbeddingEngine, update_history
-from horizon.engines.epsilon import estimate_epsilon
-from horizon.engines.fidelity import (
-    compute_dynamic_fidelity,
-    compute_health,
-    compute_snapshot_fidelity,
-)
-from horizon.engines.igt import compute_igt, compute_igt_trend
-from horizon.engines.mode import detect_conversation_mode
-from horizon.engines.twr import compute_twr, split_sentences
-from horizon.events.evaluator import evaluate_events
-from horizon.grounding import (
-    GroundingHookError,
-    GroundingResult,
-    ToolHook,
-    call_hook,
-    estimate_grounding_need,
-)
-from horizon.models import (
-    ConfigResult,
-    ConfigWarning,
-    Event,
-    ExportResult,
-    FidelityTrajectory,
-    TurnResult,
-)
-from horizon.session import Session, TurnState
-from horizon.spacetime.circadian import compute_circadian_factor
-from horizon.spacetime.deictic import resolve_deictic_expressions
-from horizon.spacetime.interval import compute_spacetime_interval
-from horizon.spacetime.light_cone import compute_reachability
-from horizon.spacetime.pacing import detect_completion_marker, detect_deferred_action
-from horizon.spacetime.spatial import compute_spatial_constraint, infer_location_class
-from horizon.spacetime.temporal import (
-    compute_resumption_cost,
-    compute_retention,
-    compute_temporal_asymmetry_penalty,
-    compute_temporal_gap,
-)
-from horizon.spacetime.velocity import compute_acceleration, compute_velocity
 
 
 class SessionNotFoundError(KeyError):
@@ -95,7 +95,7 @@ class FidelityMonitor:
         Args:
             config: Global default config. Can be overridden per-session via configure().
             store: Optional PersistentDynamicsStore for cross-session persistence.
-            grounding_hook: Optional callable (see horizon.grounding.ToolHook) invoked
+            grounding_hook: Optional callable (see horizon_monitor.grounding.ToolHook) invoked
                             when a turn looks ungrounded. With no hook, Horizon makes
                             zero outbound calls — privacy invariant preserved.
         """
@@ -188,6 +188,29 @@ class FidelityMonitor:
             )
 
         return sid
+
+    def end_conversation(self, session_id: str) -> bool:
+        """Remove a finished session's in-memory state.
+
+        FidelityMonitor keeps ``_sessions`` (and ``_last_grounding``) entries
+        alive for as long as the process runs — there is no TTL or LRU
+        eviction. For a long-running server, call this once a conversation
+        is truly done so memory doesn't grow unboundedly. Does not touch the
+        persistent store (if configured) — historical data there is left
+        intact.
+
+        Returns:
+            True if a session was found and removed, False if session_id was
+            already unknown (idempotent — safe to call twice).
+        """
+        existed = self._sessions.pop(session_id, None) is not None
+        self._last_grounding.pop(session_id, None)
+        return existed
+
+    # Alias — `delete_session` reads more naturally for callers that never
+    # think of it as "the conversation ending" (e.g. explicit cleanup after
+    # an error, or a "forget this session" admin action).
+    delete_session = end_conversation
 
     def process_turn(
         self,
@@ -289,7 +312,7 @@ class FidelityMonitor:
         ts_epoch: float | None = None
 
         if timestamp:
-            ts_epoch = datetime.fromisoformat(timestamp).timestamp()
+            ts_epoch = parse_timestamp(timestamp).timestamp()
             prev_ts = session.turns[-1].timestamp if session.turns else None
             gap_seconds, gap_class = compute_temporal_gap(timestamp, prev_ts)
 
@@ -305,12 +328,15 @@ class FidelityMonitor:
             temporal_refs = resolve_deictic_expressions(human_message, timestamp)
 
         # ── Step 4: Fidelity dynamics ─────────────────────────────────────
-        evicted = update_context_window(session, human_message, agent_response)
+        evicted_tokens = update_context_window(session, human_message, agent_response)
         delta_recoverable = max(0.0, twr - 0.3)
         # Only count evictions above the minimum threshold to avoid classifying
         # routine single-token context trims as irreversible degradation
         # (which would fire signal.session_reset far too aggressively).
-        delta_irreversible = max(0.0, (evicted - config.min_eviction_threshold) * 0.1)
+        # Both `evicted_tokens` and `min_eviction_threshold` are token counts —
+        # keep them unit-consistent (a prior version compared evicted *turns*
+        # against a token threshold, which meant this could basically never fire).
+        delta_irreversible = max(0.0, (evicted_tokens - config.min_eviction_threshold) * 0.1)
 
         prev_fidelity = session.fidelity_trajectory[-1] if session.fidelity_trajectory else 0.5
         fidelity = compute_dynamic_fidelity(
@@ -527,7 +553,7 @@ class FidelityMonitor:
             ts_curr = session.turns[i].timestamp
             ts_prev = session.turns[i - 1].timestamp
             if ts_curr and ts_prev:
-                from horizon.spacetime.temporal import compute_temporal_gap
+                from horizon_monitor.spacetime.temporal import compute_temporal_gap
 
                 gap, _ = compute_temporal_gap(ts_curr, ts_prev)
                 gaps.append(gap)
@@ -658,7 +684,7 @@ class FidelityMonitor:
 
         Supported targets: 'json', 'langsmith', 'langfuse', 'otel', 'arize'.
         """
-        from horizon.integrations.export import export_session
+        from horizon_monitor.integrations.export import export_session
 
         session = self._get_session(session_id)
         return export_session(session, target, connection)
@@ -670,11 +696,11 @@ class FidelityMonitor:
         client_module = type(client).__module__
 
         if "openai" in client_module:
-            from horizon.integrations.openai import HorizonWrappedOpenAI
+            from horizon_monitor.integrations.openai import HorizonWrappedOpenAI
 
             return HorizonWrappedOpenAI(client, self, session_id)
         if "anthropic" in client_module:
-            from horizon.integrations.anthropic import HorizonWrappedAnthropic
+            from horizon_monitor.integrations.anthropic import HorizonWrappedAnthropic
 
             return HorizonWrappedAnthropic(client, self, session_id)
 

@@ -1,7 +1,9 @@
 # Horizon integration index
 
-Horizon ships with production-ready adapters for every major agent runtime.
-Pick the shortest path for your stack.
+Horizon ships with production-ready adapters for OpenAI, Anthropic,
+LangChain/LangGraph, the OpenAI Agents SDK, and MCP clients (Cursor, Claude
+Desktop, Claude Code). GitHub Copilot is not yet a working integration — see
+the note below. Pick the shortest path for your stack.
 
 | Stack | How to plug in | Runnable example | CI-safe test |
 |---|---|---|---|
@@ -13,7 +15,7 @@ Pick the shortest path for your stack.
 | Cursor (IDE agent) | MCP server — [CURSOR.md](./CURSOR.md) | MCP config snippet in `CURSOR.md` | [`tests/e2e/test_mcp_server_e2e.py`](../../tests/e2e/test_mcp_server_e2e.py) |
 | Claude Desktop | MCP server — [CLAUDE_DESKTOP.md](./CLAUDE_DESKTOP.md) | MCP config snippet in `CLAUDE_DESKTOP.md` | [`tests/e2e/test_mcp_server_e2e.py`](../../tests/e2e/test_mcp_server_e2e.py) |
 | Claude Code (CLI) | MCP server — [CLAUDE_CODE.md](./CLAUDE_CODE.md) | `claude mcp add` + `~/.claude/CLAUDE.md` block | [`tests/e2e/test_mcp_server_e2e.py`](../../tests/e2e/test_mcp_server_e2e.py) |
-| GitHub Copilot | VS Code extension / gateway middleware / log replay — [COPILOT.md](./COPILOT.md) | see `COPILOT.md` | covered by raw + MCP e2e tests |
+| GitHub Copilot — **experimental, not yet working** | VS Code extension / gateway middleware / log replay — [COPILOT.md](./COPILOT.md) | see `COPILOT.md` | no Copilot-specific test; Patterns 2–3 reuse the raw-strings/MCP e2e paths, Pattern 1 (VS Code extension) is untested pseudocode |
 
 ## The common contract
 
@@ -40,6 +42,8 @@ signal math, the event system, the fidelity score — all identical.
 
 ## Proven end to end
 
-All seven integration surfaces above are exercised by automated tests that
-run without network access or API keys. See
-[`../../tests/e2e/`](../../tests/e2e/) for the full suite.
+Six of the seven integration surfaces above are exercised by automated tests
+that run without network access or API keys. GitHub Copilot is the
+exception — it is an experimental recipe (see the note in the table above),
+not a tested integration. See [`../../tests/e2e/`](../../tests/e2e/) for the
+full suite.

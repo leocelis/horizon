@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from horizon.spacetime.circadian import compute_circadian_factor
+from horizon_monitor.spacetime.circadian import compute_circadian_factor
 
 
 def test_peak_during_morning(tmp_path: object) -> None:

@@ -12,7 +12,7 @@ from __future__ import annotations
 import subprocess
 import sys
 
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 
 FRAMEWORKS_THAT_MUST_NOT_BE_REQUIRED: tuple[str, ...] = (
     "langchain",
@@ -55,7 +55,7 @@ def test_framework_agnostic_zero_imports() -> None:
     """
     script = (
         "import sys\n"
-        "from horizon import FidelityMonitor\n"
+        "from horizon_monitor import FidelityMonitor\n"
         "m = FidelityMonitor()\n"
         "sid = m.new_conversation()\n"
         "r = m.process_turn(sid, 'hi', 'hello')\n"

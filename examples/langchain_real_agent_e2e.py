@@ -28,8 +28,8 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from horizon import FidelityMonitor
-from horizon.integrations.langchain import HorizonCallback
+from horizon_monitor import FidelityMonitor
+from horizon_monitor.integrations.langchain import HorizonCallback
 
 
 CHEAP_MODEL = "gpt-4o-mini"

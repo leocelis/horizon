@@ -1280,7 +1280,7 @@ def process_turn(session: Session, human_message: str, agent_response: str,
 ## 12. Package Structure
 
 The repository follows the PyPA ``src/`` layout. Importable Python code lives
-under ``src/horizon/``; deployment assets, docs, tests, and examples sit at
+under ``src/horizon_monitor/``; deployment assets, docs, tests, and examples sit at
 the repository root.
 
 ```
@@ -1532,7 +1532,7 @@ The MCP server exposes Horizon's core API as MCP tools, enabling IDE integration
 # mcp/server.py
 
 from mcp.server import Server
-from horizon import FidelityMonitor, Config
+from horizon_monitor import FidelityMonitor, Config
 
 app = Server("horizon")
 monitor = FidelityMonitor(Config())
@@ -1576,7 +1576,7 @@ import click
 @click.option("--transport", default="stdio", type=click.Choice(["stdio", "sse"]))
 def serve(port: int, transport: str):
     from mcp.server import run
-    from horizon.mcp.server import app
+    from horizon_monitor.mcp.server import app
 
     if transport == "stdio":
         run(app, transport="stdio")
@@ -1656,7 +1656,7 @@ These are decisions deferred to implementation time, not spec time:
 | GeoIP2 database path | bundled vs. config vs. env var | Config parameter with env var fallback (`HORIZON_GEOIP_DB`) |
 | History decay factor | 0.9 (current) vs. tunable | Start fixed; add to `Config` if V1 shows sensitivity |
 | Conversation mode detector | embedding classifier vs. rule-based | Rule-based first (question density + specificity heuristics); swap to classifier if accuracy < 70% |
-| MCP session persistence | in-memory vs. file-backed between IDE restarts | In-memory first; enable the SQLite `PersistentDynamicsStore` (already implemented under `horizon.storage.sqlite`) when cross-session dynamics learning is turned on |
+| MCP session persistence | in-memory vs. file-backed between IDE restarts | In-memory first; enable the SQLite `PersistentDynamicsStore` (already implemented under `horizon_monitor.storage.sqlite`) when cross-session dynamics learning is turned on |
 | SDK wrap: async support | sync-only vs. sync + async | Sync wrappers first; add async variants if demand warrants |
 
 ---

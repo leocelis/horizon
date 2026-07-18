@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 from tests.validation._helpers import load_jsonl, require_dataset
 from tests.validation.test_v1_proxy import _spearman
 
@@ -19,9 +19,7 @@ def test_cross_domain_rho() -> None:
     dataset_path = require_dataset("v5_heldout_conversations.jsonl")
 
     # Per domain we keep (fidelity_per_turn, conv_rating, per_turn_ratings_or_None)
-    by_domain: dict[
-        str, list[tuple[list[float], float, list[float] | None]]
-    ] = defaultdict(list)
+    by_domain: dict[str, list[tuple[list[float], float, list[float] | None]]] = defaultdict(list)
     monitor = FidelityMonitor()
 
     for convo in load_jsonl(dataset_path):

@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 
 
 @pytest.fixture(name="monitor")
@@ -120,7 +120,7 @@ def test_raw_strings_zero_transitive_framework_imports_in_subprocess() -> None:
     side effects in ``import horizon`` or ``FidelityMonitor()``."""
     script = textwrap.dedent("""
         import sys
-        from horizon import FidelityMonitor
+        from horizon_monitor import FidelityMonitor
         monitor = FidelityMonitor()
         sid = monitor.new_conversation()
         monitor.process_turn(sid, "hello", "hi there")

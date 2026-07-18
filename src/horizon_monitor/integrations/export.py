@@ -5,8 +5,8 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-from horizon.models import ExportResult
-from horizon.session import Session
+from horizon_monitor.models import ExportResult
+from horizon_monitor.session import Session
 
 
 def export_session(

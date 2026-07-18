@@ -19,11 +19,11 @@ Why an external monitor? LLMs have *limited and unreliable* self-knowledge: intr
 
 ## Why this exists
 
-Multi-turn AI agents lose accuracy. The ICLR 2026 Best Paper ["LLMs Get Lost In Multi-Turn Conversation"](https://iclr.cc/virtual/2026/poster/10009146) (Laban et al., Microsoft Research) reports **39% average accuracy degradation** across multi-turn evaluation — a structural property that standard observability tools (LangSmith, RAGAS, DeepEval) cannot see because they measure responses, not conversations.
+Multi-turn AI agents lose accuracy. The ICLR 2026 Outstanding Paper ["LLMs Get Lost In Multi-Turn Conversation"](https://iclr.cc/virtual/2026/poster/10009146) (Laban, Hayashi, Zhou & Neville — Microsoft Research / Salesforce Research) reports **39% average accuracy degradation** across multi-turn evaluation — a structural property that standard observability tools (LangSmith, RAGAS, DeepEval) cannot see because they measure responses, not conversations.
 
-Horizon was built to close that gap. **It is observability first:** it surfaces conversation dynamics that response-level tools miss, using cheap deterministic arithmetic with zero model calls. In four controlled A/B scenarios where Horizon events drove a re-grounding intervention we measured a **+15.7% composite quality lift** and **87% fewer hallucination events** — but those are *synthetic, scripted scenarios with a hand-tuned controller*, not a production result. Treat them as promising in-house evidence, not a guaranteed outcome (see [Validation](#validation) and [LEGAL.md §5](LEGAL.md#5-performance-claims--scope-and-substantiation)). Each signal reduces to a standard information-theory measure; the relativity / Lorentzian framing is **design metaphor, not a physical claim** (see [4D Spacetime Signals](#4d-spacetime-signals)).
+Horizon was built to close that gap. **It is observability first:** it surfaces conversation dynamics that response-level tools miss, using cheap deterministic arithmetic with zero model calls. In four controlled A/B scenarios where Horizon events drove a re-grounding intervention we measured a **+15.7% composite quality lift** and **87% fewer hallucination events** — but those are *synthetic, scripted scenarios with a hand-tuned controller*, not a production result. Treat them as promising in-house evidence, not a guaranteed outcome (see [Validation](#validation) and [LEGAL.md §5](LEGAL.md#5-performance-claims--scope-and-substantiation)). Every signal — information gain, divergence, estimated ontological gap width, causal reachability — is a standard information-theory or arithmetic measure computed on text embeddings and timestamps; see [4D Spacetime Signals](#4d-spacetime-signals) for the full definitions.
 
-- Read the demand proof → [ICLR 2026 Best Paper (Laban et al.)](https://iclr.cc/virtual/2026/poster/10009146)
+- Read the demand proof → [ICLR 2026 Outstanding Paper (Laban et al.)](https://iclr.cc/virtual/2026/poster/10009146)
 - Read the category argument → [`docs/content/naming-the-category-conversation-dynamics-monitoring.md`](docs/content/naming-the-category-conversation-dynamics-monitoring.md)
 - Read the engineering case → [`docs/content/why-every-production-agent-needs-conversation-dynamics-monitoring.md`](docs/content/why-every-production-agent-needs-conversation-dynamics-monitoring.md)
 
@@ -87,6 +87,8 @@ That's it. Reload your MCP client and three tools appear: `new_conversation`, `p
 
 ### Path 2 — pip install (library integration)
 
+**Not yet published to PyPI — until it is, use [Path 3](#path-3--mcp-server-from-source) (install from source) below.**
+
 ```bash
 pip install horizon-monitor
 ```
@@ -124,19 +126,20 @@ Standard observability tools evaluate individual response quality. Horizon evalu
 
 | Tool | What it sees | What it misses |
 |---|---|---|
-| LangSmith, Braintrust | Latency, cost, per-response quality | Drift across turns |
-| RAGAS, DeepEval | Faithfulness, relevance per turn | Temporal desync, cognitive load |
+| LangSmith, Braintrust | Latency, cost, per-response quality | Deterministic, every-turn structural signals |
+| RAGAS, DeepEval | Faithfulness, relevance per turn (DeepEval also has sampled multi-turn LLM-judge metrics) | Zero-LLM-call, real-time scoring on every turn |
+| Langfuse, Arize Phoenix | Session-level LLM-judge evaluation | Deterministic, always-on scoring at sub-50ms |
 | Human raters | Subjective quality | Systematic structural decay |
 | **Horizon** | **Conversation dynamics** | Intentionally nothing |
 
-Horizon does not replace per-response quality tools. It adds the dimension they all lack.
+Horizon does not replace per-response or LLM-judge quality tools. The differentiator is *how* it measures: deterministic, zero-LLM-call arithmetic on every single turn — effectively free and always-on — versus the alternative of sampled LLM-judge evaluations, which cost per sample and typically run offline or async rather than in real time.
 
 ---
 
 ## Quickstart
 
 ```python
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 from datetime import datetime, timezone
 
 monitor = FidelityMonitor()
@@ -165,7 +168,7 @@ for event in result.events:
 
 ```python
 from openai import OpenAI
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 
 monitor = FidelityMonitor()
 session_id = monitor.new_conversation()
@@ -186,7 +189,7 @@ print(f"Fidelity: {traj.current_fidelity:.2f}  T*: {traj.estimated_t_star}")
 
 ```python
 from anthropic import Anthropic
-from horizon import FidelityMonitor
+from horizon_monitor import FidelityMonitor
 
 monitor = FidelityMonitor()
 session_id = monitor.new_conversation()
@@ -203,8 +206,8 @@ response = client.messages.create(
 
 ```python
 from langchain_openai import ChatOpenAI
-from horizon import FidelityMonitor
-from horizon.integrations.langchain import HorizonCallback
+from horizon_monitor import FidelityMonitor
+from horizon_monitor.integrations.langchain import HorizonCallback
 
 monitor = FidelityMonitor()
 session_id = monitor.new_conversation()
@@ -218,8 +221,8 @@ print(f"Fidelity: {callback.last_result.fidelity_score:.2f}")
 ### OpenAI Agents SDK
 
 ```python
-from openai_agents import Agent, Runner
-from horizon import FidelityMonitor
+from agents import Agent, Runner
+from horizon_monitor import FidelityMonitor
 
 monitor = FidelityMonitor()
 session_id = monitor.new_conversation()
@@ -242,7 +245,7 @@ for user_message in conversation:
 > depends on the analogy being literally true, and the Lorentzian `interval_class` is emitted as
 > descriptive metadata only — no event or score depends on it.
 
-Every `process_turn()` returns a `TurnResult` with 29 fields across five signal families:
+Every `process_turn()` returns a `TurnResult` with 32 fields across five signal families:
 
 ### Core (always present)
 
@@ -299,7 +302,7 @@ Every `process_turn()` returns a `TurnResult` with 29 fields across five signal 
 
 ---
 
-## 14 Event Types
+## 16 Event Types
 
 All events default to **observe mode** (emitted, not acted on). Enable active mode via `configure()` once your event achieves ≥ 0.7 precision/recall on your domain.
 
@@ -319,6 +322,8 @@ All events default to **observe mode** (emitted, not acted on). Enable active mo
 | `signal.frame_shift` | Spatial constraint shifts significantly |
 | `signal.pace_shift` | Conversation acceleration above pace threshold |
 | `signal.light_cone_collapse` | Reachable fraction below light-cone threshold |
+| `signal.grounding_required` | Heuristic grounding-need score crosses threshold — agent should hedge or cite grounding evidence |
+| `signal.pace_premature_report` | User replied faster than a previously flagged deferred action could plausibly complete, with no completion signal |
 
 ---
 
@@ -353,6 +358,8 @@ result = monitor.export_to(session_id, target="langsmith",
     connection={"api_key": "ls__..."})
 ```
 
+**Not yet published to PyPI — see [Path 3](#path-3--mcp-server-from-source) for a source install in the meantime.**
+
 ```bash
 pip install horizon-monitor[langsmith]   # or langfuse, otel, arize
 ```
@@ -375,18 +382,18 @@ Core pipeline (< 50ms on CPU):
  12. Causal reachability — light-cone membership
  13. Spatial signals    — device, location, frame shift
  14. Mode detection     — auto-classify conversation type
- 15. Event evaluation   — 14 threshold checks
+ 15. Event evaluation   — 16 threshold checks
  16. Optional: SQLite persistence
 
-Output: TurnResult dataclass (29 fields)
+Output: TurnResult dataclass (32 fields)
 ```
 
-**Design constraints (all test-enforced):**
+**Design constraints (test-enforced):**
 - Zero LLM calls — pure arithmetic and local embeddings
 - Zero external network calls by default — fully local
 - Zero transitive framework dependencies in core
-- < 50ms core pipeline on CPU
-- < 100MB memory for 100-turn conversations
+- < 50ms core pipeline on CPU — soft target (CI flags regressions past 50ms and hard-fails at 150ms)
+- < 100MB memory for 100-turn conversations — hard-enforced at the claimed value
 - All events observe-by-default — never interferes unless explicitly configured
 
 ---
@@ -478,7 +485,7 @@ horizon/
 ├── src/horizon/         # package source (PEP 517/518 src/ layout)
 │   ├── engines/         # IGT, D_JS, TWR, coherence, fidelity, epsilon, mode
 │   ├── spacetime/       # temporal, circadian, deictic, velocity, interval, light cone, spatial
-│   ├── events/          # 14-event evaluator
+│   ├── events/          # 16-event evaluator
 │   ├── integrations/    # OpenAI, Anthropic, LangChain, export targets
 │   ├── mcp/             # MCP server + CLI
 │   └── storage/         # optional SQLite persistence
@@ -509,7 +516,7 @@ Horizon's design was *inspired by* the Trans-Horizon Communication Protocol (THC
 | **THCP-4** — global coherence requires "sheaf gluing" across turns | cross-turn contradiction / claim-consistency checks |
 | **THCP-5** — optimal trajectories lie near the "light cone" | `reachable_fraction` — retention × similarity over prior turns |
 
-The metaphors are not load-bearing: drop the physics vocabulary and the signals are exactly the same standard measures. THCP is **design motivation only** — see [Background](#background) and [`docs/product/THCP_FIDELITY_MONITOR_PRD.md`](docs/product/THCP_FIDELITY_MONITOR_PRD.md).
+THCP is **design motivation only** — see [`docs/product/THCP_FIDELITY_MONITOR_PRD.md`](docs/product/THCP_FIDELITY_MONITOR_PRD.md) for the full conjecture-to-signal mapping.
 
 ---
 

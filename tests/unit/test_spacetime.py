@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from horizon import Config
-from horizon.spacetime.interval import compute_spacetime_interval
+from horizon_monitor import Config
+from horizon_monitor.spacetime.interval import compute_spacetime_interval
 
 
 @pytest.fixture
@@ -80,7 +80,7 @@ def test_no_client_context_no_spatial_signals() -> None:
     All spatial signals are None when no client_context is provided.
     Referenced by horizon_intent.yaml::constraints[spatial_signals_optional].test.
     """
-    from horizon import FidelityMonitor
+    from horizon_monitor import FidelityMonitor
 
     monitor = FidelityMonitor()
     sid = monitor.new_conversation()

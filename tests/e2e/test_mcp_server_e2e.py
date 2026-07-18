@@ -19,9 +19,9 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from horizon import Config, FidelityMonitor
-from horizon.mcp.server import _dispatch
-from horizon.monitor import SessionNotFoundError
+from horizon_monitor import Config, FidelityMonitor
+from horizon_monitor.mcp.server import _dispatch
+from horizon_monitor.monitor import SessionNotFoundError
 
 
 @pytest.fixture(name="monitor")

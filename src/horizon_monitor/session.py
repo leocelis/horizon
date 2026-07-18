@@ -7,10 +7,10 @@ from dataclasses import dataclass, field
 
 from numpy import ndarray
 
-from horizon.config import Config
-from horizon.engines.claim_consistency import ClaimTracker
-from horizon.models import Event
-from horizon.spacetime.pacing import PacingHint
+from horizon_monitor.config import Config
+from horizon_monitor.engines.claim_consistency import ClaimTracker
+from horizon_monitor.models import Event
+from horizon_monitor.spacetime.pacing import PacingHint
 
 
 @dataclass

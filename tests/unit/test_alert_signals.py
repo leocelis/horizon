@@ -10,7 +10,7 @@ can establish a basic precision floor without needing a labelled corpus.
 
 from __future__ import annotations
 
-from horizon import Config, FidelityMonitor
+from horizon_monitor import Config, FidelityMonitor
 
 
 def _events_of(result, etype: str) -> list:
@@ -54,7 +54,11 @@ def test_verbosity_fires_on_repetitive_response() -> None:
 def test_verbosity_does_not_fire_on_concise_response() -> None:
     monitor = FidelityMonitor(config=Config(verbosity_threshold=0.3))
     sid = monitor.new_conversation()
-    monitor.process_turn(sid, "What is async/await?", "Async/await are Python primitives for cooperative concurrency.")
+    monitor.process_turn(
+        sid,
+        "What is async/await?",
+        "Async/await are Python primitives for cooperative concurrency.",
+    )
     result = monitor.process_turn(
         sid,
         "And event loops?",
@@ -62,8 +66,7 @@ def test_verbosity_does_not_fire_on_concise_response() -> None:
     )
     fired = _events_of(result, "alert.verbosity")
     assert not fired, (
-        f"alert.verbosity should not fire on concise responses "
-        f"(twr={result.twr_value:.3f})"
+        f"alert.verbosity should not fire on concise responses " f"(twr={result.twr_value:.3f})"
     )
 
 

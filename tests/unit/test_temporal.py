@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from horizon.spacetime.temporal import (
+from horizon_monitor.spacetime.temporal import (
     classify_gap,
     compute_resumption_cost,
     compute_retention,
@@ -89,7 +89,7 @@ def test_no_timestamp_no_temporal_signals() -> None:
     All 4D temporal signals are None when no timestamp is provided.
     Referenced by horizon_intent.yaml::constraints[temporal_signals_optional].test.
     """
-    from horizon import FidelityMonitor
+    from horizon_monitor import FidelityMonitor
 
     monitor = FidelityMonitor()
     sid = monitor.new_conversation()
