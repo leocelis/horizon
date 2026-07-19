@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Dependency bound too loose:** core `transformers<5` allowed fresh installs to resolve
+  `transformers` far past the validated stack (observed: 4.57.6, incompatible with older
+  pinned `torch` such as 2.2.x). Tightened to `transformers>=4.34,<4.41` — matches
+  `sentence-transformers`' own floor and caps just above the CI-validated 4.40.2, so a
+  fresh `pip install horizon-monitor` now resolves the exact tested version. Found while
+  installing into a host project with `torch==2.2.2` already pinned.
+
+## [0.2.1] - 2026-07-18
+
 ### Changed
 - **BREAKING — import renamed `horizon` → `horizon_monitor`:** the import name now matches
   the distribution name (`pip install horizon-monitor` / `import horizon_monitor`) and no
