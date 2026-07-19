@@ -1,6 +1,6 @@
 # Data Processing Agreement
 
-> **Version:** 1.0 · **Template effective:** May 11, 2026
+> **Version:** 1.1 · **Template effective:** July 19, 2026
 >
 > This Data Processing Agreement ("DPA") is entered into between Leo Celis ("Horizon",
 > "Processor") and the organization identified in the signature block below ("Customer",

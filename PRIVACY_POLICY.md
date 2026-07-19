@@ -1,6 +1,6 @@
 # Privacy Policy
 
-> **Version:** 1.0 · **Effective:** May 11, 2026
+> **Version:** 1.1 · **Effective:** July 19, 2026
 >
 > This Privacy Policy applies to the Horizon Fidelity Monitor website
 > (`horizon.leocelis.com`), the hosted MCP server (`horizon.leocelis.com`), and all
@@ -49,7 +49,7 @@ restarts clear all session state.
 **Warning:** Do not transmit personal data (names, emails, health information, or
 any data relating to an identified or identifiable person) through `human_message` or
 `agent_response` arguments. The hosted server is not designed for personal data
-processing. See §7.
+processing. See §8.
 
 ### 1.2 PersistentDynamicsStore (if enabled)
 
@@ -221,7 +221,27 @@ email address associated with your API key request.
 
 ---
 
-## 7. What You Must Not Transmit
+## 7. Other U.S. State Privacy Laws
+
+Beyond California, a growing number of U.S. states (as of this writing: Colorado,
+Connecticut, Virginia, Utah, and others) have comprehensive consumer privacy laws with
+their own applicability thresholds — typically triggered at 25,000–100,000+ state
+residents' personal data processed annually, or lower for sale of personal data. Given
+Horizon's hosted server does not retain raw message text, processes minimal personal
+data by design (see §1.1), and operates at a scale far below every current state
+threshold, Horizon does not currently meet the applicability criteria of any such law.
+
+If you are a resident of a state with a comprehensive privacy law and personal data about
+you has been processed through the hosted service, the same rights described in §5 (GDPR)
+and §6 (CCPA) — access, deletion, correction, and non-discrimination — are honored
+regardless of which specific state law would otherwise apply: email
+[leo@leocelis.com](mailto:leo@leocelis.com). This section will be updated with
+state-specific citations if and when Horizon's scale brings it within any state's
+applicability threshold.
+
+---
+
+## 8. What You Must Not Transmit
 
 The hosted server is not designed for personal data processing. Do not transmit:
 
@@ -237,7 +257,7 @@ The hosted server is not designed for personal data processing. Do not transmit:
 
 ---
 
-## 8. Security
+## 9. Security
 
 Horizon implements reasonable security measures for the hosted server:
 
@@ -260,7 +280,7 @@ backup encryption. See LEGAL.md §7 for specific recommendations.
 
 ---
 
-## 9. Changes to This Policy
+## 10. Changes to This Policy
 
 Material changes to this Policy will be reflected in an updated version number and
 effective date at the top of this document, and noted in `CHANGELOG.md`. Continued use
@@ -268,7 +288,7 @@ of the hosted server after the effective date constitutes acceptance of the revi
 
 ---
 
-## 10. Contact
+## 11. Contact
 
 For all privacy questions, data subject requests, or SCC/DPA inquiries:
 

@@ -1,6 +1,6 @@
 # Terms of Service
 
-> **Version:** 1.0 · **Effective:** May 11, 2026
+> **Version:** 1.1 · **Effective:** July 19, 2026
 >
 > These Terms of Service ("Terms") govern your access to and use of the Horizon Fidelity
 > Monitor library (`horizon-monitor`), the hosted MCP server at `horizon.leocelis.com`,
@@ -94,6 +94,9 @@ You may use the Service for any lawful purpose consistent with these Terms. You 
    see §2's rate limit and session cap.
 8. Circumvent any authentication, rate limiting, or access control mechanism —
    including attempting to read or modify another key's session data (see §2).
+9. Transmit, generate, or attempt to generate through the Service any content depicting
+   child sexual abuse material (CSAM), or content that sexually exploits or endangers a
+   minor. See §13.
 
 Violation of this §3 is grounds for immediate termination of your API key and may
 expose you to civil liability.
@@ -222,14 +225,10 @@ capabilities to any third party.
 
 ---
 
-## 12. Governing Law and Dispute Resolution
+## 12. Governing Law
 
 These Terms are governed by the laws of the **State of Florida, United States**, without
 regard to its conflict-of-law provisions.
-
-Any dispute arising from these Terms must be brought exclusively in the state or federal
-courts located in **Broward County, Florida.** You consent to the personal jurisdiction
-and venue of those courts.
 
 **EU users:** Nothing in these Terms limits mandatory rights available under EU consumer
 protection law, GDPR, or the EU AI Act. EU-resident consumers retain those rights
@@ -237,7 +236,109 @@ regardless of the Florida choice-of-law clause.
 
 ---
 
-## 13. Changes to These Terms
+## 13. Illegal Content and Mandatory Reporting
+
+**Prohibition:** You must not use the Service to transmit, generate, request, or attempt
+to generate content depicting child sexual abuse material (CSAM), or content that
+sexually exploits or endangers a minor, or to facilitate online enticement of a child or
+child sex trafficking. This is a zero-tolerance prohibition — see §3(9).
+
+**Mandatory reporting (18 U.S.C. § 2258A, as amended by the REPORT Act of 2024):**
+Horizon, as a U.S.-based online service provider, complies with federal law requiring
+providers to report apparent violations of this kind to the National Center for Missing
+& Exploited Children (NCMEC) CyberTipline upon obtaining actual knowledge of them.
+Horizon will report and cooperate with law enforcement to the extent required by
+applicable law, and will preserve any information reasonably available at the time a
+report is made for the statutory retention period.
+
+**Interaction with Horizon's zero-retention design:** Horizon's core pipeline does not
+retain raw message text beyond the active request (see Privacy Policy §1.1) — this is a
+deliberate privacy-by-design choice, disclosed here for a specific, honest reason: it
+also means Horizon has essentially no practical visibility into transmitted content in
+the normal course of operation, and if Horizon does become aware of a violation (e.g.
+through a third-party report), only the information available at that moment can be
+included in a NCMEC report or preserved — Horizon cannot retroactively produce raw
+message content it never stored. Suspected violations, including reports from third
+parties, should be sent immediately to
+[leo@leocelis.com](mailto:leo@leocelis.com) with subject "URGENT — CSAM report" or
+reported directly to NCMEC at <https://report.cybertip.org>.
+
+---
+
+## 14. Dispute Resolution — Binding Arbitration
+
+**Agreement to arbitrate:** Except for the exclusions below, you and Horizon agree that
+any dispute, claim, or controversy arising out of or relating to these Terms or the
+Service will be resolved by **binding individual arbitration** under the Federal
+Arbitration Act, administered by the American Arbitration Association (AAA) under its
+Consumer Arbitration Rules, rather than in court, except that either party may bring an
+individual action in small claims court.
+
+**Class action waiver:** Disputes must be brought in the parties' individual capacity,
+not as a plaintiff or class member in any purported class, collective, or representative
+proceeding. The arbitrator may not consolidate more than one person's claims.
+
+**Exclusions:** Either party may seek injunctive or other equitable relief in a court of
+competent jurisdiction in **Broward County, Florida** to prevent actual or threatened
+infringement, misappropriation, or violation of a party's copyrights, trademarks, trade
+secrets, or other intellectual property or confidentiality rights (§13's illegal-content
+prohibition is enforceable in any forum by either party or law enforcement, notwithstanding
+this arbitration agreement).
+
+**30-day opt-out:** You may opt out of this arbitration agreement by emailing
+[leo@leocelis.com](mailto:leo@leocelis.com) with subject "Arbitration Opt-Out" within 30
+days of first accepting these Terms, including your name and the API key or account
+identifier covered. If you opt out, disputes will instead be resolved exclusively in the
+state or federal courts located in Broward County, Florida, and you consent to the
+personal jurisdiction and venue of those courts.
+
+**EU users:** Nothing in this section limits mandatory consumer rights available under EU
+law. This arbitration agreement applies to the fullest extent permitted by the law
+applicable to you; EU-resident consumers retain their statutory right to bring claims
+before their local courts regardless of this section.
+
+---
+
+## 15. General Provisions
+
+**Force majeure:** Neither party is liable for any failure or delay in performance
+(including hosted server availability) resulting from causes beyond its reasonable
+control, including acts of God, natural disaster, war, terrorism, civil unrest,
+government action, labor disputes, internet or telecommunications failures, or failures
+of third-party infrastructure providers (see §8 of LEGAL.md).
+
+**Severability:** If any provision of these Terms (or of LEGAL.md, the Privacy Policy, or
+the DPA) is found unenforceable or invalid, that provision will be limited or eliminated
+to the minimum extent necessary so that the remaining provisions remain in full force and
+effect. Specifically, the liability cap (§10) and indemnification (§11) are intended to
+be severable from each other and from every other provision.
+
+**Entire agreement:** These Terms, together with the Privacy Policy, LEGAL.md, and (where
+executed) the Data Processing Agreement, constitute the entire agreement between you and
+Horizon regarding the Service, and supersede any prior agreements or understandings,
+written or oral, regarding the same subject matter.
+
+**Assignment:** You may not assign or transfer these Terms, by operation of law or
+otherwise, without Horizon's prior written consent. Horizon may assign these Terms
+without restriction, including in connection with a merger, acquisition, or sale of
+assets.
+
+**No waiver:** Horizon's failure to enforce any right or provision of these Terms is not
+a waiver of that right or provision. A waiver of any provision on one occasion does not
+constitute a waiver on any other occasion.
+
+**Notices:** Horizon may provide notices to you via the email associated with your API
+key request or by posting to the repository. You may provide notices to Horizon at
+[leo@leocelis.com](mailto:leo@leocelis.com).
+
+**Relationship of the parties:** Nothing in these Terms creates a partnership, joint
+venture, agency, or employment relationship between you and Horizon. See LEGAL.md §12
+("No Professional Relationship") for the corresponding disclaimer on professional
+services relationships.
+
+---
+
+## 16. Changes to These Terms
 
 Horizon may update these Terms at any time. Material changes will be communicated by
 updating the version number and effective date at the top of this document and noting
@@ -246,7 +347,7 @@ constitutes acceptance of the revised Terms.
 
 ---
 
-## 14. Contact
+## 17. Contact
 
 Leo Celis
 [leo@leocelis.com](mailto:leo@leocelis.com)

@@ -1,6 +1,6 @@
 # Legal Notices and Disclaimers
 
-> **Version:** 1.0 · **Effective:** May 11, 2026
+> **Version:** 1.1 · **Effective:** July 19, 2026
 >
 > This document applies to the Horizon Fidelity Monitor library (`horizon-monitor`),
 > the hosted MCP server at `horizon.leocelis.com`, the open-source repository at
@@ -557,9 +557,16 @@ This document and all disputes arising from your use of Horizon are governed by 
 laws of the **State of Florida, United States**, without regard to its conflict-of-law
 provisions.
 
-Any legal action or proceeding must be brought exclusively in the state or federal courts
-located in **Broward County, Florida, United States.** You irrevocably consent to the
-personal jurisdiction and venue of those courts.
+**Dispute resolution mechanism:** Disputes relating to hosted-server use are resolved
+through the binding arbitration agreement in Terms of Service §14 (individual
+arbitration, class action waiver, 30-day opt-out), not through litigation, except for the
+narrow carve-outs specified there (small claims court; injunctive relief for IP/confidentiality;
+the §13 illegal-content prohibition, enforceable in any forum). If you opted out of
+arbitration under ToS §14, or for uses of Horizon not covered by the ToS (e.g. purely
+self-hosted MIT-licensed use with no hosted-server interaction), any legal action must be
+brought in the state or federal courts located in **Broward County, Florida, United
+States**, and you irrevocably consent to the personal jurisdiction and venue of those
+courts.
 
 **EU users note:** Nothing in this section limits mandatory consumer or data-subject
 rights available under EU law, including rights under GDPR, the EU AI Act, or applicable
@@ -579,6 +586,12 @@ SQLite store, contact [leo@leocelis.com](mailto:leo@leocelis.com) immediately. I
 are an EU controller and the breach triggers GDPR Article 33 obligations, do not wait
 for Horizon's response — begin your 72-hour supervisory authority notification process
 immediately using the information available to you.
+
+**Illegal content (CSAM) reports:** Horizon's illegal-content prohibition and federal
+mandatory-reporting compliance (18 U.S.C. § 2258A, as amended by the REPORT Act of 2024)
+are documented in Terms of Service §13. Report suspected violations to
+[leo@leocelis.com](mailto:leo@leocelis.com) (subject "URGENT — CSAM report") or directly
+to NCMEC at <https://report.cybertip.org>.
 
 **Full legal document set:**
 
@@ -625,8 +638,15 @@ purposes, monitor the repository for changes or periodically review the effectiv
 | MaxMind End User License Agreement | <https://www.maxmind.com/en/end-user-license-agreement> | 2026-05-11 |
 | Apache License 2.0 | <https://www.apache.org/licenses/LICENSE-2.0> | 2026-05-11 |
 | NIST AI RMF 1.0 | <https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf> | 2026-05-11 |
+| 18 U.S.C. § 2258A — Reporting requirements of providers | <https://www.law.cornell.edu/uscode/text/18/2258A> | 2026-07-19 |
+| REPORT Act of 2024, S.474 (Pub. L. 118-59) | <https://www.congress.gov/bill/118th-congress/senate-bill/474> | 2026-07-19 |
+| Federal Arbitration Act (9 U.S.C. §§ 1–16) | <https://www.law.cornell.edu/uscode/text/9> | 2026-07-19 |
 
 ---
+
+*Version 1.1 — Added §17 illegal-content/CSAM reporting cross-reference and updated §16 to
+reflect the Terms of Service's new binding-arbitration dispute resolution mechanism.
+Corrected the Redis/session-resumability claim in §6.2, §6.4, and §8.1 (see CHANGELOG.md).*
 
 *Version 1.0 — Initial release.*
 

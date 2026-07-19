@@ -8,6 +8,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Illegal-content prohibition and 18 U.S.C. § 2258A mandatory-reporting compliance**
+  (`TERMS_OF_SERVICE.md` new §13, cross-referenced from `LEGAL.md` §17): explicit CSAM
+  prohibition (§3(9)), Horizon's compliance posture as a U.S.-based provider under the
+  REPORT Act of 2024, and an honest disclosure of how the zero-retention design (§1.1 of
+  the Privacy Policy) limits what can practically be preserved if Horizon ever becomes
+  aware of a violation — Horizon cannot retroactively produce message content it never
+  stored.
+- **Binding arbitration + class action waiver** (`TERMS_OF_SERVICE.md` new §14), with
+  carve-outs for small claims court, injunctive relief on IP/confidentiality, and the
+  §13 illegal-content prohibition (enforceable in any forum). Includes a 30-day opt-out
+  window (a standard enforceability-strengthening practice) and preserves the existing
+  EU-consumer mandatory-rights carve-out. §12 (Governing Law) split from dispute
+  resolution, which now lives in §14. `LEGAL.md` §16 updated to reference the new
+  mechanism rather than duplicate it.
+- **General contract provisions** (`TERMS_OF_SERVICE.md` new §15): force majeure,
+  severability (explicitly protecting the liability cap and indemnification clauses from
+  an all-or-nothing enforceability failure), entire agreement, assignment, no-waiver,
+  notices, and relationship-of-the-parties — standard SaaS ToS boilerplate that was
+  previously entirely absent from the document set.
+- **Other U.S. state privacy laws** (`PRIVACY_POLICY.md` new §7): a general-purpose
+  clause acknowledging the growing state comprehensive-privacy-law landscape (Colorado,
+  Connecticut, Virginia, Utah, and others) and honoring the same access/deletion/
+  correction rights regardless of which state law would otherwise apply, rather than an
+  enumerated 19-state matrix that would need updating every legislative session.
+
+### Changed
+- Bumped `LEGAL.md`, `TERMS_OF_SERVICE.md`, `PRIVACY_POLICY.md`, and
+  `DATA_PROCESSING_AGREEMENT.md` to version 1.1 (from 1.0), effective 2026-07-19.
+- `PRIVACY_POLICY.md` sections renumbered (§7 onward shift by one) to accommodate the new
+  §7 state-privacy-law section; internal cross-references updated accordingly.
+
+## [0.2.3] - 2026-07-19
+
+### Added
 - **Per-key rate limiting** on the hosted MCP server (`mcp/auth.py::RateLimiter`) — in-process
   token bucket, default 120 req/min, burst 20, both env-configurable
   (`HORIZON_RATE_LIMIT_PER_MINUTE` / `HORIZON_RATE_LIMIT_BURST`). Exceeding the limit returns
