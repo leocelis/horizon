@@ -44,9 +44,25 @@ no SLA, and no commitment to minimum availability. See §8.
 Keys are personal or per-organization — do not share them publicly or commit them to
 source control. You are responsible for all activity under your key.
 
+**Identity and accountability:** Key requests must come from an identifiable requester —
+a real GitHub account in good standing, and/or a verifiable email address. Horizon may
+decline anonymous, throwaway, or unverifiable requests at its sole discretion. Horizon
+retains the requester identity supplied at issuance (associated with the key's hash, not
+the key itself) for the purpose of abuse response — including revocation and, where
+necessary, reporting to the relevant platform (e.g. GitHub) using that issuance record. A
+key that cannot be traced back to an accountable requester will not be issued.
+
 **Key security:** If you believe your API key has been compromised, notify
 [leo@leocelis.com](mailto:leo@leocelis.com) immediately. Revoke the key if possible and
 audit any recent activity performed under it.
+
+**Technical limits (enforced, not just contractual):** The hosted server rate-limits each
+key (default 120 requests/minute, burst 20) and caps each key at 50 concurrent sessions,
+both configurable server-side and detailed in [SECURITY.md](SECURITY.md#known-security-considerations-for-self-hosted-deployments).
+Sessions are isolated per key — one key cannot read or mutate another key's session data
+or configuration, including via `configure_session`'s global mode. Exceeding the rate
+limit returns HTTP 429; you must back off per the `Retry-After` header rather than retry
+immediately.
 
 **Alpha status:** The hosted server is in private alpha. Keys are distributed at Leo
 Celis's sole discretion. No right to continued access, no right to a key, and no
@@ -74,8 +90,10 @@ You may use the Service for any lawful purpose consistent with these Terms. You 
    product while misrepresenting that product as unrelated to Horizon.
 7. Use the hosted server in volumes that constitute a denial-of-service attack or
    that exceed reasonable use for a single developer or organization without a
-   commercial agreement.
-8. Circumvent any authentication, rate limiting, or access control mechanism.
+   commercial agreement. This is enforced technically, not just contractually —
+   see §2's rate limit and session cap.
+8. Circumvent any authentication, rate limiting, or access control mechanism —
+   including attempting to read or modify another key's session data (see §2).
 
 Violation of this §3 is grounds for immediate termination of your API key and may
 expose you to civil liability.

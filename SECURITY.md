@@ -62,13 +62,14 @@ day.
 
 This policy covers:
 
-- **Horizon Python library** (`src/horizon/`) — all distributed versions
+- **Horizon Python library** (`src/horizon_monitor/`) — all distributed versions
 - **Hosted MCP server** (`horizon.leocelis.com`) — authentication, session isolation,
   rate limiting, data exposure
-- **MCP server code** (`src/horizon/mcp/`) — tool call validation, injection risks
-- **SQLite persistence layer** (`src/horizon/storage/sqlite.py`) — data exposure,
+- **MCP server code** (`src/horizon_monitor/mcp/`) — tool call validation, injection risks,
+  cross-tenant session isolation (`session_registry.py`), rate limiting (`auth.py`)
+- **SQLite persistence layer** (`src/horizon_monitor/storage/sqlite.py`) — data exposure,
   injection risks
-- **Grounding hook interface** (`src/horizon/grounding.py`) — data leakage, SSRF
+- **Grounding hook interface** (`src/horizon_monitor/grounding.py`) — data leakage, SSRF
 
 Out of scope:
 
@@ -105,6 +106,32 @@ See LEGAL.md §3.4.
 restarts. All in-memory session state (embeddings, history, events) is lost on restart.
 Client applications must handle `SessionNotFoundError` gracefully by creating a new
 session rather than retrying with a stale session_id.
+
+**Rate limiting.** The hosted server enforces a per-key token-bucket rate limit
+(`src/horizon_monitor/mcp/auth.py::RateLimiter`) — default 120 requests/minute, burst 20,
+configurable via `HORIZON_RATE_LIMIT_PER_MINUTE` / `HORIZON_RATE_LIMIT_BURST`. Limits are
+in-process and per-instance; a multi-instance deployment (the hosted server currently runs
+`instance_count: 1`) would need a Redis-backed limiter to enforce a single ceiling across
+instances instead of one ceiling per instance. Exceeding the limit returns HTTP 429 with
+`Retry-After` and `RateLimit`/`RateLimit-Policy` headers
+([draft-ietf-httpapi-ratelimit-headers](https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/)).
+`/health` is exempt (infrastructure liveness probe).
+
+**Per-key session isolation and caps.** Sessions on the hosted server are scoped to the
+API key that created them (`src/horizon_monitor/mcp/session_registry.py`) — a different key
+cannot read (`get_trajectory`/`get_events`) or continue (`process_turn`) another key's
+session, and `configure_session(session_id=None)`'s "apply globally" mode only ever affects
+the calling key's own sessions, never another tenant's. Each key is capped at 50 concurrent
+sessions (`HORIZON_MAX_SESSIONS_PER_KEY`), LRU-evicted (oldest session of that same key ends)
+on overflow — bounding one key's session volume from costing another key anything. Self-hosted
+single-tenant deployments (no `HORIZON_API_KEYS` differentiation, or `HORIZON_AUTH_DISABLED=true`
+for local/stdio use) are unaffected — isolation only activates once more than one distinct key
+is actually in use against a shared server process.
+
+**Key issuance and accountability.** Abuse of a hosted-server API key can only be acted on
+(key revocation, and where necessary reporting to the platform an anonymous requester used)
+if the key can be traced back to a real, identifiable requester at issuance time. See
+Terms of Service §2.
 
 ---
 

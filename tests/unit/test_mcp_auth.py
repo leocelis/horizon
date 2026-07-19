@@ -16,6 +16,7 @@ code, that is a signal to re-read auth.py, not a bug in this file.
 from __future__ import annotations
 
 import hashlib
+import time
 
 import pytest
 from starlette.applications import Starlette
@@ -204,3 +205,111 @@ def test_hash_api_key_is_deterministic_sha256_hex() -> None:
 
     assert digest == hashlib.sha256(b"hzn_test_validkey123").hexdigest()
     assert len(digest) == 64
+
+
+# ── RateLimiter (token bucket) — direct unit tests ──────────────────────────
+
+
+def test_rate_limiter_allows_up_to_burst_capacity() -> None:
+    limiter = auth_module.RateLimiter(rate_per_minute=60, burst=3)
+
+    results = [limiter.allow("key-a")[0] for _ in range(3)]
+
+    assert results == [True, True, True]
+
+
+def test_rate_limiter_blocks_once_burst_exhausted() -> None:
+    limiter = auth_module.RateLimiter(rate_per_minute=60, burst=2)
+    limiter.allow("key-a")
+    limiter.allow("key-a")
+
+    allowed, retry_after = limiter.allow("key-a")
+
+    assert allowed is False
+    assert retry_after > 0
+
+
+def test_rate_limiter_refills_over_time() -> None:
+    # 6000/min = 100/sec -> ~10ms per token, refills fast enough to test without a slow sleep.
+    limiter = auth_module.RateLimiter(rate_per_minute=6000, burst=1)
+    limiter.allow("key-a")
+    assert limiter.allow("key-a")[0] is False
+
+    time.sleep(0.03)
+
+    assert limiter.allow("key-a")[0] is True
+
+
+def test_rate_limiter_tracks_keys_independently() -> None:
+    limiter = auth_module.RateLimiter(rate_per_minute=60, burst=1)
+    limiter.allow("key-a")
+
+    # key-a is exhausted; key-b has its own independent bucket.
+    assert limiter.allow("key-a")[0] is False
+    assert limiter.allow("key-b")[0] is True
+
+
+def test_rate_limiter_evicts_oldest_key_beyond_max_tracked() -> None:
+    limiter = auth_module.RateLimiter(rate_per_minute=60, burst=1, max_tracked_keys=2)
+    limiter.allow("key-a")
+    limiter.allow("key-b")
+    limiter.allow("key-c")  # evicts key-a (oldest)
+
+    assert len(limiter._buckets) == 2
+    assert "key-a" not in limiter._buckets
+    assert "key-c" in limiter._buckets
+
+
+# ── RateLimiter — wired through HorizonAuthMiddleware ───────────────────────
+
+
+@pytest.fixture
+def _low_rate_limit():
+    """Swap in a tiny-capacity limiter for one test, then restore the real one."""
+    orig = auth_module._rate_limiter
+    auth_module._rate_limiter = auth_module.RateLimiter(rate_per_minute=60, burst=2)
+    yield
+    auth_module._rate_limiter = orig
+
+
+def test_middleware_returns_429_once_burst_exhausted(_low_rate_limit) -> None:
+    auth_module.VALID_API_KEYS = {"hzn_test_validkey123"}
+    auth_module.AUTH_DISABLED = False
+    client = _make_client()
+    headers = {"Authorization": "Bearer hzn_test_validkey123"}
+
+    r1 = client.get("/protected", headers=headers)
+    r2 = client.get("/protected", headers=headers)
+    r3 = client.get("/protected", headers=headers)
+
+    assert (r1.status_code, r2.status_code) == (200, 200)
+    assert r3.status_code == 429
+    assert "Retry-After" in r3.headers
+    assert "RateLimit-Policy" in r3.headers
+
+
+def test_middleware_rate_limit_is_per_key(_low_rate_limit) -> None:
+    auth_module.VALID_API_KEYS = {"hzn_test_key_a", "hzn_test_key_b"}
+    auth_module.AUTH_DISABLED = False
+    client = _make_client()
+
+    # Exhaust key_a's burst of 2.
+    client.get("/protected", headers={"Authorization": "Bearer hzn_test_key_a"})
+    client.get("/protected", headers={"Authorization": "Bearer hzn_test_key_a"})
+    blocked = client.get("/protected", headers={"Authorization": "Bearer hzn_test_key_a"})
+
+    # key_b is untouched.
+    still_ok = client.get("/protected", headers={"Authorization": "Bearer hzn_test_key_b"})
+
+    assert blocked.status_code == 429
+    assert still_ok.status_code == 200
+
+
+def test_health_endpoint_is_never_rate_limited(_low_rate_limit) -> None:
+    auth_module.VALID_API_KEYS = {"hzn_test_validkey123"}
+    auth_module.AUTH_DISABLED = False
+    client = _make_client()
+
+    responses = [client.get("/health") for _ in range(10)]
+
+    assert all(r.status_code == 200 for r in responses)

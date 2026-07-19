@@ -109,6 +109,11 @@ class FidelityMonitor:
         self._grounding_hook: ToolHook | None = grounding_hook
         self._last_grounding: dict[str, GroundingResult] = {}
 
+    @property
+    def session_count(self) -> int:
+        """Number of currently tracked sessions."""
+        return len(self._sessions)
+
     def preload_models(self) -> dict[str, float]:
         """Eagerly load and warm all on-disk models. Eliminates first-call latency.
 

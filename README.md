@@ -444,7 +444,7 @@ Horizon serves the MCP API via SSE. Point `.cursor/mcp.json` to `http://localhos
 
 ### Hosted (DigitalOcean App Platform)
 
-The official hosted endpoint is live at `https://horizon.leocelis.com`. It runs on DigitalOcean App Platform (single instance, Redis-backed session resumability) and requires a Bearer token. See [Path 1](#path-1--hosted-mcp-fastest-zero-install) above.
+The official hosted endpoint is live at `https://horizon.leocelis.com`. It runs on DigitalOcean App Platform (single instance, in-process session state — sessions do not survive a restart) and requires a Bearer token, rate-limited and isolated per key. See [Path 1](#path-1--hosted-mcp-fastest-zero-install) above.
 
 ---
 

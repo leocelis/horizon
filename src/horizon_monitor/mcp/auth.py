@@ -15,12 +15,15 @@ Key generation:
 
 from __future__ import annotations
 
+import collections
 import contextvars
 import hashlib
 import hmac
 import logging
 import os
 import secrets
+import threading
+import time
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -46,6 +49,91 @@ AUTH_DISABLED: bool = os.environ.get("HORIZON_AUTH_DISABLED", "false").lower() =
 # Paths that never require auth.
 _EXEMPT_PATHS: frozenset[str] = frozenset({"/health", "/healthz"})
 
+# ── Rate limiting ────────────────────────────────────────────────────────────
+#
+# Per-key token bucket, in-process. Correct for Horizon's hosted deployment
+# (DigitalOcean App Platform, instance_count=1 as of this writing) — a
+# distributed limiter (Redis-backed) would be required if the app ever scales
+# to multiple instances, since each instance would otherwise enforce the limit
+# independently and the effective ceiling would multiply by instance count.
+#
+# Only authenticated requests reach the limiter (see HorizonAuthMiddleware):
+# rate-limiting unauthenticated attempts would not meaningfully slow a brute
+# force (API keys are 192 bits of secrets.token_urlsafe(24) entropy — not
+# brute-forceable regardless of request rate) and would let an attacker grow
+# this dict unboundedly by presenting many distinct bogus tokens. Limiting
+# only validated keys keeps the tracked-key set bounded by the number of keys
+# actually issued.
+RATE_LIMIT_PER_MINUTE: float = float(os.environ.get("HORIZON_RATE_LIMIT_PER_MINUTE", "120"))
+RATE_LIMIT_BURST: float = float(os.environ.get("HORIZON_RATE_LIMIT_BURST", "20"))
+_MAX_TRACKED_RATE_LIMIT_KEYS = 1000
+
+
+class _TokenBucket:
+    __slots__ = ("tokens", "last_refill")
+
+    def __init__(self, capacity: float, now: float) -> None:
+        # `now` is passed in (rather than calling time.monotonic() here) so a
+        # freshly created bucket's timestamp exactly matches the caller's
+        # already-captured `now` — otherwise construction takes strictly
+        # longer than zero time, `last_refill` ends up a hair AFTER the
+        # caller's `now`, and the first elapsed-time computation goes
+        # negative. That epsilon is invisible most of the time but flips the
+        # `>= 1.0` boundary check exactly at low burst values (burst=1 in
+        # particular), causing the very first call to a fresh bucket to be
+        # rejected and the second call to spuriously "refill" and succeed.
+        self.tokens = capacity
+        self.last_refill = now
+
+
+class RateLimiter:
+    """In-process, thread-safe, per-key token-bucket rate limiter.
+
+    `allow(key)` refills `key`'s bucket based on elapsed time, then consumes
+    one token if available. Bounded to `max_tracked_keys` distinct keys
+    (LRU-evicted) as a defensive cap.
+    """
+
+    def __init__(
+        self,
+        rate_per_minute: float = RATE_LIMIT_PER_MINUTE,
+        burst: float = RATE_LIMIT_BURST,
+        max_tracked_keys: int = _MAX_TRACKED_RATE_LIMIT_KEYS,
+    ) -> None:
+        self._rate_per_second = rate_per_minute / 60.0
+        self._burst = burst
+        self._max_tracked = max_tracked_keys
+        self._buckets: collections.OrderedDict[str, _TokenBucket] = collections.OrderedDict()
+        self._lock = threading.Lock()
+
+    def allow(self, key: str) -> tuple[bool, float]:
+        """Return (allowed, retry_after_seconds). Never raises."""
+        now = time.monotonic()
+        with self._lock:
+            bucket = self._buckets.get(key)
+            if bucket is None:
+                bucket = _TokenBucket(self._burst, now)
+                self._buckets[key] = bucket
+                if len(self._buckets) > self._max_tracked:
+                    self._buckets.popitem(last=False)
+            else:
+                self._buckets.move_to_end(key)
+
+            elapsed = now - bucket.last_refill
+            bucket.tokens = min(self._burst, bucket.tokens + elapsed * self._rate_per_second)
+            bucket.last_refill = now
+
+            if bucket.tokens >= 1.0:
+                bucket.tokens -= 1.0
+                return True, 0.0
+
+            deficit = 1.0 - bucket.tokens
+            retry_after = deficit / self._rate_per_second if self._rate_per_second > 0 else 60.0
+            return False, retry_after
+
+
+_rate_limiter = RateLimiter()
+
 
 # ── ASGI middleware ────────────────────────────────────────────────────────────
 
@@ -70,6 +158,25 @@ class HorizonAuthMiddleware:
         err, key_id = _extract_and_validate(scope)
         if err is not None:
             response = JSONResponse(err, status_code=401)
+            await response(scope, receive, send)
+            return
+
+        allowed, retry_after = _rate_limiter.allow(key_id)
+        if not allowed:
+            _log.warning(
+                "AUTH  rate_limited  key=%s  path=%s  retry_after=%.1fs", key_id, path, retry_after
+            )
+            response = JSONResponse(
+                {"error": "Rate limit exceeded", "retry_after_seconds": round(retry_after, 1)},
+                status_code=429,
+                headers={
+                    "Retry-After": str(int(retry_after) + 1),
+                    # draft-ietf-httpapi-ratelimit-headers (consolidated form,
+                    # draft -07+): quota policy + remaining-in-window signal.
+                    "RateLimit-Policy": f'"default";q={int(RATE_LIMIT_PER_MINUTE)};w=60',
+                    "RateLimit": '"default";r=0',
+                },
+            )
             await response(scope, receive, send)
             return
 

@@ -75,10 +75,14 @@ for data stored in your deployment.
 GitHub username and the content of your request. Horizon receives: your GitHub username
 and any contact information you voluntarily provide.
 
-**Why:** To issue and manage your API key.
+**Why:** To issue and manage your API key, and — per Terms of Service §2 — to maintain
+accountability for the key: your GitHub username (or other identity you provide) is
+retained alongside the key's hash so that a report of abuse can be traced to an
+identifiable requester and, if necessary, acted on (revocation, or a report to the
+relevant platform).
 
 **Legal basis (GDPR Art. 6):** Performance of a contract / pre-contractual steps
-(Art. 6(1)(b)).
+(Art. 6(1)(b)); legitimate interests (Art. 6(1)(f)) for the abuse-accountability purpose.
 
 **Retention:** API key records are kept for as long as the key is active. Revoked or
 expired keys are deleted from active records within 90 days.
@@ -240,7 +244,10 @@ Horizon implements reasonable security measures for the hosted server:
 - All traffic is encrypted in transit (HTTPS/TLS)
 - API keys are required for all hosted server access
 - Infrastructure is hosted on DigitalOcean App Platform with built-in network isolation
-- Session state in Redis is isolated per API key
+- Session state lives in process memory only (not Redis — sessions do not survive a
+  server restart; see §1.1) and is isolated per API key: a different key cannot read or
+  modify another key's session, including via bulk/global operations
+- Each key is rate-limited and capped at a maximum number of concurrent sessions
 
 Despite these measures, no system is completely secure. If you believe there has been
 a security incident involving your API key or data transmitted to the hosted server,

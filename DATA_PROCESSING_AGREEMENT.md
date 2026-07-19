@@ -140,7 +140,7 @@ to the extent available at the time.
 | Sub-processor | Country | Role | Privacy/DPA link |
 |---------------|---------|------|-----------------|
 | DigitalOcean, Inc. | United States | Infrastructure hosting | <https://www.digitalocean.com/legal/data-processing-agreement> |
-| Upstash, Inc. | United States | Redis session storage | <https://upstash.com/trust/data-processing-addendum.pdf> |
+| Upstash, Inc. | United States | Redis instance provisioned as infrastructure capacity — not currently used by session logic | <https://upstash.com/trust/data-processing-addendum.pdf> |
 
 **International transfer notice:** Both sub-processors are US-based. The absence of an
 EU adequacy decision for the United States means that personal data transfers to these

@@ -49,7 +49,32 @@ from typing import Any
 
 from horizon_monitor import Config, FidelityMonitor, __version__
 from horizon_monitor.mcp.auth import current_key_id
+from horizon_monitor.mcp.session_registry import SessionOwnershipError, SessionRegistry
 from horizon_monitor.monitor import SessionNotFoundError
+
+# Per-key session cap on the hosted multi-tenant server (see session_registry.py
+# for why this lives at the server layer, not in FidelityMonitor itself).
+_MAX_SESSIONS_PER_KEY = int(os.environ.get("HORIZON_MAX_SESSIONS_PER_KEY", "50"))
+_registry = SessionRegistry(max_sessions_per_key=_MAX_SESSIONS_PER_KEY)
+
+_NOT_FOUND_HINT = "Call new_conversation first."
+
+
+def _session_not_found_response(session_id: str) -> dict:
+    """Same error shape for 'unknown session' and 'not your session' —
+    a caller must not be able to distinguish the two (see SessionOwnershipError)."""
+    return {"error": f"Unknown session_id: {session_id!r}", "hint": _NOT_FOUND_HINT}
+
+
+def _register_session(sid: str, monitor: FidelityMonitor) -> None:
+    """Record ownership for a newly created session; end+evict the oldest
+    session of the SAME key if the caller is now over their cap."""
+    key_id = current_key_id.get()
+    evicted = _registry.register(sid, key_id)
+    if evicted is not None:
+        monitor.end_conversation(evicted)
+        _log.info("SESSION  evicted (per-key cap)  key=%s  session=%s", key_id, evicted[:8] + "…")
+
 
 # ── Structured log — file for local Cursor use, stdout for DO/production ──────
 _LOG_PATH = os.path.expanduser("~/.cursor/horizon_mcp.log")
@@ -194,6 +219,7 @@ def new_conversation(
     """Create a new Horizon session. Returns {session_id: str}."""
     monitor = _get_monitor()
     sid = monitor.new_conversation(metadata=metadata)
+    _register_session(sid, monitor)
     _log.info(
         "TOOL  new_conversation  key=%s  session=%s  metadata=%s",
         current_key_id.get(),
@@ -258,6 +284,7 @@ def process_turn(
     """
     monitor = _get_monitor()
     try:
+        _registry.check(session_id, current_key_id.get())
         result = monitor.process_turn(
             session_id=session_id,
             human_message=human_message,
@@ -300,6 +327,13 @@ def process_turn(
     except SessionNotFoundError as exc:
         _log.warning("TOOL  process_turn  key=%s  ERROR: %s", current_key_id.get(), exc)
         return {"error": str(exc), "hint": "Call new_conversation first."}
+    except SessionOwnershipError:
+        _log.warning(
+            "TOOL  process_turn  key=%s  ERROR: not owner of session=%s",
+            current_key_id.get(),
+            session_id[:8] + "…",
+        )
+        return _session_not_found_response(session_id)
 
 
 @mcp.tool(
@@ -307,7 +341,9 @@ def process_turn(
     title="Override thresholds or event modes",
     description=(
         "Override Horizon thresholds and event modes for a specific session "
-        "or globally (when session_id is omitted). "
+        "or, when session_id is omitted, every session YOU own (on the hosted "
+        "multi-tenant server, this never touches another API key's sessions — "
+        "see the tool result's 'sessions_affected' count). "
         "REQUIRES HUMAN APPROVAL — this mutates session config. "
         "Do NOT auto-run this tool. "
         "\n\nCommon use cases:\n"
@@ -334,7 +370,11 @@ def configure_session(
     """
     Override session config. Returns {applied: dict, warnings: list}.
 
-    Omit session_id to apply to all sessions (global override).
+    Omit session_id to apply to every session the CALLING key owns (see
+    session_registry.py). A local/stdio caller (no API key — single-tenant by
+    construction) instead gets the original unrestricted behavior: apply to
+    the shared default config and every existing session, since there is no
+    other tenant it could affect.
     """
     monitor = _get_monitor()
     kwargs: dict[str, Any] = {}
@@ -351,19 +391,55 @@ def configure_session(
     if context_half_life_hours is not None:
         kwargs["context_half_life_hours"] = context_half_life_hours
 
+    key_id = current_key_id.get()
     try:
-        result = monitor.configure(session_id=session_id, **kwargs)
-        d = dataclasses.asdict(result)
+        if session_id is not None:
+            _registry.check(session_id, key_id)
+            result = monitor.configure(session_id=session_id, **kwargs)
+            d = dataclasses.asdict(result)
+            d["sessions_affected"] = 1
+        elif key_id == "local":
+            # No API key involved (stdio / direct library usage) — there is no
+            # other tenant to protect, so the original global-default
+            # semantics (mutate the shared config template + every existing
+            # session) are safe and remain the useful behavior.
+            result = monitor.configure(session_id=None, **kwargs)
+            d = dataclasses.asdict(result)
+            d["sessions_affected"] = monitor.session_count
+        else:
+            # Authenticated multi-tenant caller with no session_id: "global"
+            # is reinterpreted as "every session I own" — never the shared
+            # default template, never another key's sessions.
+            owned = _registry.owned_sessions(key_id)
+            applied: dict = {}
+            warnings: list = []
+            for sid in owned:
+                result = monitor.configure(session_id=sid, **kwargs)
+                applied = result.applied
+                warnings.extend(result.warnings)
+            d = {
+                "applied": applied,
+                "warnings": [dataclasses.asdict(w) for w in warnings],
+                "sessions_affected": len(owned),
+            }
         _log.info(
-            "TOOL  configure_session  key=%s  session=%s  applied=%s",
-            current_key_id.get(),
+            "TOOL  configure_session  key=%s  session=%s  sessions_affected=%s  applied=%s",
+            key_id,
             str(session_id)[:8],
+            d["sessions_affected"],
             d["applied"],
         )
         return d
     except SessionNotFoundError as exc:
-        _log.warning("TOOL  configure_session  key=%s  ERROR: %s", current_key_id.get(), exc)
+        _log.warning("TOOL  configure_session  key=%s  ERROR: %s", key_id, exc)
         return {"error": str(exc), "hint": "Call new_conversation first."}
+    except SessionOwnershipError:
+        _log.warning(
+            "TOOL  configure_session  key=%s  ERROR: not owner of session=%s",
+            key_id,
+            str(session_id)[:8] + "…",
+        )
+        return _session_not_found_response(session_id)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -392,6 +468,7 @@ def get_trajectory(session_id: str) -> str:
     """Return the fidelity trajectory for a session as JSON."""
     monitor = _get_monitor()
     try:
+        _registry.check(session_id, current_key_id.get())
         traj = monitor.get_trajectory(session_id)
         d = dataclasses.asdict(traj)
         _log.info(
@@ -406,6 +483,13 @@ def get_trajectory(session_id: str) -> str:
     except SessionNotFoundError as exc:
         _log.warning("RESOURCE  trajectory  key=%s  ERROR: %s", current_key_id.get(), exc)
         return json.dumps({"error": str(exc), "hint": "Call new_conversation first."})
+    except SessionOwnershipError:
+        _log.warning(
+            "RESOURCE  trajectory  key=%s  ERROR: not owner of session=%s",
+            current_key_id.get(),
+            session_id[:8] + "…",
+        )
+        return json.dumps(_session_not_found_response(session_id))
 
 
 @mcp.resource(
@@ -425,6 +509,7 @@ def get_events(session_id: str) -> str:
     """Return all events for a session as JSON."""
     monitor = _get_monitor()
     try:
+        _registry.check(session_id, current_key_id.get())
         events = monitor.get_events(session_id)
         active = [dataclasses.asdict(e) for e in events if e.active]
         all_events = [dataclasses.asdict(e) for e in events]
@@ -449,6 +534,13 @@ def get_events(session_id: str) -> str:
     except SessionNotFoundError as exc:
         _log.warning("RESOURCE  events  key=%s  ERROR: %s", current_key_id.get(), exc)
         return json.dumps({"error": str(exc), "hint": "Call new_conversation first."})
+    except SessionOwnershipError:
+        _log.warning(
+            "RESOURCE  events  key=%s  ERROR: not owner of session=%s",
+            current_key_id.get(),
+            session_id[:8] + "…",
+        )
+        return json.dumps(_session_not_found_response(session_id))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -482,6 +574,7 @@ def monitor_conversation(
     """
     monitor = _get_monitor()
     sid = monitor.new_conversation(metadata={"domain": domain, "agent_name": agent_name})
+    _register_session(sid, monitor)
     ts = datetime.now(timezone.utc).isoformat()
     _log.info(
         "PROMPT  monitor_conversation  key=%s  session=%s  domain=%s  agent=%s",

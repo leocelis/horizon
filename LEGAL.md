@@ -273,8 +273,11 @@ text is transmitted to that service. See §3.4.
 ### 6.2 Where it is processed
 
 The hosted server runs on **DigitalOcean App Platform (US East region)**. Session state
-is Redis-backed. Embedding computation uses the locally bundled `all-MiniLM-L6-v2`
-model — no OpenAI or third-party embedding API is called by the hosted server.
+lives in process memory only — a Redis instance (Upstash) is provisioned but not
+currently used by session logic, so sessions do NOT survive a server restart or failover
+(no resumability). See §6.4. Embedding computation uses the locally bundled
+`all-MiniLM-L6-v2` model — no OpenAI or third-party embedding API is called by the
+hosted server.
 
 **If you are in the European Union:** Transmitting personal data through tool arguments
 constitutes an international data transfer from the EU to the United States under GDPR
@@ -298,7 +301,11 @@ transmit personal data. Contact [leo@leocelis.com](mailto:leo@leocelis.com) to r
 | Sub-processor | Role | DPA |
 |---------------|------|-----|
 | DigitalOcean, Inc. | Infrastructure hosting | <https://www.digitalocean.com/legal/data-processing-agreement> |
-| Upstash, Inc. | Redis session storage | <https://upstash.com/trust/data-processing-addendum.pdf> |
+| Upstash, Inc. | Redis instance provisioned as infrastructure capacity — not currently used by session logic (no conversation data is transmitted to it) | <https://upstash.com/trust/data-processing-addendum.pdf> |
+
+Upstash is disclosed here because the instance exists and is reachable, even though no
+data is currently sent to it — this table reflects provisioned infrastructure, not only
+infrastructure with active data flow.
 
 ### 6.5 What you must not transmit
 
@@ -348,10 +355,11 @@ rather than an email, name, or real account ID.
 
 ### 8.1 Third-party service disclaimer
 
-The hosted server depends on DigitalOcean App Platform and Redis (Upstash). Horizon has
-no control over the availability, terms, pricing, regulatory status, or data handling
-of these providers. Horizon is not liable for any interruption, data loss, or legal
-development attributable to third-party providers.
+The hosted server depends on DigitalOcean App Platform (and has Redis/Upstash provisioned
+as infrastructure capacity, though not currently used by session logic — see §6.4).
+Horizon has no control over the availability, terms, pricing, regulatory status, or data
+handling of these providers. Horizon is not liable for any interruption, data loss, or
+legal development attributable to third-party providers.
 
 ### 8.2 MaxMind GeoIP2 (optional spatial signals)
 

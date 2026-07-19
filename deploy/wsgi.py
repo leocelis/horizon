@@ -129,7 +129,12 @@ def build_app():
             "version": __version__,
             "sessions_active": session_count,
             "transports": ["streamable-http", "sse"],
-            "resumable": bool(os.environ.get("REDIS_URL")),
+            # Sessions are in-process memory only (FidelityMonitor._sessions) —
+            # REDIS_URL is not currently wired into any session/event store, so
+            # this must not claim resumability it does not provide. Restarting
+            # this process always drops all session state; see SECURITY.md
+            # "Hosted server restart data loss."
+            "resumable": False,
         })
 
     # ── Path dispatcher: preserves the full path so each app sees its own
@@ -178,7 +183,7 @@ if __name__ == "__main__":
     print(f"[Horizon MCP] Starting production server on {args.host}:{args.port}")
     print(f"[Horizon MCP] Version: {__version__}")
     print(f"[Horizon MCP] Auth: {'DISABLED' if os.environ.get('HORIZON_AUTH_DISABLED') else 'enabled'}")
-    print(f"[Horizon MCP] Redis: {'configured' if os.environ.get('REDIS_URL') else 'not configured (sessions reset on restart)'}")
+    print("[Horizon MCP] Sessions: in-process memory only — always reset on restart")
 
     uvicorn.run(
         app,

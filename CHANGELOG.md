@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Per-key rate limiting** on the hosted MCP server (`mcp/auth.py::RateLimiter`) — in-process
+  token bucket, default 120 req/min, burst 20, both env-configurable
+  (`HORIZON_RATE_LIMIT_PER_MINUTE` / `HORIZON_RATE_LIMIT_BURST`). Exceeding the limit returns
+  HTTP 429 with `Retry-After` and the IETF draft `RateLimit`/`RateLimit-Policy` headers. Only
+  authenticated requests are limited (unauthenticated attempts fail at 401 before reaching the
+  limiter). `/health` remains exempt.
+- **Per-key session isolation and caps** on the hosted MCP server (`mcp/session_registry.py`,
+  new module). Closes two real gaps: (1) any authenticated key could previously read
+  (`get_trajectory`/`get_events`) or continue (`process_turn`) ANY session_id, including one
+  created by a different key; (2) `configure_session(session_id=None)` previously looped over
+  **every live session on the shared server**, so any authenticated key could silently mutate
+  every other tenant's thresholds/event-modes with no session_id needed at all. Sessions are
+  now owned by the key that created them, capped at 50 concurrent sessions per key
+  (`HORIZON_MAX_SESSIONS_PER_KEY`, LRU-evicted — a key's own volume never costs another key a
+  session), and `configure_session`'s "global" mode is reinterpreted per-key as "every session
+  I own." Local/stdio callers (no API key — single-tenant by construction) keep the original
+  unrestricted behavior, since there is no other tenant to protect. A denied cross-tenant
+  access returns the same error shape as an unknown session_id, so a caller cannot distinguish
+  "not yours" from "never existed."
+- **`FidelityMonitor.session_count`** public property (was previously only accessible via the
+  private `_sessions` dict).
+
+### Fixed
+- **Health endpoint and docs falsely claimed Redis-backed session resumability.** `REDIS_URL`
+  is checked in exactly two places in the entire codebase (a health-status flag and a startup
+  print) and is never actually passed to any session/event store — sessions have always been
+  in-process memory only, lost on every restart. Fixed `/health`'s `resumable` field to always
+  report `false` instead of `bool(os.environ.get("REDIS_URL"))`, and corrected the same claim
+  in `README.md`, `LEGAL.md` §6.2/§6.4/§8.1, `PRIVACY_POLICY.md` §8, `DATA_PROCESSING_AGREEMENT.md`
+  §6, and `docs/integrations/CURSOR.md`. Upstash remains listed as a sub-processor (the Redis
+  instance is genuinely provisioned in the hosted deployment) but is now accurately described
+  as infrastructure capacity that session logic does not currently use.
+- **`SECURITY.md` scope referenced stale `src/horizon/` paths** from before the `horizon` ->
+  `horizon_monitor` rename (0.2.1).
+
+### Changed
+- **`TERMS_OF_SERVICE.md` §2:** API key requests must now come from an identifiable requester
+  (a real GitHub account and/or verifiable email); anonymous/throwaway requests may be
+  declined. Documents the enforced (not just contractual) rate limit and session cap.
+- **`PRIVACY_POLICY.md` §1.3:** clarifies that the requester identity retained at key issuance
+  is used for abuse accountability (revocation, platform reporting), not only key management.
+
+## [0.2.2] - 2026-07-19
+
 ### Fixed
 - **Dependency bound too loose:** core `transformers<5` allowed fresh installs to resolve
   `transformers` far past the validated stack (observed: 4.57.6, incompatible with older

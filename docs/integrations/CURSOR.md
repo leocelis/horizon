@@ -33,7 +33,7 @@ No Python install required. Request an alpha key via [GitHub Discussions](https:
 
 Reload the MCP panel (Cursor Settings → Features → Model Context Protocol → toggle off/on). Done — the three tools, resources, and prompt appear immediately.
 
-> The hosted endpoint runs on DigitalOcean with Redis-backed session resumability. It is key-protected and in private alpha. Keys are distributed to agent developers on request.
+> The hosted endpoint runs on DigitalOcean with in-process session state (sessions do not survive a server restart). It is key-protected (rate-limited and isolated per key) and in private alpha. Keys are distributed to agent developers on request.
 
 ### Option B — pip install (global `~/.cursor/mcp.json`)
 
