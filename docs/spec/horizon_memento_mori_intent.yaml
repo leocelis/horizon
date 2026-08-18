@@ -28,6 +28,22 @@
 #                     boundary covers dates and amounts; clock_propose_ttl
 #                     generalised to clock_propose (one base-rate proposal
 #                     mechanism, two uses). Constraint count held at 7.
+#   v0.4  2026-08-18  ALTERNATIVES ARE MEASURED, NEVER SIMULATED. Gaps from
+#                     operator review folded in: (1) probe item kind — a small,
+#                     dated, instrumented trial of an alternative path whose
+#                     recorded latencies the engine compares against the
+#                     incumbent's; (2) path-vs-path comparison restricted to
+#                     recorded latencies (own history or probes); published
+#                     base rates admissible only as provenance-labelled
+#                     inputs; counterfactuals ("what the untaken path would
+#                     have cost") excluded — the incumbent's accruing measured
+#                     delay is the honest substitute; (3) division of labour
+#                     made explicit: the clock finds the slow block, the agent
+#                     layer proposes the replacement, the operator decides;
+#                     (4) the plane's own construction is clockable — a
+#                     deployment that builds the instrument registers that
+#                     build as a mission, so instrumentation-as-deferral is
+#                     measured by the instrument itself. Constraints still 7.
 
 parent_intent: "horizon_intent.yaml"
 
@@ -122,6 +138,16 @@ inversion_opportunities:
       rationale: "This is the plane's central thesis and the subject of its dedicated research phase. Prior art the research must test it against rather than reinvent: Theory of Constraints (improving anything but the constraint is invisible at the goal), lean value-stream mapping (touch time is routinely a small fraction of lead time — elapsed calendar lives in the waits between actions), Little's Law (with fixed throughput, lead time scales linearly with work-in-progress — arithmetic, not opinion), and sales-velocity models (cycle length is the denominator; trust is a latency — N contacts spaced over M weeks — not a quality). Two obligations fall out: (1) latencies must be classifiable as reducible, irreducible, or self-imposed — effort on irreducible latencies is waste, and unspent effort on self-imposed ones is the silent killer; (2) the instrument MUST be able to name the operator as the slowest entity. An instrument that can only attribute slowness to external entities is a comfortable instrument, and comfortable instruments are decoration. The classification itself is semantic judgment and belongs to the operator (or an operator-configured judge) — the engine measures the latencies; it never opines on their meaning."
       status: "chosen"
 
+    - name: "Alternatives are measured, never simulated"
+      description: "When a slow block is named, the question becomes: is there a faster path? The plane answers it only with recorded numbers, in strength order: (1) the operator's own history — recorded latencies of each path where both have been used; (2) probes — a first-class item kind: a small, dated, instrumented trial of the alternative whose stage timestamps let the engine compare measured latency against measured latency; (3) published base rates — admissible only as provenance-labelled inputs ('the literature says'), never blended with measured values. What the plane never produces is a counterfactual: 'what the untaken path would have cost' is an invented number. The honest substitute is automatic: the incumbent path keeps accruing measured delay from the moment an alternative is registered, so the untaken option's case strengthens in real numbers, not projections."
+      rationale: "Comparing an untried path by prediction is duration estimation wearing a route map. Probes convert the comparison from forecast to measurement — the operator is not predicting which path is faster, they are finding out, small and instrumented. This is the only way 'find a better way' fits inside a deterministic accounting engine."
+      status: "chosen"
+
+    - name: "The clock finds the block; the agent proposes the fix; the operator decides"
+      description: "Three layers with hard edges. The ENGINE (deterministic) measures latencies and names the slowest entity. The AGENT LAYER (semantic, reading the clock report each turn) proposes replacements and better ways — reroute, delegate, drop, probe — as suggestions with the clock's numbers attached. The OPERATOR decides, and every decision that spawns a path becomes new clocked items the engine measures. The engine never proposes; the agent never measures; the operator is never bypassed."
+      rationale: "Proposing a workaround is judgment, and judgment was deliberately kept out of the engine. But the plane's value is only realised when someone acts on the named block, so the intent must state where proposal lives rather than leave a gap between measurement and action: the agent consuming the per-turn signal IS the proposal layer, by design and not by accident."
+      status: "chosen"
+
     - name: "Money is a weight on time, never a subsystem"
       description: "The plane accepts one operator-declared rate (currency per unit time) at the root and caller-supplied amounts on items, and computes cost-of-delay, money-weighted urgency, and break-even DATES from them. It performs no financial modelling: no NPV/IRR/DCF, no discount-rate selection, no currency conversion, no tax, no forecast of savings that were not measured."
       rationale: "Without any price, the plane can rank what is slowest but never what is costliest-slow, and those diverge sharply — an hour of latency on a high-value path outranks weeks of latency on a hobby. Ranking without a weight is the 'comfortable instrument' failure in another disguise. But money is also where a time instrument goes to die: the moment it selects a discount rate or projects unmeasured savings it is inventing numbers, which is the duration-estimation sin in different units. The boundary that resolves both: the engine may DIVIDE BY money, never GUESS money. Review test for any proposed feature — if it would still make sense with the clock removed, it belongs in a finance tool, not here."
@@ -180,7 +206,7 @@ interface:
         - name: "item"
           type: "object"
           required: true
-          description: "kind (horizon|mission|task|deadline|gate|entity|deferral) + dates/windows + parent link into the horizon tree"
+          description: "kind (horizon|mission|task|deadline|gate|entity|deferral|probe) + dates/windows + parent link into the horizon tree. A probe is a small, dated, instrumented trial of an alternative path toward its parent mission; it carries a TTL like any task and its stage timestamps feed path comparison"
       returns: "item_id"
 
     - name: "clock_progress"
@@ -195,7 +221,7 @@ interface:
       returns: "ack"
 
     - name: "clock_status"
-      description: "Compute the full clock surface: every item with its age, days-remaining, TTL state, days-since-last-progress, per-entity latency (time-in-stage, wait-vs-touch), slowest-entity per mission, and share-of-remaining-horizon. Pure read; deterministic; sorted by urgency."
+      description: "Compute the full clock surface: every item with its age, days-remaining, TTL state, days-since-last-progress, per-entity latency (time-in-stage, wait-vs-touch), slowest-entity per mission, share-of-remaining-horizon, and path comparison — recorded latencies of alternative paths (probes, prior history) toward the same mission side by side with the incumbent path's, including the incumbent's delay accrued since the alternative was registered. Comparison is only ever between recorded latencies; the engine simulates nothing. Pure read; deterministic; sorted by urgency."
       parameters:
         - name: "scope"
           type: "string"
@@ -229,6 +255,8 @@ interface:
       signal.horizon_share         — an item's elapsed time crossed a threshold share of the remaining master horizon
       signal.cost_of_delay         — accrued cost-of-delay on an item crossed an operator-set threshold (fires only when a rate and an amount are both declared)
       signal.breakeven_passed      — a ratified break-even date passed without the measured latency improvement that justified it
+      signal.probe_ready           — a probe has recorded enough latency data to compare its path against the incumbent's
+      signal.path_dominated        — a registered alternative's recorded latency beats the incumbent path's while the incumbent keeps accruing delay
 
 # ----------------------------------------------------------------------------
 # INTENT
@@ -252,12 +280,21 @@ intent:
     - gates with age budgets
     - deferrals with mandatory revisit dates
     - entities with stage timestamps from which latency is derived
+    - probes: small, dated, instrumented trials of alternative paths, TTL'd
+      like tasks, whose recorded latencies feed path comparison
 
     THE ARITHMETIC — ages, days-remaining, TTL state, days-since-progress,
     progress-per-day, time-in-stage, wait-vs-touch ratio, slowest-entity per
     mission, share-of-remaining-horizon. Nothing else: the engine's entire
     intelligence is arithmetic, ordering, and thresholds over caller-supplied
     records.
+
+    THE PATHS — when the clock names a slow block, alternatives are compared
+    only between recorded latencies: the operator's own history where both
+    paths have been used, or probes run small and instrumented. Published
+    base rates enter only as provenance-labelled inputs. No counterfactuals:
+    from the moment an alternative is registered, the incumbent path's
+    accruing measured delay is the running argument for or against it.
 
     THE WEIGHT (optional) — one operator-declared time_value_rate at the root
     plus caller-supplied amount fields on items (cost, value_at_stake) let the
@@ -408,6 +445,12 @@ constraint_satisfiability:
       output may contain an amount not so derivable, and the plane must
       compute every non-monetary output identically when no rate is declared.
       Encoded in the joint test.
+    - facts_are_caller_provided vs path comparison: comparison outputs contain
+      only latencies computed from stored stage timestamps of really-run paths
+      (incumbent, probes, prior history) — no synthetic path latency may
+      appear anywhere. Published base rates surface as separate,
+      provenance-labelled fields, never merged into measured columns.
+      Encoded in the joint test.
     - facts_are_caller_provided vs clock_propose: proposals are arithmetic
       over stored records with derivation shown, inert until a ratifying
       caller write. The boundary: no stored date may exist that is not
@@ -425,7 +468,8 @@ constraint_satisfiability:
   note: "Single test driving one flow — configure store, register finite root, register mission+deadline+gate+entity under it, attempt root-less item (rejected), attempt undated deferral (rejected), request TTL proposal (derivation shown, not applied), ratify TTL, declare a time_value_rate and an amount, assert cost-of-delay and
     break-even derive only from stored facts, assert every non-monetary output is
     identical with the rate removed, advance evaluation date past TTL and revisit
-    dates, assert events fire, assert report reproducible byte-identically, assert zero network/LLM, assert unconfigured session unchanged — asserting all seven constraints on the SAME output."
+    dates, assert events fire, register a probe and a second path, assert the
+    comparison contains only measured latencies with base-rate fields separate, assert report reproducible byte-identically, assert zero network/LLM, assert unconfigured session unchanged — asserting all seven constraints on the SAME output."
 
 # ----------------------------------------------------------------------------
 # NON-GOALS
@@ -435,6 +479,7 @@ non_goals:
   - "Task management: the plane is not a todo list, tracker, or scheduler; it clocks items that live wherever the operator manages work"
   - "Judging whether recorded progress is 'real' progress, or whether a latency is reducible — semantic judgment stays with the operator and their agents"
   - "Financial modelling: no NPV, IRR, discounted cash flow, discount-rate selection, amortisation schedules, currency conversion, tax, budgeting, or portfolio optimisation. Monetary outputs are limited to cost-of-delay, money-weighted ordering, and break-even dates computed by arithmetic from caller-supplied amounts, the caller-declared rate, and measured durations"
+  - "Counterfactual accounting: the plane never states what an untaken path would have cost; it compares recorded latencies and lets the incumbent's accruing measured delay speak"
   - "Purchase advice: the plane validates a latency-reducing purchase retrospectively against measured before/after latency; it never recommends a purchase from projected savings"
   - "Actuarial modeling: a lifetime-derived root horizon is computed by arithmetic from operator-supplied inputs (e.g. an operator-chosen expectancy table value); the engine embeds no demographic model and no personal data"
   - "Conversation-level temporal signals (inter-turn gaps, retention, pacing) — already owned by the existing spacetime plane"
@@ -461,6 +506,10 @@ risks:
     mitigation: "Money is admissible only as a multiplier on time arithmetic; review test for any proposed feature — if it would still make sense with the clock removed, it belongs in a finance tool and is rejected. The rate is optional: with none declared, every non-monetary output is unchanged"
   - risk: "A declared time_value_rate is itself a guess, and lends invented authority to every figure derived from it"
     mitigation: "The rate is caller-declared, never engine-proposed; every monetary output must be traceable to it in the shown derivation so a wrong rate is visibly a wrong INPUT rather than a wrong measurement; research topic B8 scopes what makes a defensible rate"
+  - risk: "Probe theater: running probes becomes another form of deferral — always testing alternatives, never switching"
+    mitigation: "A probe is TTL'd like any task and belongs to a mission; an expired probe fires signal.ttl_expired like anything else, and probe count per mission is visible in clock_status so a mission accumulating probes without decisions is itself a named pattern"
+  - risk: "Self-exemption: work on the instrument absorbs the calendar its missions needed, and the instrument does not see it because its own build is not clocked"
+    mitigation: "A deployment that builds or extends the plane registers that build as a mission in its own store, with the same TTLs, stall thresholds, and horizon-share accounting as everything else — the clock clocks its own construction"
   - risk: "Scope creep toward a project-management product"
     mitigation: "non_goals list above is normative; anything resembling task management is rejected at review"
   - risk: "The plane widens Horizon's public thesis (conversation property → mission property)"
@@ -483,7 +532,7 @@ verification:
     segmentation), suggested segments: (a) store + horizon tree + schema
     validation, (b) evaluation/arithmetic engine incl. latency accounting,
     (c) proposal path (ttl + breakeven), (d) monetary weighting,
-    (e) signal integration + compat.
+    (e) probes + path comparison, (f) signal integration + compat.
   test_cases: []   # populated during PRD/tech-spec phase with worked examples for review sign-off
 
 review_gate:
