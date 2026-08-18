@@ -82,6 +82,17 @@ review. Untagged cases are supporting coverage.
 | G-11 | Association scoping | session not associated with any mission ⇒ zero memento events even with a store configured | §6 integration | |
 | G-12 | Adapter provenance | git_local adapter emits ARTIFACT events with full provenance; adapter cannot create links (API has no such parameter) | §4.3 | |
 
+## M — MCP surface & agent contract
+
+| ID | Case | Expected | Tag |
+|----|------|----------|-----|
+| M-1 | Tool discovery | with a store configured, the six mission tools (register/progress/status/propose/ack/associate) list alongside existing tools; with store_path=None they do not appear | [PROPERTY] |
+| M-2 | Typed error serialization | UndatedDeferralError over MCP ⇒ {error_type, rule, fix}; no stack trace, no silent coercion | [GOLDEN] |
+| M-3 | associate_mission scoping | events reach process_turn only for associated sessions (pairs with G-11); association survives session re-registration | |
+| M-4 | Plane tag | every mission event payload carries plane="mission"; existing conversation events gain plane="conversation" with no other byte changed (compat) | [PROPERTY] |
+| M-5 | Loud-contract text | each mission tool description contains the surface-don't-absorb line; suggested_behavior templates for mission events instruct surfacing with numbers | [HUMAN] |
+| M-6 | Instructions doc sync | the §3 rules block in docs/integrations/MEMENTO_MORI_AGENTS.md names every shipped tool and no unshipped one (doc-code consistency check) | [HUMAN] |
+
 ## R — Replay & self-judgment (PRD §9)
 
 | ID | Case | Expected | Tag |

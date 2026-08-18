@@ -1,7 +1,7 @@
 # Horizon Memento Mori — Technical Specification
 
 **Status:** design — implementation not started. Derived from
-[`horizon_memento_mori_intent.yaml`](horizon_memento_mori_intent.yaml) (v0.7) and
+[`horizon_memento_mori_intent.yaml`](horizon_memento_mori_intent.yaml) (v0.8) and
 [`../product/MEMENTO_MORI_PRD.md`](../product/MEMENTO_MORI_PRD.md).
 Sub-module intents: [`intents/memento_store_intent.yaml`](intents/memento_store_intent.yaml) ·
 [`intents/memento_engine_intent.yaml`](intents/memento_engine_intent.yaml) ·
@@ -220,8 +220,20 @@ Per `(item_id, signal_type)` a row in `mm_fires`:
   the plane's due events (post-cap) to `active_events`. With no store configured, the
   code path is not entered at all (compat).
 - **MCP tools:** `clock_register`, `clock_progress`, `clock_status`, `clock_propose`,
-  plus `clock_ack` (thin wrapper writing an ACK event) — same server, same auth, same
-  local-only posture as existing tools.
+  `clock_ack` (thin wrapper writing an ACK event), and `associate_mission`
+  (session→mission binding on the session registry) — same server, same auth, same
+  local-only posture as existing tools. Tool descriptions embed the loud-contract
+  one-liner ("surface this; never absorb silently") so schema-only clients still get
+  the behavioral contract. Typed errors serialize as {error_type, rule, fix} and are
+  meant to be relayed to the operator verbatim.
+- **Event payload plane tag:** every emitted event carries `plane: "mission"`;
+  existing conversation events carry `plane: "conversation"` (added as a
+  backward-compatible field) so hosts and rules route the loud vs silent contracts
+  without name-matching.
+- **Agent instruction layer:** `docs/integrations/MEMENTO_MORI_AGENTS.md` is the
+  canonical host-rules block (Claude/Cursor/Copilot). It is part of the product
+  surface: capture (§4.3) depends on the side-effect write rule living in host rules,
+  and the plane's loudness contract inverts the fidelity plane's invisibility.
 - **Artifact adapters (`memento/adapters/`):** pull-based readers that translate an
   external append-only source into ARTIFACT events with mandatory provenance. V1 ships
   the interface plus a filesystem/git reference adapter; adapters never write links —

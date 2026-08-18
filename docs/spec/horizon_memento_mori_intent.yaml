@@ -93,6 +93,19 @@
 #                     examples on the shared synthetic fixture. Status moves
 #                     to in_design; implementation remains gated on per-
 #                     constraint sign-off.
+#   v0.8  2026-08-18  AGENT/MCP INTEGRATION LAYER made explicit (operator
+#                     review): two tools added to the interface — clock_ack
+#                     (operator-authorized acknowledgement) and
+#                     associate_mission (session→mission binding); every
+#                     event payload carries a plane tag ("mission" vs
+#                     "conversation") so hosts route the LOUD contract
+#                     (mission signals are surfaced with numbers) separately
+#                     from the fidelity plane's invisibility contract; the
+#                     canonical host-rules block lives in
+#                     docs/integrations/MEMENTO_MORI_AGENTS.md and is part of
+#                     the product surface — capture depends on the
+#                     side-effect write rule living in host rules.
+#                     Constraints unchanged at 7.
 
 parent_intent: "horizon_intent.yaml"
 
@@ -280,6 +293,31 @@ interface:
           required: false
       returns: "clock report (plain dict)"
 
+    - name: "clock_ack"
+      description: "Acknowledge a fired signal for (item, signal_type). Operator-authorized: agents call it only on the operator's explicit acknowledgement, never to self-quiet a signal. Moves the state machine to ACKED (visible on clock_status, silent per-turn until an enumerated escalation rung)."
+      parameters:
+        - name: "item_id"
+          type: "string"
+          required: true
+        - name: "signal_type"
+          type: "string"
+          required: true
+        - name: "actor"
+          type: "string"
+          required: true
+      returns: "ack"
+
+    - name: "associate_mission"
+      description: "Bind a session to a mission on the session registry so the mission's due events (post-cap) reach that session's process_turn. Without association a configured store emits nothing into the session."
+      parameters:
+        - name: "session_id"
+          type: "string"
+          required: true
+        - name: "mission_id"
+          type: "string"
+          required: true
+      returns: "ack"
+
     - name: "clock_propose"
       description: "Derive a proposal from execution-derived base rates over comparable records in this store. kind=ttl proposes a task lifespan window; kind=breakeven proposes a break-even date for a latency-reducing purchase from measured before/after latency, caller-supplied cost, and the root time_value_rate. Returns the proposal with its derivation shown; inert until the operator ratifies it via clock_register."
       parameters:
@@ -295,7 +333,11 @@ interface:
   signal_channel: |
     Clock events surface through the existing per-turn signal contract
     (process_turn → active_events[].suggested_behavior) when a session is
-    associated with one or more missions.
+    associated with one or more missions (associate_mission). Every event
+    payload carries plane: "mission"; hosts apply the LOUD contract to this
+    plane — mission signals are surfaced to the operator with their numbers
+    and derivation — while the conversation plane keeps its invisibility
+    contract. Canonical host rules: docs/integrations/MEMENTO_MORI_AGENTS.md.
 
     FIRING SEMANTICS (normative, from alarm-fatigue research): events are
     EDGE-triggered — an event fires once when its predicate becomes true,
