@@ -1,0 +1,346 @@
+# horizon_mission_clock_intent.yaml
+# Intent Artifact for the Horizon Mission Clock plane
+#
+# IVD: THE FRAMEWORK FOR THE AI AGENTS ERA
+# =========================================
+# The AI writes this intent artifact, not the human.
+# The AI implements against this intent.
+# The AI verifies its output against the constraints.
+#
+# Review history:
+#   v0.1  2026-08-18  Initial draft — intent only. Sequence: intent → research →
+#                     PRD → tech spec → implementation. Nothing downstream of
+#                     this artifact exists yet; every test path named here is
+#                     PLANNED, not present.
+
+parent_intent: "horizon_intent.yaml"
+
+scope:
+  level: "module"
+  type: "product"
+  granularity: "coarse"
+
+metadata:
+  feature_id: "horizon_mission_clock"
+  category: "mission_dynamics"
+  tags: ["mission-time", "elapsed-time-accounting", "deadlines", "velocity",
+         "goal-tracking", "temporal-awareness", "agent-planning", "calendar"]
+  status: "planned"
+
+# ----------------------------------------------------------------------------
+# AUTHORSHIP
+# ----------------------------------------------------------------------------
+authorship:
+  origin: "ai_proposed"
+  human_oversight: "review_required"
+
+  ai_authority:
+    can_create: false
+    can_modify:
+      - "implementation"
+      - "verification"
+    requires_approval:
+      - "intent.goal"
+      - "intent.success_metric"
+      - "constraints"
+
+  escalation: "Any change to the constraints — especially the estimation/accounting boundary and the no-undated-deferral rule — requires human sign-off, because these encode the plane's core thesis"
+
+# ----------------------------------------------------------------------------
+# PROBLEM & INVERSION OPPORTUNITIES
+# ----------------------------------------------------------------------------
+inversion_opportunities:
+  problem: |
+    AI agents are mission-time blind. They reason competently about the state of
+    work (what exists, what is next, what blocks what) but carry no representation
+    of calendar time elapsed against outcomes. The observable failure modes:
+
+    - Work is deferred ("parked", "pending", "revisit later") with a condition
+      instead of a date, and nothing is scheduled to re-trigger it. The deferral
+      becomes permanent by default.
+    - Gates and milestones age silently. "0 of 2 complete" reads identically on
+      day 1 and day 40; no instrument reports the 40.
+    - External clocks (regulatory dates, market windows, contract deadlines,
+      renewal dates) are documented but never paired against internal state, so
+      "the deadline passed while the work sat parked" is discovered after the fact.
+    - Effort is measured in units of output (commits, documents, tasks closed)
+      while calendar burn — the one non-renewable input — is measured nowhere.
+    - Each new conversation resets the agent's horizon to the session. A mission
+      spanning months of sessions has no clock that survives any of them.
+
+    Session-scoped conversation monitoring (the existing Horizon plane) cannot see
+    this: a month of individually healthy conversations that advance nothing is,
+    to a conversation monitor, a month of perfect health.
+
+  dominant_belief: "Agent time-awareness is solved by better scheduling and task tools — calendars, reminders, project trackers that humans read. Progress is measured by tasks completed."
+
+  proposed_inversions:
+    - name: "Elapsed-time accounting, not estimation"
+      description: "The system never predicts how long work will take. It records dates supplied by the operator (deadlines, park dates, revisit dates, milestone dates) and computes only arithmetic on them: ages, days-remaining, days-since-last-progress, progress-per-day. Accounting is measurement; estimation is judgment, and judgment stays with the human."
+      rationale: "LLM duration estimates are unfounded numbers that invite planning around a guess. Elapsed time, by contrast, is a fact — and it is precisely the fact no agent currently surfaces. Splitting the two makes the safe half (arithmetic on recorded dates) automatable without importing the unsafe half (invented forecasts)."
+      status: "chosen"
+
+    - name: "Mission-scoped, not session-scoped"
+      description: "The unit of analysis is the mission — a goal with a clock — persisted in a local store that outlives every conversation, process, and agent. Sessions read from and write to the mission clock; none of them owns it."
+      rationale: "The failure lives across sessions. Any instrument that resets per conversation is structurally blind to a 60-day stall distributed over 40 healthy sessions."
+      status: "chosen"
+
+    - name: "Alarm on age, not on anomaly"
+      description: "Conversation monitors stay silent while the conversation is healthy. The mission clock inverts the silence condition: its events fire on the passage of time itself — a park past its revisit date, a gate exceeding its age budget, a deadline within its warning window, a mission with zero recorded progress for N days. Nothing anomalous needs to happen; enough nothing IS the signal."
+      rationale: "Time-blindness is a failure of omission. No engine that triggers on what occurred can catch what failed to occur; only a clock compared against a calendar can."
+      status: "chosen"
+
+    - name: "An undated deferral is invalid, not incomplete"
+      description: "The write path rejects any deferral (park, pause, 'revisit when...') that lacks a concrete revisit date. This is schema validation, not advice."
+      rationale: "A deferral with a condition and no date is how missions die politely. Making the date structurally mandatory converts a discipline problem (remember to set dates) into a type error (a park without a date does not exist)."
+      status: "chosen"
+
+    - name: "Signals into the agent's existing turn loop, not a dashboard"
+      description: "Clock events are delivered through the same signal channel agents already consume each turn (Horizon's active_events / suggested_behavior contract), so the calendar reaches the agent at planning time — not a human-facing report the operator must remember to read."
+      rationale: "Dashboards and digest emails depend on the human polling them; the failure mode under measurement is precisely that nobody polls. The one surface guaranteed to be read is the agent's own turn context."
+      status: "chosen"
+
+    - name: "Put it in the project tracker (per-project tooling)"
+      description: "Encode deadlines and ages inside each project's own task tracker, board, or goal scripts."
+      rationale: "Rejected: per-project implementations are rebuilt for every project, encode project-specific IDs, and reach agents only if each integration is separately wired. The capability is generic (dates, ages, arithmetic, events) and belongs one level above any project."
+      status: "rejected"
+
+    - name: "LLM-judged progress"
+      description: "Have a model read recent activity and judge whether the mission is 'really' progressing."
+      rationale: "Rejected: reintroduces non-determinism and cost into a measurement layer, and progress judgment is exactly the semantic question the operator should answer by recording a progress event. The engine's job is arithmetic on records, not opinion about them."
+      status: "rejected"
+
+    - name: "Standalone product/repository"
+      description: "Build the mission clock as a new independent project."
+      rationale: "Rejected: the delivery channel (per-turn signal contract), storage, MCP server, config, and deployment scaffolding already exist in Horizon; a separate project duplicates all of it and starts with zero integrations. The mission clock is a second measurement plane over a different object (mission vs conversation), same philosophy: external, deterministic, signals-only."
+      status: "rejected"
+
+# ----------------------------------------------------------------------------
+# INTERFACE (sketch — final shape belongs to the tech spec)
+# ----------------------------------------------------------------------------
+interface:
+  type: "api"
+
+  tools:
+    - name: "clock_register"
+      description: "Create or update a clocked item: mission, deadline, gate, or deferral. Deferrals without revisit_date are rejected at the schema."
+      parameters:
+        - name: "item"
+          type: "object"
+          required: true
+          description: "kind (mission|deadline|gate|deferral) + dates + optional link to a parent mission"
+      returns: "item_id"
+
+    - name: "clock_progress"
+      description: "Record a progress event against a mission (operator- or agent-supplied fact: 'X happened on date D'). Resets days-since-last-progress."
+      parameters:
+        - name: "mission_id"
+          type: "string"
+          required: true
+        - name: "event"
+          type: "object"
+          required: true
+      returns: "ack"
+
+    - name: "clock_status"
+      description: "Compute the full clock surface: every item with its age, days-remaining, days-since-last-progress, and progress-per-day. Pure read; deterministic; sorted by urgency."
+      parameters:
+        - name: "scope"
+          type: "string"
+          required: false
+      returns: "clock report (plain dict)"
+
+  signal_channel: |
+    Clock events surface through the existing per-turn signal contract
+    (process_turn → active_events[].suggested_behavior) when a session is
+    associated with one or more missions. Candidate event types (final list
+    belongs to the PRD):
+      signal.deferral_expired      — a park is past its revisit date
+      signal.gate_aging            — a gate exceeded its age budget with no progress
+      signal.deadline_window       — an external deadline entered its warning window
+      signal.mission_stalled       — zero progress events for N days
+      signal.clock_unpaired        — a deadline exists with no linked internal state
+
+# ----------------------------------------------------------------------------
+# INTENT
+# ----------------------------------------------------------------------------
+intent:
+  summary: "A mission-scoped clock plane for Horizon: deterministic elapsed-time accounting over goals, deadlines, gates, and deferrals, delivered as per-turn signals so agents plan with the calendar instead of outside it"
+  goal: |
+    Extend Horizon with a second measurement plane whose object is the mission,
+    not the conversation. The plane maintains a local, persistent store of
+    clocked items — missions, deadlines, gates, deferrals — each carrying
+    operator-supplied dates, and computes only arithmetic over them:
+
+    - age of every item (days since created / since last progress)
+    - days remaining to every deadline, paired to the internal state it gates
+    - progress-per-day velocity from recorded progress events
+    - expiry of deferrals (every deferral has a mandatory revisit date)
+
+    It emits events on clock states (expired deferrals, aging gates, deadline
+    windows, stalls, unpaired clocks) through the same signal channel agents
+    already read every turn, so elapsed calendar time becomes an input to
+    planning rather than a retrospective discovery.
+
+    The plane inherits Horizon's philosophy wholesale: external observer,
+    deterministic, local-first, framework-agnostic, signals-only. It measures
+    and reports; the agent's controller and the human decide.
+
+    Explicitly bounded: the plane performs elapsed-time ACCOUNTING, never
+    duration ESTIMATION. It contains no model of how long work should take and
+    generates no forecasts. All dates are facts supplied by the operator or the
+    integrating agent; the engine's entire intelligence is arithmetic, ordering,
+    and thresholds over those facts.
+  success_metric: |
+    Primary: in monitored missions, the interval between a deferral's revisit
+    date and the first turn in which an agent surfaces it is bounded (no expired
+    deferral goes unsurfaced past its next associated session), versus the
+    unmonitored baseline in which expired deferrals surface only by human recall.
+
+    Secondary:
+    - Zero undated deferrals representable in the store (schema-enforced, tested)
+    - Every deadline in the store is either paired to internal state or flagged
+      signal.clock_unpaired within one clock evaluation
+    - Stall detection: a mission with no progress events for its configured
+      threshold fires signal.mission_stalled in the next associated turn
+    - Clock computation is reproducible: identical store + identical evaluation
+      date → byte-identical report
+  stakeholders:
+    - "AI agent builders whose agents plan multi-week or multi-month work"
+    - "Operators running long-horizon goals across many agent sessions"
+    - "Teams pairing external deadlines (regulatory, contractual, market) with agent-driven execution"
+
+# ----------------------------------------------------------------------------
+# CONSTRAINTS
+# Ordered least → most critical (position bias: models weight later constraints
+# more heavily; the plane's thesis constraints are last).
+# All test paths are PLANNED — implementation does not exist yet. Per IVD Rule 3,
+# ai_generated provenance alone cannot mark a constraint PASS; each will need a
+# human-authored assertion or execution-derived oracle before verification.
+# ----------------------------------------------------------------------------
+constraints:
+  - name: "optional_plane_backward_compat"
+    requirement: "With no mission store configured, every existing Horizon API behaves byte-identically to the pre-plane release; enabling the plane requires explicit configuration"
+    test: "tests/unit/mission_clock/test_plane_optional.py::test_no_store_no_behavior_change"
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 3
+    assumption_status: "KNOWN"
+    consequence_if_violated: "Existing integrations break or silently change behavior on upgrade; adoption of the plane becomes mandatory instead of chosen"
+
+  - name: "local_first_privacy"
+    requirement: "The mission store is a local file/database at an operator-configured path; default configuration sends zero mission data to external services; the engine ships with no bundled mission data of any kind"
+    test: "tests/unit/mission_clock/test_privacy.py::test_no_external_calls_and_no_bundled_data"
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 2
+    assumption_status: "KNOWN"
+    consequence_if_violated: "Mission data (goals, deadlines, business state) is inherently sensitive; any leak or bundled example contaminating the store breaks the trust the plane depends on"
+
+  - name: "deterministic_no_llm_core"
+    requirement: "The clock evaluation path makes zero LLM calls and zero network calls; identical store contents plus identical evaluation timestamp produce a byte-identical report"
+    test: "tests/unit/mission_clock/test_determinism.py::test_reproducible_report"
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 2
+    assumption_status: "KNOWN"
+    consequence_if_violated: "A non-deterministic clock cannot be trusted as a measurement layer, and per-turn cost/latency would make always-on evaluation impractical"
+
+  - name: "signals_not_control"
+    requirement: "The plane never blocks, modifies, or generates agent behavior; its only outputs are the clock report (pure read) and typed events with suggested_behavior text through the existing signal contract"
+    test: "tests/unit/mission_clock/test_signals_only.py::test_no_control_surface"
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 2
+    assumption_status: "KNOWN"
+    consequence_if_violated: "A clock that enforces becomes a scheduler with opinions; measurement and decision collapse into one layer and the framework-agnostic contract breaks"
+
+  - name: "mission_scope_persistence"
+    requirement: "Clocked items persist across sessions, processes, and agent restarts; a session's end, reset, or crash never deletes or ages-out a mission item; only explicit operator/agent writes change the store"
+    test: "tests/unit/mission_clock/test_persistence.py::test_items_survive_session_lifecycle"
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 1
+    assumption_status: "KNOWN"
+    consequence_if_violated: "The plane degenerates into session scope — the exact blindness it exists to remove"
+
+  - name: "dates_are_caller_provided"
+    requirement: "The engine never generates, estimates, or infers a duration or future date; every date in the store originates from a caller write; computed outputs are limited to arithmetic over stored dates and the evaluation timestamp (ages, deltas, rates, threshold comparisons)"
+    test: "tests/unit/mission_clock/test_no_estimation.py::test_engine_emits_no_invented_dates"
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 1
+    assumption_status: "KNOWN"
+    consequence_if_violated: "The plane crosses from accounting into estimation — fabricated numbers with the authority of measurement, the most dangerous possible failure of a clock"
+
+  - name: "no_undated_deferral"
+    requirement: "Every write of kind=deferral MUST carry a concrete revisit_date; writes without one are rejected with a schema error; no configuration flag can disable this validation"
+    test: "tests/unit/mission_clock/test_deferral_schema.py::test_undated_deferral_rejected"
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 1
+    assumption_status: "KNOWN"
+    consequence_if_violated: "Undated deferrals are the single failure mode most responsible for silent mission death; permitting even one reintroduces the disease into the cure"
+
+constraint_satisfiability:
+  analysis: |
+    Seven constraints. Potential tension examined:
+    - signals_not_control vs no_undated_deferral: rejecting a write is schema
+      validation on the plane's own store, not control of agent behavior — the
+      agent remains free to do anything except record an undated deferral in
+      THIS store. Not a conflict.
+    - dates_are_caller_provided vs velocity/urgency outputs: rates and orderings
+      are arithmetic over stored dates, not invented dates. The boundary is:
+      output may contain no date that is not derivable by arithmetic from
+      stored dates + evaluation time. Encoded in the joint test.
+    - optional_plane_backward_compat vs signal delivery: events fire only for
+      sessions explicitly associated with missions; unconfigured sessions see
+      the pre-plane contract. Not a conflict.
+    All seven are jointly satisfiable.
+  joint_satisfaction_test: "tests/unit/mission_clock/test_joint_satisfaction.py::test_all_constraints_on_same_flow"
+  note: "Single test driving one flow — configure store, register mission+deadline+gate, attempt undated deferral (rejected), record dated deferral, advance evaluation date past revisit, assert event fires, assert report reproducible, assert zero network/LLM, assert unconfigured session unchanged — asserting all seven constraints on the SAME output."
+
+# ----------------------------------------------------------------------------
+# NON-GOALS
+# ----------------------------------------------------------------------------
+non_goals:
+  - "Duration estimation, effort sizing, or completion forecasting of any kind"
+  - "Task management: the plane is not a todo list, tracker, or scheduler; it clocks items that live wherever the operator manages work"
+  - "Judging whether recorded progress is 'real' progress — semantic judgment stays with the operator and their agents"
+  - "Conversation-level temporal signals (inter-turn gaps, retention, pacing) — already owned by the existing spacetime plane"
+  - "Calendar/scheduling integration (creating events, sending reminders to humans) — the delivery surface is the agent's turn context, by design"
+  - "Multi-user/multi-tenant coordination — V1 is single-operator, local-first; sharing surfaces are a later, separate decision"
+
+# ----------------------------------------------------------------------------
+# RISKS
+# ----------------------------------------------------------------------------
+risks:
+  - risk: "Signal fatigue: aging events fire every associated turn and get tuned out"
+    mitigation: "Event de-duplication windows and acknowledgment semantics belong in the PRD; an acknowledged event stays visible in clock_status but stops firing per-turn"
+  - risk: "Garbage clock: operators stop recording progress events, so stall signals fire on missions that are actually moving"
+    mitigation: "Make progress recording writable by agents (not only humans) so ordinary agent work can log the fact; treat persistent false stalls as a prompt to check the recording path, surfaced in clock_status"
+  - risk: "Scope creep toward a project-management product"
+    mitigation: "non_goals list above is normative; anything resembling task management is rejected at review"
+  - risk: "The plane widens Horizon's public thesis (conversation property → mission property)"
+    mitigation: "Position as a sibling plane under the same philosophy — external deterministic observer, signals-only — over a different object; the PRD owns the narrative reconciliation"
+
+# ----------------------------------------------------------------------------
+# VERIFICATION (protocol for the implementation phase)
+# ----------------------------------------------------------------------------
+verification:
+  protocol: |
+    Per IVD Rule 2, after any implementation derived from this intent:
+    1. Re-read this artifact from disk
+    2. Diff each change against each of the 7 constraints
+    3. Run every constraint's test; ai_generated tests alone cannot mark PASS —
+       each constraint needs a human-authored assertion or an execution-derived
+       oracle (e.g. golden clock-report fixtures) before it clears
+    4. Report each_constraint_pass + joint_satisfaction_pass (required: 7 >= 3)
+    Implementation must be segmented (7 constraints → IVD Rule 1 mandatory
+    segmentation), suggested segments: (a) store + schema validation,
+    (b) evaluation/arithmetic engine, (c) signal integration + compat.
+  test_cases: []   # populated during PRD/tech-spec phase with worked examples for review sign-off
+
+review_gate:
+  status: "PENDING_SIGNOFF"
+  note: "Per IVD Rule 3b/4: after human approval of this intent, run the adversarial stress test, set final assumption_status per constraint, and clear sign-offs before research/PRD begins."
