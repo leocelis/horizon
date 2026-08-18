@@ -1,0 +1,16 @@
+{
+  "_comment": "Hand-checked expected values for the R-1/R-2 retrospective-replay fixture (docs/spec/MEMENTO_MORI_TEST_PLAN.md). A synthetic 90-day history (2026-01-01 -> 2026-04-01, 31+28+31=90 days) with one entity's closed sojourn deliberately made the longest of the three recorded entities, so slowest_entity must name it from stage timestamps alone -- no open-sojourn dominance shortcut (E-4) is in play here, every sojourn below is closed. Synthetic data only; verified by manual calendar-date subtraction.",
+  "eval_instant": "2026-04-01T00:00:00+00:00",
+  "entity_bottleneck_enter": "2026-01-01",
+  "entity_bottleneck_exit": "2026-03-02",
+  "entity_bottleneck_time_in_stage_days": 60,
+  "entity_fast1_enter": "2026-01-01",
+  "entity_fast1_exit": "2026-01-11",
+  "entity_fast1_time_in_stage_days": 10,
+  "entity_fast2_enter": "2026-01-01",
+  "entity_fast2_exit": "2026-01-06",
+  "entity_fast2_time_in_stage_days": 5,
+  "r1_bottleneck_slot_label": "legal-review",
+  "r2_bottleneck_slot_label": "operator",
+  "slowest_entity_is_open": false
+}

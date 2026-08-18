@@ -21,15 +21,21 @@ UTC = timezone.utc
 # Evaluation instant used by nearly every test-plan case.
 EVAL_INSTANT = datetime(2026, 8, 18, 12, 0, 0, tzinfo=UTC)
 
-_GOLDEN_PATH = (
-    Path(__file__).resolve().parents[2] / "fixtures" / "memento_mori" / "smallco_golden.json"
-)
+_FIXTURES_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "memento_mori"
+_GOLDEN_PATH = _FIXTURES_DIR / "smallco_golden.json"
 
 
 def load_golden() -> dict:
     """Hand-checked expected values for the smallco fixture (IVD [GOLDEN]
     oracle — see tests/fixtures/memento_mori/smallco_golden.json)."""
     return json.loads(_GOLDEN_PATH.read_text(encoding="utf-8"))
+
+
+def load_replay_golden() -> dict:
+    """Hand-checked expected values for the R-1/R-2 retrospective-replay
+    fixture (IVD [GOLDEN] oracle — see
+    tests/fixtures/memento_mori/replay_golden.json)."""
+    return json.loads((_FIXTURES_DIR / "replay_golden.json").read_text(encoding="utf-8"))
 
 
 def _dt(y: int, m: int, d: int) -> datetime:
