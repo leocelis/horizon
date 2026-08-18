@@ -18,6 +18,16 @@
 #                     the critical path. Research agenda scoped to the latency
 #                     thesis. Sequence unchanged: intent → research → PRD →
 #                     tech spec → implementation.
+#   v0.3  2026-08-18  MONETARY WEIGHTING added under one rule: the engine may
+#                     divide by money, never guess money. One root-declared
+#                     time_value_rate + caller-supplied amount fields make
+#                     cost-of-delay and break-even pure arithmetic; all
+#                     financial MODELLING (NPV/IRR/DCF, forecast savings,
+#                     currency, tax) is excluded. dates_are_caller_provided
+#                     generalised to facts_are_caller_provided so the same
+#                     boundary covers dates and amounts; clock_propose_ttl
+#                     generalised to clock_propose (one base-rate proposal
+#                     mechanism, two uses). Constraint count held at 7.
 
 parent_intent: "horizon_intent.yaml"
 
@@ -112,6 +122,11 @@ inversion_opportunities:
       rationale: "This is the plane's central thesis and the subject of its dedicated research phase. Prior art the research must test it against rather than reinvent: Theory of Constraints (improving anything but the constraint is invisible at the goal), lean value-stream mapping (touch time is routinely a small fraction of lead time — elapsed calendar lives in the waits between actions), Little's Law (with fixed throughput, lead time scales linearly with work-in-progress — arithmetic, not opinion), and sales-velocity models (cycle length is the denominator; trust is a latency — N contacts spaced over M weeks — not a quality). Two obligations fall out: (1) latencies must be classifiable as reducible, irreducible, or self-imposed — effort on irreducible latencies is waste, and unspent effort on self-imposed ones is the silent killer; (2) the instrument MUST be able to name the operator as the slowest entity. An instrument that can only attribute slowness to external entities is a comfortable instrument, and comfortable instruments are decoration. The classification itself is semantic judgment and belongs to the operator (or an operator-configured judge) — the engine measures the latencies; it never opines on their meaning."
       status: "chosen"
 
+    - name: "Money is a weight on time, never a subsystem"
+      description: "The plane accepts one operator-declared rate (currency per unit time) at the root and caller-supplied amounts on items, and computes cost-of-delay, money-weighted urgency, and break-even DATES from them. It performs no financial modelling: no NPV/IRR/DCF, no discount-rate selection, no currency conversion, no tax, no forecast of savings that were not measured."
+      rationale: "Without any price, the plane can rank what is slowest but never what is costliest-slow, and those diverge sharply — an hour of latency on a high-value path outranks weeks of latency on a hobby. Ranking without a weight is the 'comfortable instrument' failure in another disguise. But money is also where a time instrument goes to die: the moment it selects a discount rate or projects unmeasured savings it is inventing numbers, which is the duration-estimation sin in different units. The boundary that resolves both: the engine may DIVIDE BY money, never GUESS money. Review test for any proposed feature — if it would still make sense with the clock removed, it belongs in a finance tool, not here."
+      status: "chosen"
+
     - name: "Elapsed-time accounting, not estimation"
       description: "The system never predicts how long work will take. It records dates and timestamps supplied by callers and computes only arithmetic on them: ages, days-remaining, days-since-last-progress, per-entity latency, progress-per-day, share-of-remaining-horizon. Accounting is measurement; estimation is judgment, and judgment stays with the human."
       rationale: "Model-invented duration estimates are unfounded numbers that invite planning around a guess. Elapsed time is a fact — and it is precisely the fact no agent currently surfaces. Splitting the two makes the safe half automatable without importing the unsafe half. TTL proposals from execution-derived base rates sit on the accounting side of the line: they are arithmetic over the operator's own recorded history, surfaced as proposals and inert until ratified."
@@ -187,13 +202,17 @@ interface:
           required: false
       returns: "clock report (plain dict)"
 
-    - name: "clock_propose_ttl"
-      description: "Derive a proposed TTL window for a task from execution-derived base rates over comparable completed tasks in this store. Returns a proposal with its derivation shown; inert until the operator ratifies it via clock_register."
+    - name: "clock_propose"
+      description: "Derive a proposal from execution-derived base rates over comparable records in this store. kind=ttl proposes a task lifespan window; kind=breakeven proposes a break-even date for a latency-reducing purchase from measured before/after latency, caller-supplied cost, and the root time_value_rate. Returns the proposal with its derivation shown; inert until the operator ratifies it via clock_register."
       parameters:
         - name: "item_id"
           type: "string"
           required: true
-      returns: "proposal {window, sample_size, derivation} — never auto-applied"
+        - name: "kind"
+          type: "string"
+          required: true
+          description: "ttl | breakeven"
+      returns: "proposal {value, sample_size, derivation} — never auto-applied"
 
   signal_channel: |
     Clock events surface through the existing per-turn signal contract
@@ -208,6 +227,8 @@ interface:
       signal.slowest_entity        — one entity's latency dominates a mission's critical path
       signal.clock_unpaired        — a deadline exists with no linked internal state
       signal.horizon_share         — an item's elapsed time crossed a threshold share of the remaining master horizon
+      signal.cost_of_delay         — accrued cost-of-delay on an item crossed an operator-set threshold (fires only when a rate and an amount are both declared)
+      signal.breakeven_passed      — a ratified break-even date passed without the measured latency improvement that justified it
 
 # ----------------------------------------------------------------------------
 # INTENT
@@ -237,6 +258,15 @@ intent:
     mission, share-of-remaining-horizon. Nothing else: the engine's entire
     intelligence is arithmetic, ordering, and thresholds over caller-supplied
     records.
+
+    THE WEIGHT (optional) — one operator-declared time_value_rate at the root
+    plus caller-supplied amount fields on items (cost, value_at_stake) let the
+    same arithmetic answer which latency is worth attacking: accrued
+    cost-of-delay, money-weighted urgency ordering, and break-even expressed
+    as a DATE. Ranking by pure elapsed time identifies what is slowest;
+    ranking with a weight identifies what is costliest-slow, and those
+    diverge. Money never becomes a subsystem: it enters only as a multiplier
+    on time arithmetic, and the plane behaves identically without it.
 
     THE SIGNALS — events fire on clock states (expiries, aging, windows,
     stalls, dominant latencies, unpaired clocks) through the same channel
@@ -355,24 +385,30 @@ constraints:
     assumption_status: "KNOWN"
     consequence_if_violated: "Without a finite root, elapsed time has no cost and the plane reverts to a pile of unrelated timers; without rooted items, share-of-horizon accounting is uncomputable"
 
-  - name: "dates_are_caller_provided"
-    requirement: "The engine never generates, estimates, or infers a duration or future date from anything except arithmetic over caller-supplied records; every stored date originates from a caller write; TTL proposals must expose their derivation (source records, sample size, arithmetic) and are never applied without an explicit ratifying write; an undated deferral is rejected at the schema with no configuration override"
-    test: "tests/unit/memento_mori/test_no_estimation.py::test_engine_emits_no_invented_dates_and_rejects_undated_deferrals"
+  - name: "facts_are_caller_provided"
+    requirement: "The engine never generates, estimates, or infers a duration, a future date, or a monetary amount from anything except arithmetic over caller-supplied records; every stored date, rate, and amount originates from a caller write; proposals (kind=ttl, kind=breakeven) must expose their derivation (source records, sample size, arithmetic) and are never applied without an explicit ratifying write; an undated deferral is rejected at the schema with no configuration override; monetary outputs are limited to products, sums, and quotients of stored amounts, the stored rate, and stored/derived durations — no discounting, no amortisation schedules, no forecast of unmeasured savings, no currency conversion"
+    test: "tests/unit/memento_mori/test_no_invention.py::test_engine_emits_no_invented_dates_amounts_or_durations"
     test_provenance: "ai_generated"
     entropy: "near-zero"
     priority: 1
     assumption_status: "KNOWN"
-    consequence_if_violated: "The plane crosses from accounting into estimation — fabricated numbers with the authority of measurement, the most dangerous possible failure of a clock; and undated deferrals reintroduce the single failure mode most responsible for silent mission death"
+    consequence_if_violated: "The plane crosses from accounting into estimation — fabricated numbers with the authority of measurement, the most dangerous possible failure of a clock. In money units the same failure is worse: an invented saving or a selected discount rate produces a confident financial verdict on a purchase or a mission that nothing measured supports. Undated deferrals reintroduce the single failure mode most responsible for silent mission death"
 
 constraint_satisfiability:
   analysis: |
     Seven constraints. Tensions examined:
     - signals_not_control vs schema rejections (finite_rooted_tree,
-      dates_are_caller_provided): rejecting a write is validation of the
+      facts_are_caller_provided): rejecting a write is validation of the
       plane's OWN store, not control of agent behavior — the agent remains
       free to do anything except record an invalid item in this store. Not a
       conflict.
-    - dates_are_caller_provided vs clock_propose_ttl: proposals are arithmetic
+    - facts_are_caller_provided vs monetary weighting: cost-of-delay,
+      money-weighted ordering and break-even dates are products/quotients of
+      stored amounts, the stored rate, and stored/derived durations. No
+      output may contain an amount not so derivable, and the plane must
+      compute every non-monetary output identically when no rate is declared.
+      Encoded in the joint test.
+    - facts_are_caller_provided vs clock_propose: proposals are arithmetic
       over stored records with derivation shown, inert until a ratifying
       caller write. The boundary: no stored date may exist that is not
       traceable to a caller write; no output date may exist that is not
@@ -386,7 +422,10 @@ constraint_satisfiability:
       computes it. Not a conflict.
     All seven are jointly satisfiable.
   joint_satisfaction_test: "tests/unit/memento_mori/test_joint_satisfaction.py::test_all_constraints_on_same_flow"
-  note: "Single test driving one flow — configure store, register finite root, register mission+deadline+gate+entity under it, attempt root-less item (rejected), attempt undated deferral (rejected), request TTL proposal (derivation shown, not applied), ratify TTL, advance evaluation date past TTL and revisit dates, assert events fire, assert report reproducible byte-identically, assert zero network/LLM, assert unconfigured session unchanged — asserting all seven constraints on the SAME output."
+  note: "Single test driving one flow — configure store, register finite root, register mission+deadline+gate+entity under it, attempt root-less item (rejected), attempt undated deferral (rejected), request TTL proposal (derivation shown, not applied), ratify TTL, declare a time_value_rate and an amount, assert cost-of-delay and
+    break-even derive only from stored facts, assert every non-monetary output is
+    identical with the rate removed, advance evaluation date past TTL and revisit
+    dates, assert events fire, assert report reproducible byte-identically, assert zero network/LLM, assert unconfigured session unchanged — asserting all seven constraints on the SAME output."
 
 # ----------------------------------------------------------------------------
 # NON-GOALS
@@ -395,6 +434,8 @@ non_goals:
   - "Duration estimation, effort sizing, or completion forecasting of any kind — TTL proposals are base-rate arithmetic with shown derivation, not predictions"
   - "Task management: the plane is not a todo list, tracker, or scheduler; it clocks items that live wherever the operator manages work"
   - "Judging whether recorded progress is 'real' progress, or whether a latency is reducible — semantic judgment stays with the operator and their agents"
+  - "Financial modelling: no NPV, IRR, discounted cash flow, discount-rate selection, amortisation schedules, currency conversion, tax, budgeting, or portfolio optimisation. Monetary outputs are limited to cost-of-delay, money-weighted ordering, and break-even dates computed by arithmetic from caller-supplied amounts, the caller-declared rate, and measured durations"
+  - "Purchase advice: the plane validates a latency-reducing purchase retrospectively against measured before/after latency; it never recommends a purchase from projected savings"
   - "Actuarial modeling: a lifetime-derived root horizon is computed by arithmetic from operator-supplied inputs (e.g. an operator-chosen expectancy table value); the engine embeds no demographic model and no personal data"
   - "Conversation-level temporal signals (inter-turn gaps, retention, pacing) — already owned by the existing spacetime plane"
   - "Calendar/scheduling integration (creating events, sending reminders to humans) — the delivery surface is the agent's turn context, by design"
@@ -416,6 +457,10 @@ risks:
     mitigation: "Expiry semantics are fixed as 'investigate', never 'punish'; proposals come from base rates, not negotiation; both live in the schema documentation as normative language"
   - risk: "The finite root horizon is emotionally heavy (it is a mortality clock when lifetime-derived)"
     mitigation: "The root is operator-chosen in kind and in value; lifetime derivation is opt-in arithmetic over operator-supplied inputs; the engine never suggests or defaults to it"
+  - risk: "Money turns the plane into a finance tool"
+    mitigation: "Money is admissible only as a multiplier on time arithmetic; review test for any proposed feature — if it would still make sense with the clock removed, it belongs in a finance tool and is rejected. The rate is optional: with none declared, every non-monetary output is unchanged"
+  - risk: "A declared time_value_rate is itself a guess, and lends invented authority to every figure derived from it"
+    mitigation: "The rate is caller-declared, never engine-proposed; every monetary output must be traceable to it in the shown derivation so a wrong rate is visibly a wrong INPUT rather than a wrong measurement; research topic B8 scopes what makes a defensible rate"
   - risk: "Scope creep toward a project-management product"
     mitigation: "non_goals list above is normative; anything resembling task management is rejected at review"
   - risk: "The plane widens Horizon's public thesis (conversation property → mission property)"
@@ -437,7 +482,8 @@ verification:
     Implementation must be segmented (7 constraints → IVD Rule 1 mandatory
     segmentation), suggested segments: (a) store + horizon tree + schema
     validation, (b) evaluation/arithmetic engine incl. latency accounting,
-    (c) TTL proposal path, (d) signal integration + compat.
+    (c) proposal path (ttl + breakeven), (d) monetary weighting,
+    (e) signal integration + compat.
   test_cases: []   # populated during PRD/tech-spec phase with worked examples for review sign-off
 
 review_gate:
