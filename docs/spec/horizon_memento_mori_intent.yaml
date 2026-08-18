@@ -44,6 +44,22 @@
 #                     deployment that builds the instrument registers that
 #                     build as a mission, so instrumentation-as-deferral is
 #                     measured by the instrument itself. Constraints still 7.
+#   v0.5  2026-08-18  SIGNAL REDESIGN from research topic B9 (path comparison,
+#                     source-audited): at operator scale (n≈5–20, skewed,
+#                     serially dependent, continuously peeked) NO inferential
+#                     "this path beats that path" claim survives — pilot-size
+#                     rules of thumb size a later trial, not a verdict;
+#                     sequential/always-valid methods (SPRT, mSPRT, e-values)
+#                     control error only by adding a likelihood/betting model
+#                     the engine refuses to invent; small-n bootstrap CIs
+#                     under-cover. Therefore signal.path_dominated (implied
+#                     distributional "beats") is RENAMED signal.path_ahead
+#                     with strictly descriptive two-clock semantics, and
+#                     signal.probe_ready is frozen as "≥1 completed probe
+#                     sojourn (or caller-written count)" — enough to compare
+#                     recorded numbers, never a powered test. Comparison lines
+#                     must show n, path key, and derivation. Constraints
+#                     unchanged at 7.
 
 parent_intent: "horizon_intent.yaml"
 
@@ -255,8 +271,8 @@ interface:
       signal.horizon_share         — an item's elapsed time crossed a threshold share of the remaining master horizon
       signal.cost_of_delay         — accrued cost-of-delay on an item crossed an operator-set threshold (fires only when a rate and an amount are both declared)
       signal.breakeven_passed      — a ratified break-even date passed without the measured latency improvement that justified it
-      signal.probe_ready           — a probe has recorded enough latency data to compare its path against the incumbent's
-      signal.path_dominated        — a registered alternative's recorded latency beats the incumbent path's while the incumbent keeps accruing delay
+      signal.probe_ready           — at least one completed probe sojourn is recorded (or a caller-written count is reached): enough to put numbers side by side, never a powered test
+      signal.path_ahead            — descriptive two-clock predicate on these records only: the probe's recorded sojourn is shorter than the incumbent's accrued delay since the alternative was registered (or than each of the incumbent's recorded sojourns in a frozen set); every firing carries n per path and the derivation. The plane never emits an inferential "path A beats path B" distributional claim — no p-value, CI, posterior, or sequential/always-valid test on path latencies (research topic B9)
 
 # ----------------------------------------------------------------------------
 # INTENT
