@@ -1,0 +1,70 @@
+# memento_signals_intent.yaml — sub-module intent (segments f–g: signal state machine,
+# integration, compat, adapters). Parent: ../horizon_memento_mori_intent.yaml (v0.7);
+# its 7 constraints all apply. Tests: ../MEMENTO_MORI_TEST_PLAN.md (G-*, R-*, J-1).
+
+parent_intent: "../horizon_memento_mori_intent.yaml"
+scope: { level: "module", type: "component", granularity: "fine" }
+metadata:
+  feature_id: "memento_signals"
+  category: "mission_dynamics"
+  status: "planned"
+
+authorship:
+  origin: "ai_proposed"
+  human_oversight: "review_required"
+  ai_authority:
+    can_create: false
+    can_modify: ["implementation", "verification"]
+    requires_approval: ["constraints"]
+
+intent:
+  summary: "Edge-triggered, acknowledgeable, capped signal delivery into the existing per-turn contract, with strict backward compatibility and provenance-carrying artifact adapters"
+  goal: |
+    State machine and integration per MEMENTO_MORI_TECH_SPEC.md §§5–6 and the shipped
+    alarm philosophy (memento/philosophy.md). The plane is only ever additive to
+    process_turn for sessions explicitly associated with missions.
+
+constraints:
+  - name: "edge_not_level"
+    requirement: "An event fires exactly once on predicate false→true or on a higher enumerated escalation rung; persisting true predicates re-fire never; the escalation-rung enum is closed and contains no turn-count or elapsed-turns member"
+    test: "tests/unit/memento_mori/test_signals_edges.py::test_fire_once_and_no_turn_rung"   # plan G-1, G-3, G-4 [GOLDEN]
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 2
+    assumption_status: "KNOWN"
+    consequence_if_violated: "Level-triggered repetition is the documented alarm-fatigue mechanism; the plane becomes noise and gets disabled"
+
+  - name: "ack_and_cap"
+    requirement: "ACK moves (item, type) to ACKED: visible on clock_status, silent per-turn until an escalation rung or STALE (after stale_ack_days without progress, one low-tier event). At most per_turn_fire_cap (default 1) new RAISED/ESCALATED per associated turn; priority P1>P2>P3 then fewest days-remaining; suppressed events appear in the report"
+    test: "tests/unit/memento_mori/test_signals_ack_cap.py::test_ack_silences_and_cap_holds"   # plan G-2, G-5, G-6, G-7 [GOLDEN]
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 2
+    assumption_status: "KNOWN"
+    consequence_if_violated: "Without ack semantics and a cap, one bad week floods every turn and the operator tunes the plane out"
+
+  - name: "no_person_ranking_in_output"
+    requirement: "suggested_behavior templates and generated payloads contain no person-ordered lists; slowest_entity payloads use slot labels; person-namespace entities never appear in rankings or shareable text; a template linter enforces this in CI"
+    test: "tests/unit/memento_mori/test_signals_no_ranking.py::test_templates_and_payloads_slot_only"   # plan G-9 [HUMAN]
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 1
+    assumption_status: "KNOWN"
+    consequence_if_violated: "The plane becomes people-analytics through its most-read surface — the one place the ban must be mechanical, not editorial"
+
+  - name: "strict_additivity"
+    requirement: "With store_path=None the memento code path is not entered and the full existing test suite produces byte-identical results; with a store configured, sessions not associated with a mission receive zero memento events; association is an explicit registry call"
+    test: "tests/integration/memento_mori/test_compat_additivity.py::test_unconfigured_identical_and_unassociated_silent"   # plan G-10, G-11 [PROPERTY]
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 1
+    assumption_status: "KNOWN"
+    consequence_if_violated: "The optional plane becomes a mandatory behavior change on upgrade; existing integrators inherit signals they never opted into"
+
+constraint_satisfiability:
+  analysis: "Four constraints; edge/cap/ack compose as one state machine; additivity is an outer guard; no ranking is an output filter — no pairwise tension."
+  joint_satisfaction_test: "tests/unit/memento_mori/test_signals_joint.py::test_state_machine_cap_ranking_additivity_one_flow"
+
+verification:
+  protocol: "Parent Rule-2 applies. Golden fixtures G-1/G-3/G-5/G-8 over the smallco fixture; property test G-10 runs the existing suite twice. Replay oracles R-1/R-2 validate the thesis surface end to end."
+review_gate: { status: "PENDING_SIGNOFF" }

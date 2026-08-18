@@ -1,0 +1,70 @@
+# memento_store_intent.yaml — sub-module intent (segment a: store + tree + schema)
+# Parent: ../horizon_memento_mori_intent.yaml (v0.7). Parent's 7 constraints all apply;
+# this artifact adds the store-local ones. Tests: ../MEMENTO_MORI_TEST_PLAN.md (S-*).
+
+parent_intent: "../horizon_memento_mori_intent.yaml"
+scope: { level: "module", type: "component", granularity: "fine" }
+metadata:
+  feature_id: "memento_store"
+  category: "mission_dynamics"
+  status: "planned"
+
+authorship:
+  origin: "ai_proposed"
+  human_oversight: "review_required"
+  ai_authority:
+    can_create: false
+    can_modify: ["implementation", "verification"]
+    requires_approval: ["constraints"]
+
+intent:
+  summary: "Persistent rooted tree of clocked items with an append-only bitemporal event log and hard schema validation"
+  goal: |
+    SQLite-backed local store (WAL) holding items (8 kinds) and events, per
+    MEMENTO_MORI_TECH_SPEC.md §§2–3. The store is the only mutable surface of the
+    plane; everything downstream is a pure function of a store snapshot.
+
+constraints:
+  - name: "append_only_bitemporal"
+    requirement: "mm_events is insert-only; corrections reference the corrected event_id and retain both records with both time axes (valid_time, tx_time); mm_items rows mutate only status/superseded_by"
+    test: "tests/unit/memento_mori/test_store_bitemporal.py::test_supersede_retains_both_records"   # plan S-6
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 2
+    assumption_status: "KNOWN"
+    consequence_if_violated: "History becomes editable; elapsed-time facts can be silently rewritten and the clock loses its evidentiary value"
+
+  - name: "artifact_provenance_required"
+    requirement: "Events of kind ARTIFACT are rejected unless provenance (source_system, native_id, raw_timestamp) is complete; adapters have no API to create item links"
+    test: "tests/unit/memento_mori/test_store_provenance.py::test_artifact_requires_provenance"   # plan S-8, G-12
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 2
+    assumption_status: "KNOWN"
+    consequence_if_violated: "Derived events become indistinguishable from caller assertions; linking by adapter would smuggle semantic judgment into the capture path"
+
+  - name: "person_namespace_explicit"
+    requirement: "Entities default to namespace='slot'; namespace='person' requires an explicit flag argument at write time or the write fails; the flag is stored on the item"
+    test: "tests/unit/memento_mori/test_store_namespaces.py::test_person_requires_flag"   # plan S-5
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 1
+    assumption_status: "KNOWN"
+    consequence_if_violated: "Personal data enters the store unmarked; every downstream privacy rule (no ranking, retention) loses its anchor"
+
+  - name: "schema_rejections_total"
+    requirement: "Undated deferral, second root, non-finite root, and root-less item are typed schema errors with no configuration override; a failed write leaves the store byte-identical"
+    test: "tests/unit/memento_mori/test_store_schema.py::test_invalid_writes_rejected_atomically"   # plan S-1..S-4
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 1
+    assumption_status: "KNOWN"
+    consequence_if_violated: "The parent's finite_rooted_tree and no-undated-deferral guarantees become advisory; partial writes corrupt the tree"
+
+constraint_satisfiability:
+  analysis: "Four constraints; no pairwise tension — provenance and namespace rules are per-write validations inside the same atomic-rejection discipline."
+  joint_satisfaction_test: "tests/unit/memento_mori/test_store_joint.py::test_all_store_constraints_one_flow"
+
+verification:
+  protocol: "Parent intent Rule-2 protocol applies; golden fixture S-6 and human-authored assertions S-1/S-5 are the external oracles."
+review_gate: { status: "PENDING_SIGNOFF" }

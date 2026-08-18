@@ -1,0 +1,84 @@
+# memento_engine_intent.yaml — sub-module intent (segments b–e: evaluation, proposals,
+# money, paths). Parent: ../horizon_memento_mori_intent.yaml (v0.7); its 7 constraints
+# all apply. Tests: ../MEMENTO_MORI_TEST_PLAN.md (E-*).
+
+parent_intent: "../horizon_memento_mori_intent.yaml"
+scope: { level: "module", type: "component", granularity: "fine" }
+metadata:
+  feature_id: "memento_engine"
+  category: "mission_dynamics"
+  status: "planned"
+
+authorship:
+  origin: "ai_proposed"
+  human_oversight: "review_required"
+  ai_authority:
+    can_create: false
+    can_modify: ["implementation", "verification"]
+    requires_approval: ["constraints"]
+
+intent:
+  summary: "evaluate(store_snapshot, t_eval) → ClockReport: the pure clock surface — ages, TTL states, latencies, shares, proposals, money, path comparison"
+  goal: |
+    Deterministic evaluation pipeline per MEMENTO_MORI_TECH_SPEC.md §4. Every output
+    row carries a derivation string and n where a summary appears; degradation on
+    missing optional inputs is by omission with an explanatory field, never by
+    substitution.
+
+constraints:
+  - name: "pure_function_injected_time"
+    requirement: "evaluate() reads no ambient clock, no network, no LLM; the evaluation instant is a parameter; identical (snapshot, instant) yields a byte-identical serialized report"
+    test: "tests/unit/memento_mori/test_engine_determinism.py::test_byte_identical_and_no_ambient_clock"   # plan E-7, E-8, E-9
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 2
+    assumption_status: "KNOWN"
+    consequence_if_violated: "The clock stops being a measurement; reports become irreproducible and untrustworthy as evidence"
+
+  - name: "calendar_day_arithmetic"
+    requirement: "Day counts are calendar-date subtractions on UTC-normalized dates; DST offsets and sub-day timestamps never change a day count; future-dated items clamp to age 0 with a future_dated flag, never negative"
+    test: "tests/unit/memento_mori/test_engine_calendar.py::test_dst_and_future_dates"   # plan E-10, E-11 [GOLDEN]
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 2
+    assumption_status: "ASSUMED"   # UTC-midnight normalization is a design choice; confirm at review
+    consequence_if_violated: "Off-by-one ages around timezone boundaries make every downstream signal fire a day early or late"
+
+  - name: "degrade_by_omission"
+    requirement: "Missing rate → no monetary fields (non-monetary bytes identical); non-conserved window → λ=None and cycle counts instead of dates; empty comparable class → no proposal; unlabeled events → no wait/touch ratio. In every case an explanatory field states what was omitted and why; no value is ever substituted"
+    test: "tests/unit/memento_mori/test_engine_degradation.py::test_omission_never_substitution"   # plan E-6, E-12, E-14, E-5
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 1
+    assumption_status: "KNOWN"
+    consequence_if_violated: "Silent substitution is estimation by the back door — the exact failure the plane exists to refuse"
+
+  - name: "derivation_on_every_row"
+    requirement: "Every report row exposes derivation (the arithmetic spelled out over named stored records) and n for any summary statistic; monetary rows are traceable to (amount, rate, measured duration); comparison rows contain only latencies computed from really-run paths, base-rate fields separate and provenance-labelled"
+    test: "tests/unit/memento_mori/test_engine_derivations.py::test_every_row_traceable"   # plan E-15, E-17, E-19 [GOLDEN]
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 1
+    assumption_status: "KNOWN"
+    consequence_if_violated: "Untraceable numbers acquire the authority of measurement without its accountability; a wrong input becomes indistinguishable from a wrong measurement"
+
+  - name: "typed_refusals"
+    requirement: "Requests for refused computations (NPV/discounting, currency conversion, forecast Δt or TTL, invented λ, counterfactual sojourns, inferential path dominance) raise typed refusal errors naming the violated rule; no code path returns an approximation instead"
+    test: "tests/unit/memento_mori/test_engine_refusals.py::test_refusal_list_enforced"   # plan E-16, E-18 [HUMAN]
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 1
+    assumption_status: "KNOWN"
+    consequence_if_violated: "The refusal list decays into documentation; one obliging helper function reintroduces invented numbers"
+
+constraint_satisfiability:
+  analysis: |
+    Five constraints; one tension examined: derivation_on_every_row vs
+    degrade_by_omission — an omitted block still carries a derivation-shaped
+    explanation field ("omitted: no conserved window"), so both are satisfied on the
+    same report. Jointly satisfiable.
+  joint_satisfaction_test: "tests/unit/memento_mori/test_engine_joint.py::test_all_engine_constraints_one_report"
+
+verification:
+  protocol: "Parent Rule-2 applies. Golden fixtures E-1/E-2/E-4/E-12/E-15/E-17/E-19 (hand-checked expected reports for the smallco fixture) are the execution-derived oracles; E-7/E-14 are property tests."
+review_gate: { status: "PENDING_SIGNOFF" }

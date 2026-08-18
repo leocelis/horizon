@@ -77,6 +77,22 @@
 #                     explicit and flagged; no person-level ranking anywhere,
 #                     including agent suggested_behavior. New non_goal:
 #                     people analytics. Constraints unchanged at 7.
+#   v0.7  2026-08-18  STRESS TEST (IVD Rule 4) EXECUTED after operator go;
+#                     findings folded in as clarifications, not new
+#                     constraints: (1) calendar-day arithmetic on
+#                     UTC-normalized dates — DST/sub-day offsets never change
+#                     a day count; future-dated items clamp to age 0 with a
+#                     flag (ASSUMED: UTC-midnight normalization — confirm at
+#                     review); (2) degradation is BY OMISSION with an
+#                     explanatory field, never by substitution; (3) store
+#                     corruption (orphaned parent) fails evaluation loudly;
+#                     (4) refusals are TYPED errors naming the rule. Sub-
+#                     module intents created (store / engine / signals under
+#                     docs/spec/intents/), tech spec and acceptance test plan
+#                     written; verification.test_cases populated with worked
+#                     examples on the shared synthetic fixture. Status moves
+#                     to in_design; implementation remains gated on per-
+#                     constraint sign-off.
 
 parent_intent: "horizon_intent.yaml"
 
@@ -85,9 +101,12 @@ scope:
   type: "product"
   granularity: "coarse"
   note: |
-    Coarse product intent, held at the 7-constraint IVD budget. At tech-spec
-    time this splits into sub-module intents (planned: root horizon + tree,
-    TTL tripwires, latency accounting) each with its own constraint set.
+    Coarse product intent, held at the 7-constraint IVD budget. Split into
+    sub-module intents (docs/spec/intents/): memento_store (tree + schema +
+    bitemporal log), memento_engine (evaluation + proposals + money + paths),
+    memento_signals (edge/ack state machine + integration + compat +
+    adapters). Tech spec: docs/spec/MEMENTO_MORI_TECH_SPEC.md. Acceptance
+    tests: docs/spec/MEMENTO_MORI_TEST_PLAN.md.
 
 metadata:
   feature_id: "horizon_memento_mori"
@@ -95,7 +114,7 @@ metadata:
   tags: ["memento-mori", "finite-horizon", "elapsed-time-accounting", "ttl",
          "latency", "blockers", "critical-path", "deadlines", "velocity",
          "agent-planning", "calendar"]
-  status: "planned"
+  status: "in_design"
 
 # ----------------------------------------------------------------------------
 # AUTHORSHIP
@@ -584,8 +603,23 @@ verification:
     (e) probes + path comparison, (f) signal integration (edge/ack state
     machine, cap, philosophy) + compat, (g) artifact adapters (derived
     events with provenance) + recording-path check.
-  test_cases: []   # populated during PRD/tech-spec phase with worked examples for review sign-off
+  test_cases:
+    - id: "worked-example-clock"
+      given: "Synthetic fixture smallco (test plan): root ends 2030-01-01; mission created 2026-06-01 with last progress 2026-07-02; task TTL to 2026-07-20; deferral revisit 2026-08-10; evaluation 2026-08-18"
+      expect: "mission age 78d; days_since_progress 47d (stalled); TTL expired; deferral expired by 8d; horizon share ~0.0596 crossing the 0.05 rung — all as calendar-date arithmetic with derivations shown"
+    - id: "worked-example-signals"
+      given: "Same fixture; at least 4 due edges on first evaluation; per-turn cap 1"
+      expect: "exactly one event (P1 ttl_expired); remainder in report; second evaluation with no state change emits nothing; ack silences until an enumerated rung"
+    - id: "worked-example-money-identity"
+      given: "C_s=600, rate=50/h, T_s=4h, delta_t=2h/cycle, lambda=0.5 cycles/day"
+      expect: "break-even = evaluation date + 16 days, derivation traceable; removing the rate leaves every non-monetary byte identical"
+    - id: "worked-example-path"
+      given: "Probe sojourn 4d completed; alternative registered 17d before evaluation; incumbent still open"
+      expect: "path_ahead fires once, payload carries both intervals with n=1 and derivation; no p-value or CI field exists in the schema"
+    - id: "counter-example-rejections"
+      given: "Writes: deferral without revisit date; second root; root-less item; person-namespace entity without flag. Requests: NPV, forecast delta_t, counterfactual sojourn"
+      expect: "every write rejected atomically with a typed schema error; every request answered with a typed refusal naming the rule; store byte-identical after failures"
 
 review_gate:
   status: "PENDING_SIGNOFF"
-  note: "Per IVD Rule 3b/4: after human approval of this intent, run the adversarial stress test, set final assumption_status per constraint, and clear sign-offs before research begins. The research phase then executes research_agenda before any PRD."
+  note: "Operator go to proceed with all pre-implementation artifacts recorded 2026-08-18; stress test executed and folded into v0.7; research (17 topics), PRD, tech spec, sub-module intents, and acceptance test plan complete. REMAINING before implementation: per-constraint human sign-off (concrete_example + counter_example acknowledged — worked examples above are the material). Implementation is executed by a separate agent against these artifacts and reviewed post-hoc; ai_generated tests cannot self-certify (golden fixtures + human assertions per the test plan)."
