@@ -74,6 +74,7 @@ include = ["horizon_monitor*"]
 
 [tool.setuptools.package-data]
 horizon_monitor = ["py.typed"]
+"horizon_monitor.memento" = ["philosophy.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

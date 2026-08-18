@@ -42,6 +42,19 @@ class EventKind(StrEnum):
     ACK = "ack"
 
 
+class SignalState(StrEnum):
+    """The five states of the per-(item, signal_type) alarm state machine
+    (memento_signals_intent.yaml::edge_not_level). This enum is closed and
+    deliberately has no turn-count / elapsed-turns member — "another turn
+    happened" is structurally unrepresentable as a state (test plan G-4)."""
+
+    CLEAR = "clear"
+    RAISED = "raised"
+    ACKED = "acked"
+    ESCALATED = "escalated"
+    STALE = "stale"
+
+
 @dataclass(frozen=True)
 class Provenance:
     """Required on every EventKind.ARTIFACT event; forbidden on no other kind."""
@@ -281,6 +294,55 @@ class Proposal:
     value: object
     sample_size: int
     derivation: str
+
+
+@dataclass(frozen=True)
+class Signal:
+    """One row of the per-evaluation signal surface: either an actual
+    per-turn event (``fired=True``) or a currently-true predicate that the
+    per-turn cap suppressed this turn (``fired=False`` — reported, not
+    delivered; memento_signals_intent.yaml::ack_and_cap)."""
+
+    item_id: str
+    signal_type: str
+    tier: str
+    """"P1" | "P2" | "P3" — priority class used for the per-turn cap."""
+
+    state: str
+    """The SignalState this row reflects: "raised" | "escalated" | "acked"
+    | "stale"."""
+
+    fired: bool
+    suggested_behavior: str
+    n: int
+    derivation: str
+    payload: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        return dataclasses.asdict(self)
+
+
+@dataclass(frozen=True)
+class SignalReport:
+    """The full per-evaluation signal surface for one or more missions.
+
+    ``fired`` never exceeds ``config.per_turn_fire_cap`` in length
+    (memento_signals_intent.yaml::ack_and_cap). ``due`` lists every other
+    currently-true predicate that was NOT delivered this turn — visible in
+    the report, never as an event. ``acked`` lists items currently silenced
+    by an operator acknowledgement.
+    """
+
+    fired: tuple[Signal, ...] = ()
+    due: tuple[Signal, ...] = ()
+    acked: tuple[Signal, ...] = ()
+
+    def to_dict(self) -> dict:
+        return {
+            "fired": [s.to_dict() for s in self.fired],
+            "due": [s.to_dict() for s in self.due],
+            "acked": [s.to_dict() for s in self.acked],
+        }
 
 
 @dataclass(frozen=True)

@@ -38,6 +38,7 @@ Thumbs.db
 
 # Project-specific runtime artifacts
 *.sqlite
+var/
 *.sqlite-journal
 horizon.db
 *.log
