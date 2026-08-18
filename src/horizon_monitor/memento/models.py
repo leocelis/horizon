@@ -165,6 +165,7 @@ class ItemClock:
     horizon_share: float | None = None
     time_in_stage_days: int | None = None
     is_open_stage: bool | None = None
+    wait_vs_touch_ratio: float | None = None
     future_dated: bool = False
     derivation: str = ""
     n: int | None = None

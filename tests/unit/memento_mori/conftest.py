@@ -7,6 +7,7 @@ no private project, person, or workspace path.
 
 from __future__ import annotations
 
+import json
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -19,6 +20,16 @@ UTC = timezone.utc
 
 # Evaluation instant used by nearly every test-plan case.
 EVAL_INSTANT = datetime(2026, 8, 18, 12, 0, 0, tzinfo=UTC)
+
+_GOLDEN_PATH = (
+    Path(__file__).resolve().parents[2] / "fixtures" / "memento_mori" / "smallco_golden.json"
+)
+
+
+def load_golden() -> dict:
+    """Hand-checked expected values for the smallco fixture (IVD [GOLDEN]
+    oracle — see tests/fixtures/memento_mori/smallco_golden.json)."""
+    return json.loads(_GOLDEN_PATH.read_text(encoding="utf-8"))
 
 
 def _dt(y: int, m: int, d: int) -> datetime:
