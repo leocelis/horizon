@@ -28,7 +28,7 @@ scope:
   note: |
     Coarse product intent, held at the 7-constraint IVD budget. At tech-spec
     time this splits into sub-module intents (planned: root horizon + tree,
-    TTL tripwires, latency ledger) each with its own constraint set.
+    TTL tripwires, latency accounting) each with its own constraint set.
 
 metadata:
   feature_id: "horizon_memento_mori"
