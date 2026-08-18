@@ -6,7 +6,7 @@
 
 > **Scope:** This is the **public PRD** shipped with the OSS repo. It is derived from the
 > intent artifact [`docs/spec/horizon_memento_mori_intent.yaml`](../spec/horizon_memento_mori_intent.yaml)
-> (v0.5) and a 17-topic source-audited research pack (private workspace; load-bearing
+> (v0.6) and a 17-topic source-audited research pack (private workspace; load-bearing
 > citations are reproduced inline). Implementation follows the intent's constraint
 > segments; nothing in this document overrides the intent's constraints.
 
@@ -108,7 +108,8 @@ An extension to the Horizon library (same package, separate optional plane) that
 
 1. Maintains a **local, persistent, append-only store** of clocked items organized as a
    tree under exactly one finite root horizon
-2. Computes the **clock surface** on demand: every item's age, TTL state,
+2. Computes the **clock surface** on demand (tool surface: `clock_register`,
+   `clock_progress`, `clock_status`, `clock_propose` — final shapes in the intent): every item's age, TTL state,
    days-remaining, days-since-progress, per-entity latency, horizon share, and (when a
    rate is declared) cost-of-delay and break-even dates
 3. Emits **edge-triggered, acknowledgeable events** through the existing
@@ -127,6 +128,14 @@ An extension to the Horizon library (same package, separate optional plane) that
   tax. Money enters only as a caller-declared rate and caller-supplied amounts.
 - **Not people analytics.** Entity latency is defensible as *operator wait accounting
   on functional slots*; it is never a responsiveness score on a human (§8).
+- **Not a calendar or reminder integration.** No event creation, no human
+  notifications; the delivery surface is the agent's turn context, by design.
+- **Not purchase advice.** A latency-reducing purchase is validated
+  retrospectively against measured before/after latency, never recommended from
+  projected savings.
+- **Not multi-user.** V1 is single-operator and local-first; sharing surfaces are
+  a later, separate decision — which licenses nothing about scoring third
+  parties (§8).
 - **Not a statistics engine.** No p-values, confidence intervals, sequential tests, or
   e-values on path latencies (§7). Error-controlled inference belongs, if anywhere, in
   an optional layer above the engine — never on the core path.
@@ -162,7 +171,7 @@ deferrals are schema errors.
 | `horizon` | finite end date (the root; exactly one) | days-remaining; denominator for every share |
 | `mission` | progress events; stall threshold | age; days-since-progress; progress-per-day; slowest entity |
 | `task` | TTL window (ratified) | TTL state; age |
-| `deadline` | date; link to gated internal state | days-remaining; paired/unpaired |
+| `deadline` | date; kind (recurring pacer · one-shot window · decaying window · hard cutoff); link to gated internal state | days-remaining; paired/unpaired |
 | `gate` | age budget | age vs budget |
 | `entity` | stage timestamps; namespace (slot vs person) | time-in-stage; wait-vs-touch |
 | `deferral` | **mandatory** revisit date | expired / not |
@@ -244,6 +253,7 @@ people faster and more stressed, not wiser (Mark, Gudith & Klocke, CHI 2008).
 | `signal.deferral_expired` | a deferral passes its revisit date | P2 |
 | `signal.gate_aging` | a gate exceeds its age budget with no progress | P2 |
 | `signal.mission_stalled` | zero progress events for the mission's threshold (paired with the recording-path check) | P2 |
+| `signal.slowest_entity` | the identity of a mission's slowest entity changes, or one entity's recorded latency first dominates the mission's critical path — descriptive max over recorded latencies (operator included), slot labels, n and derivation attached; never a distributional claim | P2 |
 | `signal.clock_unpaired` | a deadline exists with no linked internal state | P2 |
 | `signal.horizon_share` | an item's elapsed time crosses a threshold share of the remaining root horizon | P3 |
 | `signal.cost_of_delay` | accrued cost-of-delay crosses an operator threshold (only when rate and amount are declared) | P3 |
@@ -275,7 +285,7 @@ enter the store only as caller-supplied metadata.
 | Time-in-stage; wait-vs-touch | Stage-timestamp subtraction; declared quantiles with n | None |
 | Slowest entity per mission | Max of recorded per-entity latencies (operator included) | None |
 | Horizon share | Item elapsed ÷ root remaining | None |
-| TTL proposal | Percentile over the operator's own completed comparables (empirical quantiles / Kaplan–Meier with censoring); derivation + sample size shown; **inert until ratified** | None — reference-class arithmetic, not prediction |
+| TTL proposal | Percentile over the operator's own completed comparables (empirical quantiles / Kaplan–Meier with censoring); derivation + sample size shown; **empty comparable class → no proposal**; **inert until ratified** | None — reference-class arithmetic, not prediction |
 | Cost-of-delay | value_at_stake (caller) × elapsed × rate (caller) | None |
 | Break-even date | (cost + rate × measured setup) ÷ (rate × measured Δlatency × measured λ) — cycles-only when λ is absent | None |
 | Path comparison | Side-by-side recorded sojourns + incumbent delay accrued since the alternative was registered; n and derivation on every line | None — and no synthetic path may appear |
@@ -437,5 +447,5 @@ retrospective-replay fixtures are the external oracles).
 - Goldratt, E. M. — Theory of Constraints lineage; Little, J. D. C. — L = λW; lean value-stream lead/touch decomposition (vocabulary and discipline; plant-specific constants deliberately not imported).
 - METR (2025–2026). Measuring AI ability to complete long tasks (time-horizon methodology).
 
-**Engineering reference:** [`docs/spec/horizon_memento_mori_intent.yaml`](../spec/horizon_memento_mori_intent.yaml) (v0.5, 7 constraints, joint-satisfaction test) ·
+**Engineering reference:** [`docs/spec/horizon_memento_mori_intent.yaml`](../spec/horizon_memento_mori_intent.yaml) (v0.6, 7 constraints, joint-satisfaction test) ·
 [`docs/spec/HORIZON_TECH_SPEC.md`](../spec/HORIZON_TECH_SPEC.md) (existing plane; the mission plane's tech spec and sub-module intents follow this PRD).

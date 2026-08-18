@@ -60,6 +60,23 @@
 #                     recorded numbers, never a powered test. Comparison lines
 #                     must show n, path key, and derivation. Constraints
 #                     unchanged at 7.
+#   v0.6  2026-08-18  C-BATCH FINDINGS ABSORBED (capture, alert fatigue,
+#                     ethics — source-audited) so the intent stays ahead of
+#                     the PRD: (1) FIRING SEMANTICS — events are EDGE-
+#                     triggered with an acknowledgement state machine
+#                     (CLEAR/RAISED/ACKED/ESCALATED/STALE), a per-turn cap,
+#                     escalation only on an enumerated NEW recorded fact, and
+#                     a shipped alarm-philosophy document; persisting levels
+#                     live on clock_status, never re-fire. (2) CAPTURE —
+#                     derive events from existing append-only artifacts with
+#                     provenance; caller-write the meaning (links, stages,
+#                     progress); every stall pairs with a recording-path
+#                     check; retrospective timesheets and passive app-hours
+#                     rejected as stage latency. (3) ENTITY NAMESPACES —
+#                     slot (functional) is the default; person namespace is
+#                     explicit and flagged; no person-level ranking anywhere,
+#                     including agent suggested_behavior. New non_goal:
+#                     people analytics. Constraints unchanged at 7.
 
 parent_intent: "horizon_intent.yaml"
 
@@ -222,11 +239,11 @@ interface:
         - name: "item"
           type: "object"
           required: true
-          description: "kind (horizon|mission|task|deadline|gate|entity|deferral|probe) + dates/windows + parent link into the horizon tree. A probe is a small, dated, instrumented trial of an alternative path toward its parent mission; it carries a TTL like any task and its stage timestamps feed path comparison"
+          description: "kind (horizon|mission|task|deadline|gate|entity|deferral|probe) + dates/windows + parent link into the horizon tree. A probe is a small, dated, instrumented trial of an alternative path toward its parent mission; it carries a TTL like any task and its stage timestamps feed path comparison. Entities default to a SLOT namespace (functional label: role, queue, system); a person namespace is explicit, flagged as personal data, and excluded from rankings and shareable surfaces"
       returns: "item_id"
 
     - name: "clock_progress"
-      description: "Record a progress or stage-transition event against an item (caller-supplied fact: 'X happened on date D', 'stage S entered/exited on date D'). Stage timestamps are the raw material of latency accounting."
+      description: "Record a progress or stage-transition event against an item (caller-supplied fact: 'X happened on date D', 'stage S entered/exited on date D'). Stage timestamps are the raw material of latency accounting. CAPTURE MODEL: events may be DERIVED from existing append-only artifacts (commits, tracker transitions, sends) with mandatory provenance (source system, native id, raw timestamp — bitemporal: artifact time vs learned time); the MEANING (link to mission, stage labels, wait-vs-touch, what counts as progress) is always an explicit caller write, human or agent, through this same validated path — never a silent inference. Retrospective timesheet reconstruction and passive app-hours are rejected as stage latency. Every stall evaluation pairs with a recording-path check distinguishing 'no work' from 'no capture'."
       parameters:
         - name: "item_id"
           type: "string"
@@ -259,8 +276,23 @@ interface:
   signal_channel: |
     Clock events surface through the existing per-turn signal contract
     (process_turn → active_events[].suggested_behavior) when a session is
-    associated with one or more missions. Candidate event types (final list
-    belongs to the PRD):
+    associated with one or more missions.
+
+    FIRING SEMANTICS (normative, from alarm-fatigue research): events are
+    EDGE-triggered — an event fires once when its predicate becomes true,
+    never again per-turn while the condition persists (persisting levels are
+    visible on clock_status). Acknowledgement state machine per (item, type):
+    CLEAR → RAISED (fires once) → ACKED (silent, visible) → ESCALATED (fires
+    once, only on an enumerated NEW recorded fact — a higher threshold rung,
+    a tighter window, an expiry after ack; never "another turn happened") →
+    STALE (optional low tier, once). At most ONE new RAISED/ESCALATED event
+    per associated turn, preempted only by a higher-priority class. A signal
+    must admit a possible action this turn; otherwise it is status. The
+    deployment ships an alarm-philosophy document (signal definition, owner,
+    priorities, state machine, cap, ack authority, escalation-fact enum,
+    KPIs, recording-path coupling).
+
+    Event types (final list belongs to the PRD):
       signal.ttl_expired           — a task outlived its ratified lifespan: investigate the blocker
       signal.deferral_expired      — a park is past its revisit date
       signal.gate_aging            — a gate exceeded its age budget with no progress
@@ -495,6 +527,7 @@ non_goals:
   - "Task management: the plane is not a todo list, tracker, or scheduler; it clocks items that live wherever the operator manages work"
   - "Judging whether recorded progress is 'real' progress, or whether a latency is reducible — semantic judgment stays with the operator and their agents"
   - "Financial modelling: no NPV, IRR, discounted cash flow, discount-rate selection, amortisation schedules, currency conversion, tax, budgeting, or portfolio optimisation. Monetary outputs are limited to cost-of-delay, money-weighted ordering, and break-even dates computed by arithmetic from caller-supplied amounts, the caller-declared rate, and measured durations"
+  - "People analytics: entity latency is operator wait accounting on functional slots — never a person-level responsiveness score, percentile, ranking, or solely automated allocation/blame from latency; agents must not rank people in suggested_behavior; mortality-salience priming is excluded (finite-horizon framing is opt-in arithmetic on an operator-typed date)"
   - "Counterfactual accounting: the plane never states what an untaken path would have cost; it compares recorded latencies and lets the incumbent's accruing measured delay speak"
   - "Purchase advice: the plane validates a latency-reducing purchase retrospectively against measured before/after latency; it never recommends a purchase from projected savings"
   - "Actuarial modeling: a lifetime-derived root horizon is computed by arithmetic from operator-supplied inputs (e.g. an operator-chosen expectancy table value); the engine embeds no demographic model and no personal data"
@@ -509,7 +542,7 @@ risks:
   - risk: "Instrumentation-as-deferral: building and tuning the clock becomes the activity that defers the highest-latency pending action"
     mitigation: "Named in the primary success metric: the plane justifies itself only by shortening time-to-next-irreversible-external-action, and must report its own failure if it does not"
   - risk: "Signal fatigue: aging events fire every associated turn and get tuned out"
-    mitigation: "Event de-duplication windows and acknowledgment semantics belong in the PRD; an acknowledged event stays visible in clock_status but stops firing per-turn"
+    mitigation: "Resolved normatively in v0.6 signal_channel firing semantics: edge-triggered events, acknowledgement state machine, one-new-fire-per-turn cap, escalation only on an enumerated new recorded fact, and a shipped alarm-philosophy document; an acknowledged event stays visible in clock_status but stops firing per-turn"
   - risk: "Garbage clock: callers stop recording progress/stage events, so stall and latency signals fire on missions that are actually moving"
     mitigation: "Make progress recording writable by agents (not only humans) so ordinary agent work logs the fact; persistent false stalls are surfaced in clock_status as a recording-path check"
   - risk: "Comfortable instrument: latency attribution flows only to external entities, never the operator"
@@ -548,7 +581,9 @@ verification:
     segmentation), suggested segments: (a) store + horizon tree + schema
     validation, (b) evaluation/arithmetic engine incl. latency accounting,
     (c) proposal path (ttl + breakeven), (d) monetary weighting,
-    (e) probes + path comparison, (f) signal integration + compat.
+    (e) probes + path comparison, (f) signal integration (edge/ack state
+    machine, cap, philosophy) + compat, (g) artifact adapters (derived
+    events with provenance) + recording-path check.
   test_cases: []   # populated during PRD/tech-spec phase with worked examples for review sign-off
 
 review_gate:
