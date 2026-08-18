@@ -1,0 +1,445 @@
+# horizon_memento_mori_intent.yaml
+# Intent Artifact for the Horizon Memento Mori plane
+#
+# IVD: THE FRAMEWORK FOR THE AI AGENTS ERA
+# =========================================
+# The AI writes this intent artifact, not the human.
+# The AI implements against this intent.
+# The AI verifies its output against the constraints.
+#
+# Review history:
+#   v0.1  2026-08-18  Initial draft as "Mission Clock" — intent only.
+#   v0.2  2026-08-18  Renamed to MEMENTO MORI. Three structural additions from
+#                     operator review: (1) the master engagement horizon — a
+#                     finite root clock every item discounts against; (2) task
+#                     lifespans as TTL tripwires, not estimates; (3) the latency
+#                     thesis — goals are chains of entities each with a
+#                     measurable latency, and blockers are the slow entities on
+#                     the critical path. Research agenda scoped to the latency
+#                     thesis. Sequence unchanged: intent → research → PRD →
+#                     tech spec → implementation.
+
+parent_intent: "horizon_intent.yaml"
+
+scope:
+  level: "module"
+  type: "product"
+  granularity: "coarse"
+  note: |
+    Coarse product intent, held at the 7-constraint IVD budget. At tech-spec
+    time this splits into sub-module intents (planned: root horizon + tree,
+    TTL tripwires, latency ledger) each with its own constraint set.
+
+metadata:
+  feature_id: "horizon_memento_mori"
+  category: "mission_dynamics"
+  tags: ["memento-mori", "finite-horizon", "elapsed-time-accounting", "ttl",
+         "latency", "blockers", "critical-path", "deadlines", "velocity",
+         "agent-planning", "calendar"]
+  status: "planned"
+
+# ----------------------------------------------------------------------------
+# AUTHORSHIP
+# ----------------------------------------------------------------------------
+authorship:
+  origin: "ai_proposed"
+  human_oversight: "review_required"
+
+  ai_authority:
+    can_create: false
+    can_modify:
+      - "implementation"
+      - "verification"
+    requires_approval:
+      - "intent.goal"
+      - "intent.success_metric"
+      - "constraints"
+
+  escalation: "Any change to the constraints — especially the accounting/estimation boundary, the finite-root rule, and the no-undated-deferral rule — requires human sign-off, because these encode the plane's core thesis"
+
+# ----------------------------------------------------------------------------
+# PROBLEM & INVERSION OPPORTUNITIES
+# ----------------------------------------------------------------------------
+inversion_opportunities:
+  problem: |
+    AI agents are mission-time blind. They reason competently about the state of
+    work (what exists, what is next, what blocks what) but carry no
+    representation of calendar time elapsed against outcomes — and no finite
+    budget that makes elapsed time COST anything. The observable failure modes:
+
+    - The agent-operator relationship has no horizon. A timeless collaborator
+      values a task done today and the same task done in three years
+      identically; deferral is free, forever.
+    - Work is deferred ("parked", "pending", "revisit later") with a condition
+      instead of a date, and nothing is scheduled to re-trigger it. The deferral
+      becomes permanent by default.
+    - Tasks have no lifespan. Nothing distinguishes a task that is two days old
+      from one that has quietly outlived any plausible usefulness window, so
+      blockers are discovered by memory, not by expiry.
+    - Gates and milestones age silently. "0 of 2 complete" reads identically on
+      day 1 and day 40; no instrument reports the 40.
+    - External clocks (regulatory dates, market windows, contract deadlines)
+      are documented but never paired against internal state, so "the deadline
+      passed while the work sat parked" is discovered after the fact.
+    - Goal velocity is misattributed. A goal moves at the speed of the slowest
+      entity in its serial chain, but no instrument measures per-entity latency
+      — so effort flows to the entities that are pleasant to work on rather
+      than the ones consuming the calendar, and the slowest entity (which may
+      be the operator) is never named.
+    - Each new conversation resets the agent's horizon to the session. A
+      mission spanning months of sessions has no clock that survives any of
+      them.
+
+    Session-scoped conversation monitoring (the existing Horizon plane) cannot
+    see this: a month of individually healthy conversations that advance
+    nothing is, to a conversation monitor, a month of perfect health.
+
+  dominant_belief: "Agent time-awareness is solved by better scheduling and task tools — calendars, reminders, project trackers that humans read. Progress is measured by tasks completed, and slowness is diagnosed by asking why work feels stuck."
+
+  proposed_inversions:
+    - name: "A finite master horizon — the memento mori"
+      description: "Every deployment declares exactly one root clock: the engagement horizon between operator and agents — either operator-defined (a date) or lifetime-derived (computed from operator-supplied actuarial inputs). Every clocked item belongs to a tree rooted there, and every elapsed day is expressible as a share of the remaining horizon. Time spent is never free; it is drawn from a finite, visible budget."
+      rationale: "Per-task deadlines have no common denominator, so a timeless agent cannot compare the cost of deferral across missions. A finite root horizon is the discount rate that gives every clock below it a shared currency. The caveat is structural: a lifetime horizon ALONE justifies infinite deferral ('plenty of runway'), so the root is only meaningful as the root of a tree whose leaves carry their own windows — never as a standalone number."
+      status: "chosen"
+
+    - name: "Task lifespans are TTLs — tripwires, not estimates"
+      description: "Every task carries a point-in-time range: the window in which it is expected to complete — its lifespan. Expiry does not mean failure; it means INVESTIGATE — something is blocking, find what. An estimate predicts effort and invites planning around a guess; a TTL detects blockers and invites diagnosis."
+      rationale: "The number's purpose is blocker detection, so being 'wrong' about it is informative rather than punishable — which removes the incentive to pad. The accounting/estimation boundary holds: the engine never invents a lifespan from parametric guessing. It MAY propose one derived from execution-derived base rates (recorded actuals of comparable completed tasks in the operator's own store — arithmetic over history, not prediction), and the operator ratifies before it arms."
+      status: "chosen"
+
+    - name: "Blockers are slow entities — decompose goals into latencies"
+      description: "Model a goal as a chain of entities (people, organizations, processes, systems, the operator), each with a measurable latency derived from recorded stage timestamps: time-in-stage, wait-vs-touch ratio, response latency, cycle length. The goal's velocity is the velocity of the slowest serial entity; the blockers ARE the high-latency entities on the critical path."
+      rationale: "This is the plane's central thesis and the subject of its dedicated research phase. Prior art the research must test it against rather than reinvent: Theory of Constraints (improving anything but the constraint is invisible at the goal), lean value-stream mapping (touch time is routinely a small fraction of lead time — elapsed calendar lives in the waits between actions), Little's Law (with fixed throughput, lead time scales linearly with work-in-progress — arithmetic, not opinion), and sales-velocity models (cycle length is the denominator; trust is a latency — N contacts spaced over M weeks — not a quality). Two obligations fall out: (1) latencies must be classifiable as reducible, irreducible, or self-imposed — effort on irreducible latencies is waste, and unspent effort on self-imposed ones is the silent killer; (2) the instrument MUST be able to name the operator as the slowest entity. An instrument that can only attribute slowness to external entities is a comfortable instrument, and comfortable instruments are decoration. The classification itself is semantic judgment and belongs to the operator (or an operator-configured judge) — the engine measures the latencies; it never opines on their meaning."
+      status: "chosen"
+
+    - name: "Elapsed-time accounting, not estimation"
+      description: "The system never predicts how long work will take. It records dates and timestamps supplied by callers and computes only arithmetic on them: ages, days-remaining, days-since-last-progress, per-entity latency, progress-per-day, share-of-remaining-horizon. Accounting is measurement; estimation is judgment, and judgment stays with the human."
+      rationale: "Model-invented duration estimates are unfounded numbers that invite planning around a guess. Elapsed time is a fact — and it is precisely the fact no agent currently surfaces. Splitting the two makes the safe half automatable without importing the unsafe half. TTL proposals from execution-derived base rates sit on the accounting side of the line: they are arithmetic over the operator's own recorded history, surfaced as proposals and inert until ratified."
+      status: "chosen"
+
+    - name: "Mission-scoped, not session-scoped"
+      description: "The unit of analysis is the mission — a goal with a clock inside the horizon tree — persisted in a local store that outlives every conversation, process, and agent. Sessions read from and write to the store; none of them owns it."
+      rationale: "The failure lives across sessions. Any instrument that resets per conversation is structurally blind to a 60-day stall distributed over 40 healthy sessions."
+      status: "chosen"
+
+    - name: "Alarm on age, not on anomaly"
+      description: "Conversation monitors stay silent while the conversation is healthy. This plane inverts the silence condition: its events fire on the passage of time itself — a TTL past its window, a deferral past its revisit date, a gate exceeding its age budget, a deadline inside its warning window, an entity latency dominating a critical path, a mission with zero recorded progress for N days. Nothing anomalous needs to happen; enough nothing IS the signal."
+      rationale: "Time-blindness is a failure of omission. No engine that triggers on what occurred can catch what failed to occur; only a clock compared against a calendar can."
+      status: "chosen"
+
+    - name: "An undated deferral is invalid, not incomplete"
+      description: "The write path rejects any deferral (park, pause, 'revisit when...') that lacks a concrete revisit date. This is schema validation, not advice."
+      rationale: "A deferral with a condition and no date is how missions die politely. Making the date structurally mandatory converts a discipline problem into a type error."
+      status: "chosen"
+
+    - name: "Signals into the agent's existing turn loop, not a dashboard"
+      description: "Clock events are delivered through the same signal channel agents already consume each turn (Horizon's active_events / suggested_behavior contract), so the calendar reaches the agent at planning time — not a human-facing report the operator must remember to read."
+      rationale: "Dashboards and digest emails depend on the human polling them; the failure mode under measurement is precisely that nobody polls. The one surface guaranteed to be read is the agent's own turn context."
+      status: "chosen"
+
+    - name: "Put it in the project tracker (per-project tooling)"
+      description: "Encode deadlines, lifespans, and latencies inside each project's own task tracker, board, or goal scripts."
+      rationale: "Rejected: per-project implementations are rebuilt for every project, encode project-specific IDs, and reach agents only if each integration is separately wired. The capability is generic (dates, ages, latencies, arithmetic, events) and belongs one level above any project."
+      status: "rejected"
+
+    - name: "LLM-judged progress"
+      description: "Have a model read recent activity and judge whether the mission is 'really' progressing."
+      rationale: "Rejected: reintroduces non-determinism and cost into a measurement layer, and progress judgment is exactly the semantic question the operator should answer by recording a progress event. The engine's job is arithmetic on records, not opinion about them. (Latency CLASSIFICATION — reducible/irreducible/self-imposed — is likewise semantic and likewise excluded from the engine: it is operator- or judge-supplied metadata the engine stores and reports, never computes.)"
+      status: "rejected"
+
+    - name: "Standalone product/repository"
+      description: "Build the plane as a new independent project."
+      rationale: "Rejected: the delivery channel (per-turn signal contract), storage, MCP server, config, and deployment scaffolding already exist in Horizon; a separate project duplicates all of it and starts with zero integrations. This is a second measurement plane over a different object (mission vs conversation), same philosophy: external, deterministic, signals-only. If post-research scope proves the plane outgrows its host, it is separable then — packages, not premature repos."
+      status: "rejected"
+
+# ----------------------------------------------------------------------------
+# INTERFACE (sketch — final shape belongs to the tech spec)
+# ----------------------------------------------------------------------------
+interface:
+  type: "api"
+
+  tools:
+    - name: "clock_register"
+      description: "Create or update a clocked item: the root horizon (exactly one per store), mission, task (with TTL window), deadline, gate, entity, or deferral. Deferrals without revisit_date are rejected. Items without a path to the root are rejected."
+      parameters:
+        - name: "item"
+          type: "object"
+          required: true
+          description: "kind (horizon|mission|task|deadline|gate|entity|deferral) + dates/windows + parent link into the horizon tree"
+      returns: "item_id"
+
+    - name: "clock_progress"
+      description: "Record a progress or stage-transition event against an item (caller-supplied fact: 'X happened on date D', 'stage S entered/exited on date D'). Stage timestamps are the raw material of latency accounting."
+      parameters:
+        - name: "item_id"
+          type: "string"
+          required: true
+        - name: "event"
+          type: "object"
+          required: true
+      returns: "ack"
+
+    - name: "clock_status"
+      description: "Compute the full clock surface: every item with its age, days-remaining, TTL state, days-since-last-progress, per-entity latency (time-in-stage, wait-vs-touch), slowest-entity per mission, and share-of-remaining-horizon. Pure read; deterministic; sorted by urgency."
+      parameters:
+        - name: "scope"
+          type: "string"
+          required: false
+      returns: "clock report (plain dict)"
+
+    - name: "clock_propose_ttl"
+      description: "Derive a proposed TTL window for a task from execution-derived base rates over comparable completed tasks in this store. Returns a proposal with its derivation shown; inert until the operator ratifies it via clock_register."
+      parameters:
+        - name: "item_id"
+          type: "string"
+          required: true
+      returns: "proposal {window, sample_size, derivation} — never auto-applied"
+
+  signal_channel: |
+    Clock events surface through the existing per-turn signal contract
+    (process_turn → active_events[].suggested_behavior) when a session is
+    associated with one or more missions. Candidate event types (final list
+    belongs to the PRD):
+      signal.ttl_expired           — a task outlived its ratified lifespan: investigate the blocker
+      signal.deferral_expired      — a park is past its revisit date
+      signal.gate_aging            — a gate exceeded its age budget with no progress
+      signal.deadline_window       — an external deadline entered its warning window
+      signal.mission_stalled       — zero progress events for N days
+      signal.slowest_entity        — one entity's latency dominates a mission's critical path
+      signal.clock_unpaired        — a deadline exists with no linked internal state
+      signal.horizon_share         — an item's elapsed time crossed a threshold share of the remaining master horizon
+
+# ----------------------------------------------------------------------------
+# INTENT
+# ----------------------------------------------------------------------------
+intent:
+  summary: "Memento Mori: a finite-horizon mission plane for Horizon — a master engagement clock, TTL tripwires on every task, and latency accounting over the entities a goal depends on — delivered as per-turn signals so agents plan inside the calendar instead of outside it"
+  goal: |
+    Extend Horizon with a second measurement plane whose object is the mission,
+    not the conversation, organized as a tree under one finite root:
+
+    THE ROOT — a single master engagement horizon per store (operator-defined
+    date, or lifetime-derived from operator-supplied inputs). Every item
+    descends from it; every elapsed day is expressible as a share of what
+    remains. The root is what makes time cost something.
+
+    THE LEAVES — clocked items with operator-supplied dates and windows:
+    - missions with progress events and stall thresholds
+    - tasks with TTL lifespans (ratified windows whose expiry means
+      "investigate the blocker", never "punish the estimate")
+    - deadlines paired to the internal state they gate
+    - gates with age budgets
+    - deferrals with mandatory revisit dates
+    - entities with stage timestamps from which latency is derived
+
+    THE ARITHMETIC — ages, days-remaining, TTL state, days-since-progress,
+    progress-per-day, time-in-stage, wait-vs-touch ratio, slowest-entity per
+    mission, share-of-remaining-horizon. Nothing else: the engine's entire
+    intelligence is arithmetic, ordering, and thresholds over caller-supplied
+    records.
+
+    THE SIGNALS — events fire on clock states (expiries, aging, windows,
+    stalls, dominant latencies, unpaired clocks) through the same channel
+    agents already read every turn, so elapsed calendar time becomes an input
+    to planning rather than a retrospective discovery.
+
+    The plane inherits Horizon's philosophy wholesale: external observer,
+    deterministic, local-first, framework-agnostic, signals-only. It measures
+    and reports; the agent's controller and the human decide.
+
+    Explicitly bounded: elapsed-time ACCOUNTING, never duration ESTIMATION.
+    The engine contains no model of how long work should take and generates no
+    forecasts. TTL proposals are arithmetic over the operator's own recorded
+    actuals, shown with their derivation, and inert until ratified. Latency
+    classification (reducible / irreducible / self-imposed) is semantic
+    judgment: stored and reported by the engine, supplied only by the operator
+    or an operator-configured judge.
+  success_metric: |
+    Primary: the instrument shortens time-to-next-irreversible-external-action.
+    In monitored missions, the interval between a clock event (TTL expiry,
+    deferral expiry, stall, slowest-entity) and the next recorded externally
+    visible action on that mission is measured and bounded; an instrument whose
+    signals do not shorten that interval versus baseline has failed its own
+    thesis and must say so. (Guardrail: the plane must never become the work it
+    was built to unblock — instrumentation-as-deferral is its named failure
+    mode.)
+
+    Secondary:
+    - No expired TTL or deferral goes unsurfaced past its next associated session
+    - Zero undated deferrals and zero root-less items representable in the store (schema-enforced)
+    - Every deadline is either paired to internal state or flagged signal.clock_unpaired within one evaluation
+    - A mission with no progress events for its threshold fires signal.mission_stalled in the next associated turn
+    - Latency accounting reproduces the operator's known bottlenecks in retrospective replay: given historical stage timestamps, the slowest-entity computation identifies the entity the operator independently names as the blocker (validation exercise for the research phase)
+    - Clock computation is reproducible: identical store + identical evaluation date → byte-identical report
+  stakeholders:
+    - "AI agent builders whose agents plan multi-week or multi-month work"
+    - "Operators running long-horizon goals across many agent sessions"
+    - "Teams pairing external deadlines (regulatory, contractual, market) with agent-driven execution"
+
+# ----------------------------------------------------------------------------
+# RESEARCH AGENDA (the phase that follows sign-off of this intent)
+# ----------------------------------------------------------------------------
+research_agenda:
+  thesis_under_test: "Goal non-achievement is dominated not by absent deadlines (deadlines are the detection instrument) but by slow-paced entities in the goal's serial chain — latencies that can be decomposed, measured in time units, classified (reducible / irreducible / self-imposed), and selectively attacked."
+  bodies_of_prior_art:
+    - "Theory of Constraints / Critical Chain (constraint focus; buffer burn as health signal)"
+    - "Lean value-stream mapping (lead time vs touch time; wait-dominance of elapsed calendar)"
+    - "Queueing theory / Little's Law (WIP–lead-time coupling under fixed throughput)"
+    - "Sales-velocity and trust-latency models (cycle length as denominator; trust as contact cadence over calendar)"
+    - "Critical path method (serial chains; slack; what dominance means for effort allocation)"
+  deliverable: "Source-audited research doc extracting the measurable primitives (time-in-stage, wait-vs-touch, latency classification, WIP coupling, buffer burn) and testing the thesis against each body; primitives that survive become the PRD's metric set"
+  validation_note: "Retrospective replay against real historical mission data (operator-supplied, private, never bundled) is the research phase's external oracle: the instrument must re-discover known bottlenecks from timestamps alone."
+
+# ----------------------------------------------------------------------------
+# CONSTRAINTS
+# Ordered least → most critical (position bias: models weight later constraints
+# more heavily; the plane's thesis constraints are last).
+# Held at the 7-constraint IVD budget; the root-horizon and TTL sub-mechanisms
+# get their own sub-module intents at tech-spec time (see scope.note).
+# All test paths are PLANNED — implementation does not exist yet. Per IVD Rule 3,
+# ai_generated provenance alone cannot mark a constraint PASS; each will need a
+# human-authored assertion or execution-derived oracle before verification.
+# ----------------------------------------------------------------------------
+constraints:
+  - name: "optional_plane_backward_compat"
+    requirement: "With no mission store configured, every existing Horizon API behaves byte-identically to the pre-plane release; enabling the plane requires explicit configuration"
+    test: "tests/unit/memento_mori/test_plane_optional.py::test_no_store_no_behavior_change"
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 3
+    assumption_status: "KNOWN"
+    consequence_if_violated: "Existing integrations break or silently change behavior on upgrade; adoption of the plane becomes mandatory instead of chosen"
+
+  - name: "local_first_privacy"
+    requirement: "The mission store is a local file/database at an operator-configured path; default configuration sends zero mission data to external services; the engine ships with no bundled mission data of any kind"
+    test: "tests/unit/memento_mori/test_privacy.py::test_no_external_calls_and_no_bundled_data"
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 2
+    assumption_status: "KNOWN"
+    consequence_if_violated: "Mission data (goals, deadlines, latencies of named entities) is inherently sensitive; any leak or bundled example breaks the trust the plane depends on"
+
+  - name: "deterministic_no_llm_core"
+    requirement: "The clock evaluation path makes zero LLM calls and zero network calls; identical store contents plus identical evaluation timestamp produce a byte-identical report; semantic judgments (latency classification, progress meaning) enter the store only as caller-supplied metadata"
+    test: "tests/unit/memento_mori/test_determinism.py::test_reproducible_report"
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 2
+    assumption_status: "KNOWN"
+    consequence_if_violated: "A non-deterministic clock cannot be trusted as a measurement layer, and per-turn cost/latency would make always-on evaluation impractical"
+
+  - name: "signals_not_control"
+    requirement: "The plane never blocks, modifies, or generates agent behavior; its only outputs are the clock report (pure read), TTL proposals (inert until ratified), and typed events with suggested_behavior text through the existing signal contract"
+    test: "tests/unit/memento_mori/test_signals_only.py::test_no_control_surface"
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 2
+    assumption_status: "KNOWN"
+    consequence_if_violated: "A clock that enforces becomes a scheduler with opinions; measurement and decision collapse into one layer and the framework-agnostic contract breaks"
+
+  - name: "mission_scope_persistence"
+    requirement: "Clocked items persist across sessions, processes, and agent restarts; a session's end, reset, or crash never deletes or ages-out an item; only explicit caller writes change the store"
+    test: "tests/unit/memento_mori/test_persistence.py::test_items_survive_session_lifecycle"
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 1
+    assumption_status: "KNOWN"
+    consequence_if_violated: "The plane degenerates into session scope — the exact blindness it exists to remove"
+
+  - name: "finite_rooted_tree"
+    requirement: "Every store contains exactly one root item of kind=horizon carrying a finite end date (operator-defined or derived by arithmetic from operator-supplied inputs); every other item must carry a parent path terminating at the root; writes violating either rule are rejected with a schema error"
+    test: "tests/unit/memento_mori/test_horizon_tree.py::test_single_finite_root_and_rooted_items"
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 1
+    assumption_status: "KNOWN"
+    consequence_if_violated: "Without a finite root, elapsed time has no cost and the plane reverts to a pile of unrelated timers; without rooted items, share-of-horizon accounting is uncomputable"
+
+  - name: "dates_are_caller_provided"
+    requirement: "The engine never generates, estimates, or infers a duration or future date from anything except arithmetic over caller-supplied records; every stored date originates from a caller write; TTL proposals must expose their derivation (source records, sample size, arithmetic) and are never applied without an explicit ratifying write; an undated deferral is rejected at the schema with no configuration override"
+    test: "tests/unit/memento_mori/test_no_estimation.py::test_engine_emits_no_invented_dates_and_rejects_undated_deferrals"
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 1
+    assumption_status: "KNOWN"
+    consequence_if_violated: "The plane crosses from accounting into estimation — fabricated numbers with the authority of measurement, the most dangerous possible failure of a clock; and undated deferrals reintroduce the single failure mode most responsible for silent mission death"
+
+constraint_satisfiability:
+  analysis: |
+    Seven constraints. Tensions examined:
+    - signals_not_control vs schema rejections (finite_rooted_tree,
+      dates_are_caller_provided): rejecting a write is validation of the
+      plane's OWN store, not control of agent behavior — the agent remains
+      free to do anything except record an invalid item in this store. Not a
+      conflict.
+    - dates_are_caller_provided vs clock_propose_ttl: proposals are arithmetic
+      over stored records with derivation shown, inert until a ratifying
+      caller write. The boundary: no stored date may exist that is not
+      traceable to a caller write; no output date may exist that is not
+      derivable by arithmetic from stored dates + evaluation time. Encoded in
+      the joint test.
+    - finite_rooted_tree vs optional_plane_backward_compat: the root
+      requirement binds stores, not deployments — no store, no plane, no
+      change. Not a conflict.
+    - deterministic_no_llm_core vs latency classification: classification is
+      caller-supplied metadata; the engine stores and reports it, never
+      computes it. Not a conflict.
+    All seven are jointly satisfiable.
+  joint_satisfaction_test: "tests/unit/memento_mori/test_joint_satisfaction.py::test_all_constraints_on_same_flow"
+  note: "Single test driving one flow — configure store, register finite root, register mission+deadline+gate+entity under it, attempt root-less item (rejected), attempt undated deferral (rejected), request TTL proposal (derivation shown, not applied), ratify TTL, advance evaluation date past TTL and revisit dates, assert events fire, assert report reproducible byte-identically, assert zero network/LLM, assert unconfigured session unchanged — asserting all seven constraints on the SAME output."
+
+# ----------------------------------------------------------------------------
+# NON-GOALS
+# ----------------------------------------------------------------------------
+non_goals:
+  - "Duration estimation, effort sizing, or completion forecasting of any kind — TTL proposals are base-rate arithmetic with shown derivation, not predictions"
+  - "Task management: the plane is not a todo list, tracker, or scheduler; it clocks items that live wherever the operator manages work"
+  - "Judging whether recorded progress is 'real' progress, or whether a latency is reducible — semantic judgment stays with the operator and their agents"
+  - "Actuarial modeling: a lifetime-derived root horizon is computed by arithmetic from operator-supplied inputs (e.g. an operator-chosen expectancy table value); the engine embeds no demographic model and no personal data"
+  - "Conversation-level temporal signals (inter-turn gaps, retention, pacing) — already owned by the existing spacetime plane"
+  - "Calendar/scheduling integration (creating events, sending reminders to humans) — the delivery surface is the agent's turn context, by design"
+  - "Multi-user/multi-tenant coordination — V1 is single-operator, local-first; sharing surfaces are a later, separate decision"
+
+# ----------------------------------------------------------------------------
+# RISKS
+# ----------------------------------------------------------------------------
+risks:
+  - risk: "Instrumentation-as-deferral: building and tuning the clock becomes the activity that defers the highest-latency pending action"
+    mitigation: "Named in the primary success metric: the plane justifies itself only by shortening time-to-next-irreversible-external-action, and must report its own failure if it does not"
+  - risk: "Signal fatigue: aging events fire every associated turn and get tuned out"
+    mitigation: "Event de-duplication windows and acknowledgment semantics belong in the PRD; an acknowledged event stays visible in clock_status but stops firing per-turn"
+  - risk: "Garbage clock: callers stop recording progress/stage events, so stall and latency signals fire on missions that are actually moving"
+    mitigation: "Make progress recording writable by agents (not only humans) so ordinary agent work logs the fact; persistent false stalls are surfaced in clock_status as a recording-path check"
+  - risk: "Comfortable instrument: latency attribution flows only to external entities, never the operator"
+    mitigation: "The operator is a first-class entity in the chain model; the slowest-entity computation runs over ALL entities including the operator; the research phase's retrospective-replay oracle must include at least one case whose known bottleneck was operator-side"
+  - risk: "TTL windows rot into padding or pressure"
+    mitigation: "Expiry semantics are fixed as 'investigate', never 'punish'; proposals come from base rates, not negotiation; both live in the schema documentation as normative language"
+  - risk: "The finite root horizon is emotionally heavy (it is a mortality clock when lifetime-derived)"
+    mitigation: "The root is operator-chosen in kind and in value; lifetime derivation is opt-in arithmetic over operator-supplied inputs; the engine never suggests or defaults to it"
+  - risk: "Scope creep toward a project-management product"
+    mitigation: "non_goals list above is normative; anything resembling task management is rejected at review"
+  - risk: "The plane widens Horizon's public thesis (conversation property → mission property)"
+    mitigation: "Position as a sibling plane under the same philosophy — external deterministic observer, signals-only — over a different object; the PRD owns the narrative reconciliation"
+
+# ----------------------------------------------------------------------------
+# VERIFICATION (protocol for the implementation phase)
+# ----------------------------------------------------------------------------
+verification:
+  protocol: |
+    Per IVD Rule 2, after any implementation derived from this intent:
+    1. Re-read this artifact from disk
+    2. Diff each change against each of the 7 constraints
+    3. Run every constraint's test; ai_generated tests alone cannot mark PASS —
+       each constraint needs a human-authored assertion or an execution-derived
+       oracle (e.g. golden clock-report fixtures, retrospective-replay fixtures)
+       before it clears
+    4. Report each_constraint_pass + joint_satisfaction_pass (required: 7 >= 3)
+    Implementation must be segmented (7 constraints → IVD Rule 1 mandatory
+    segmentation), suggested segments: (a) store + horizon tree + schema
+    validation, (b) evaluation/arithmetic engine incl. latency accounting,
+    (c) TTL proposal path, (d) signal integration + compat.
+  test_cases: []   # populated during PRD/tech-spec phase with worked examples for review sign-off
+
+review_gate:
+  status: "PENDING_SIGNOFF"
+  note: "Per IVD Rule 3b/4: after human approval of this intent, run the adversarial stress test, set final assumption_status per constraint, and clear sign-offs before research begins. The research phase then executes research_agenda before any PRD."
