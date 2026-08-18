@@ -606,7 +606,7 @@ verification:
   test_cases:
     - id: "worked-example-clock"
       given: "Synthetic fixture smallco (test plan): root ends 2030-01-01; mission created 2026-06-01 with last progress 2026-07-02; task TTL to 2026-07-20; deferral revisit 2026-08-10; evaluation 2026-08-18"
-      expect: "mission age 78d; days_since_progress 47d (stalled); TTL expired; deferral expired by 8d; horizon share ~0.0596 crossing the 0.05 rung — all as calendar-date arithmetic with derivations shown"
+      expect: "mission age 78d; days_since_progress 47d (stalled); TTL expired; deferral expired by 8d; horizon share ~0.0595 (78/1310) crossing the 0.05 rung — all as calendar-date arithmetic with derivations shown"
     - id: "worked-example-signals"
       given: "Same fixture; at least 4 due edges on first evaluation; per-turn cap 1"
       expect: "exactly one event (P1 ttl_expired); remainder in report; second evaluation with no state change emits nothing; ack silences until an enumerated rung"

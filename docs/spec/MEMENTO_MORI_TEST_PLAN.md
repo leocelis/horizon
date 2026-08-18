@@ -45,7 +45,7 @@ review. Untagged cases are supporting coverage.
 
 | ID | Case | Expected (smallco @ 2026-08-18) | PRD § | Tag |
 |----|------|--------------------------------|-------|-----|
-| E-1 | Ages & remaining | M1 age **78d**; D1 remaining **43d**; H remaining **1231d**; F1 expired by **8d**; T1 ttl_state **expired** (29d past) | §6 | [GOLDEN] |
+| E-1 | Ages & remaining | M1 age **78d**; D1 remaining **43d**; H remaining **1232d**; F1 expired by **8d**; T1 ttl_state **expired** (29d past) | §6 | [GOLDEN] |
 | E-2 | days_since_progress | M1 = **47d** (since 2026-07-02) → stalled (>14) | §6 | [GOLDEN] |
 | E-3 | Recording-path check | M1 has events ⇒ "no recent work"; a mission with zero events ever ⇒ "no capture" — distinct flags | §4.3 | [HUMAN] |
 | E-4 | Entity latency | E1 time-in-stage 25d (closed); E2 open 21d; slowest_entity = **E2 "operator"** (open sojourn dominates) | §6 | [GOLDEN] |
@@ -63,7 +63,7 @@ review. Untagged cases are supporting coverage.
 | E-16 | Refusals | requests for NPV, currency conversion, forecast Δt, invented λ ⇒ typed refusal errors naming the rule, never a number | §6 | [HUMAN] |
 | E-17 | Path comparison | P1 sojourn **4d** vs incumbent accrued **17d** (since 2026-08-01); base-rate column separate and provenance-labelled; no synthetic latency fields exist in the schema | §7 | [GOLDEN] |
 | E-18 | Counterfactual refusal | API surface has no "would-have-taken" computation; requesting one is a typed refusal | §3.2 | |
-| E-19 | Horizon share | M1 elapsed 78d vs H remaining ⇒ share **≈ 0.0596** crosses the 0.05 rung | §6 | [GOLDEN] |
+| E-19 | Horizon share | M1 elapsed 78d vs H remaining ⇒ share **≈ 0.0595** (78/1310) crosses the 0.05 rung | §6 | [GOLDEN] |
 
 ## G — Signals (memento_signals_intent)
 
