@@ -11,6 +11,12 @@
 
 Horizon is a real-time conversation health monitor for AI agents. It tracks the **structural dynamics** of multi-turn conversations — semantic drift, information gain, ontological gap width, temporal desynchronisation, circadian cognitive load, conversation velocity, and causal reachability — dimensions that LLMs do not reliably surface from inside the conversation.
 
+Horizon ships **two measurement planes**. The **conversation plane** (above, always
+present) measures the health of a dialogue turn by turn. The optional **mission plane**
+— *Memento Mori* — measures elapsed **calendar** time against goals: ages, deadlines,
+stalls, per-entity latency, and share of a finite horizon. It is inert until you
+configure a store. See [Mission plane](#mission-plane-memento-mori).
+
 Horizon is **not** a manipulation, sycophancy, or human-influence detector — it measures conversation *dynamics*, not whether an agent is steering or flattering the user. See [LEGAL.md §1](LEGAL.md#1-what-horizon-is--and-is-not).
 
 Why an external monitor? LLMs have *limited and unreliable* self-knowledge: introspection research shows partial self-access that is brittle and degrades on complex or out-of-distribution tasks ([Binder et al. 2024](https://arxiv.org/abs/2410.13787); [arXiv:2512.12411](https://arxiv.org/abs/2512.12411)). So rather than depend on a model reporting its own conversation dynamics, Horizon measures them externally with cheap, deterministic, always-on arithmetic that does not call the model at all.
@@ -324,6 +330,77 @@ All events default to **observe mode** (emitted, not acted on). Enable active mo
 | `signal.light_cone_collapse` | Reachable fraction below light-cone threshold |
 | `signal.grounding_required` | Heuristic grounding-need score crosses threshold — agent should hedge or cite grounding evidence |
 | `signal.pace_premature_report` | User replied faster than a previously flagged deferred action could plausibly complete, with no completion signal |
+
+---
+
+
+## Mission plane (Memento Mori)
+
+> **"Progress is not a turn property — it is a calendar property."**
+
+The conversation plane answers *is this dialogue degrading?* The mission plane answers a
+different question: *is this goal still moving, and against what clock?* A month of
+individually healthy conversations that advance nothing is, to a conversation monitor, a
+month of perfect health.
+
+**It is off by default.** With no store configured its six tools do not register and
+nothing in your integration changes.
+
+```bash
+export HORIZON_MEMENTO_STORE_PATH=~/.horizon/missions.db   # local, single-operator
+```
+
+```python
+from horizon_monitor.memento import MementoStore, MementoConfig, evaluate, ItemKind
+
+store = MementoStore("missions.db")
+root = store.register_item(kind=ItemKind.HORIZON, title="engagement horizon",
+                           created_valid=..., end_date=date(2030, 1, 1))
+mission = store.register_item(kind=ItemKind.MISSION, title="ship-the-thing",
+                              parent_id=root, created_valid=...)
+
+report = evaluate(store.snapshot(), t_eval, MementoConfig())
+```
+
+### What it measures
+
+| Output | Meaning |
+|---|---|
+| Age, days-remaining, TTL state | how old work is, how long is left, whether a task outlived its window |
+| Days-since-progress + recording-path check | a stall — and whether it is *no work* or *no records*, never conflated |
+| Slowest entity / blocking entity | the longest recorded wait, and separately what the work waits on **right now** |
+| Horizon share | what fraction of a finite budget this item has consumed |
+| Cost-of-delay, break-even date | only when *you* declare a rate and amounts |
+| Path comparison | a probe's recorded sojourn beside the incumbent's accrued delay |
+
+Twelve edge-triggered signals ride the existing `process_turn` contract for sessions
+bound with `associate_mission`. Every event carries `plane: "mission"`, and the contract
+is deliberately **loud** — mission signals are surfaced to the operator with their
+numbers, unlike conversation signals, which apply silently.
+
+### What it refuses
+
+Accounting, never estimation. The engine never invents a duration, date, or amount:
+
+- no forecasts, no completion predictions, no counterfactual "what the other path would
+  have cost"
+- no NPV/IRR/DCF, no discount rates, no currency conversion — money only ever multiplies
+  measured time
+- no p-values, confidence intervals, or sequential tests on path latencies: at
+  single-operator sample sizes no dominance claim survives audit, so comparison is
+  descriptive only
+- no people analytics — entity latency is reported on functional **slots**; a person's
+  wait is measured but never becomes a score, a ranking, or a resolvable identifier
+- missing inputs degrade **by omission with an explanatory field**, never by substitution
+
+Every reported number carries a `derivation` string and its `n`. Identical store plus
+identical evaluation instant produces a byte-identical report.
+
+**Docs:** [product requirements](docs/product/MEMENTO_MORI_PRD.md) ·
+[technical spec](docs/spec/MEMENTO_MORI_TECH_SPEC.md) ·
+[agent rules](docs/integrations/MEMENTO_MORI_AGENTS.md) ·
+[acceptance test plan](docs/spec/MEMENTO_MORI_TEST_PLAN.md) ·
+runnable example [`examples/memento_mori_mission_clock.py`](examples/memento_mori_mission_clock.py)
 
 ---
 

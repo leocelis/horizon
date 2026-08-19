@@ -63,3 +63,17 @@ docs/
 ```
 
 Non-public documents (full PRD, market research, session handoffs) live outside this repo.
+
+## Memento Mori — the mission plane (optional)
+
+A second measurement plane: elapsed calendar time against goals, rather than dialogue
+health across turns. Inert until a mission store is configured.
+
+- [Product requirements](product/MEMENTO_MORI_PRD.md) — problem, prior art, boundaries
+- [Technical specification](spec/MEMENTO_MORI_TECH_SPEC.md) — data model, evaluation
+  pipeline, signal state machine
+- [Agent rules](integrations/MEMENTO_MORI_AGENTS.md) — the MCP tool surface and the
+  canonical host-rules block (this plane is **loud** by design)
+- [Acceptance test plan](spec/MEMENTO_MORI_TEST_PLAN.md) — PRD-mapped cases and oracles
+- Intent artifacts: [`spec/horizon_memento_mori_intent.yaml`](spec/horizon_memento_mori_intent.yaml)
+  plus three sub-module intents under [`spec/intents/`](spec/intents/)

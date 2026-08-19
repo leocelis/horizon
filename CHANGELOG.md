@@ -8,6 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Memento Mori — the mission plane** (`horizon_monitor.memento`, optional and inert
+  until a store is configured). A second measurement plane whose unit of analysis is the
+  *mission* — a goal with a clock — persisted across sessions, processes and agents.
+  Where the conversation plane measures dialogue health turn by turn, this one measures
+  elapsed **calendar** time against outcomes: item ages, TTL state, deferral expiry,
+  days-since-progress with a recording-path check that never conflates *no work* with
+  *no records*, per-entity latency (slowest entity and, separately, the entity currently
+  blocking), horizon share, and — only when the operator declares a rate and amounts —
+  cost-of-delay and break-even dates. Twelve edge-triggered signals ride the existing
+  `process_turn` contract for sessions bound via `associate_mission`; every event carries
+  a `plane` tag and mission signals are surfaced to the operator rather than applied
+  silently. Six MCP tools (`clock_register`, `clock_progress`, `clock_status`,
+  `clock_propose`, `clock_ack`, `associate_mission`) register **only** when a store path
+  is set. Docs: [`docs/product/MEMENTO_MORI_PRD.md`](docs/product/MEMENTO_MORI_PRD.md),
+  [`docs/spec/MEMENTO_MORI_TECH_SPEC.md`](docs/spec/MEMENTO_MORI_TECH_SPEC.md),
+  [`docs/integrations/MEMENTO_MORI_AGENTS.md`](docs/integrations/MEMENTO_MORI_AGENTS.md);
+  runnable example `examples/memento_mori_mission_clock.py`.
+  The plane performs elapsed-time **accounting**, never estimation: it invents no
+  duration, date or amount; refuses NPV/IRR/DCF, currency conversion, forecasts and
+  counterfactuals with typed errors; emits no p-values or confidence intervals on path
+  comparisons; reports entity latency on functional **slots** rather than as a score on
+  any person; and degrades by omission with an explanatory field rather than
+  substituting a value. Identical store + identical evaluation instant yields a
+  byte-identical report.
+
 - **Illegal-content prohibition and 18 U.S.C. § 2258A mandatory-reporting compliance**
   (`TERMS_OF_SERVICE.md` new §13, cross-referenced from `LEGAL.md` §17): explicit CSAM
   prohibition (§3(9)), Horizon's compliance posture as a U.S.-based provider under the
@@ -34,6 +59,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   enumerated 19-state matrix that would need updating every legislative session.
 
 ### Changed
+- **Agent instructions now route `active_events` by `plane`.** Every instruction surface
+  (the MCP server's own `_INSTRUCTIONS`, the Claude Code / Claude Desktop / Cursor
+  integration docs, and `docs/cursor-rules/horizon-monitor.mdc`) previously told agents to
+  apply `suggested_behavior` silently with no plane qualifier. That wording predates the
+  mission plane and would have caused mission signals — an expired deadline, a stalled
+  mission — to be silently absorbed. Conversation-plane events remain invisible by
+  contract; mission-plane events are surfaced with their numbers. The invisibility
+  contract now states which plane it governs.
 - Bumped `LEGAL.md`, `TERMS_OF_SERVICE.md`, `PRIVACY_POLICY.md`, and
   `DATA_PROCESSING_AGREEMENT.md` to version 1.1 (from 1.0), effective 2026-07-19.
 - `PRIVACY_POLICY.md` sections renumbered (§7 onward shift by one) to accommodate the new

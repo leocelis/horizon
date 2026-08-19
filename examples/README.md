@@ -39,3 +39,16 @@ before running any of them, e.g.:
 echo "OPENAI_API_KEY=sk-..." >> .env
 python examples/openai_real_agent_e2e.py
 ```
+
+## `memento_mori_mission_clock.py` — the mission plane
+
+Runs with no arguments, no network, no API key and no LLM call. Builds a small synthetic
+mission in a temporary store, evaluates the clock at a fixed instant, and prints what an
+operator sees: ages, an expired task lifespan, an overdue park, the slowest entity beside
+the entity currently blocking, the refusal of an undated park, one edge-triggered signal
+under the per-turn cap, and proof that removing the declared rate leaves every
+non-monetary field identical.
+
+```bash
+python examples/memento_mori_mission_clock.py
+```

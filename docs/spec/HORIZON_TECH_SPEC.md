@@ -6,6 +6,11 @@
 
 ---
 
+> **Sibling plane.** This document specifies the *conversation* plane. Horizon's
+> optional *mission* plane (Memento Mori) has its own specification in
+> [`MEMENTO_MORI_TECH_SPEC.md`](MEMENTO_MORI_TECH_SPEC.md). It is inert unless a
+> mission store is configured, and shares only the `process_turn` signal channel.
+
 ## 1. Overview
 
 This document translates the PRD's *what* into the engineer's *how*. Every field is typed, every algorithm is pseudocoded with edge cases, and every decision that the PRD left open is resolved. An engineer reading this document should be able to implement Horizon without consulting any other source.
