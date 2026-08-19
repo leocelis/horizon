@@ -15,7 +15,19 @@ the note below. Pick the shortest path for your stack.
 | Cursor (IDE agent) | MCP server — [CURSOR.md](./CURSOR.md) | MCP config snippet in `CURSOR.md` | [`tests/e2e/test_mcp_server_e2e.py`](../../tests/e2e/test_mcp_server_e2e.py) |
 | Claude Desktop | MCP server — [CLAUDE_DESKTOP.md](./CLAUDE_DESKTOP.md) | MCP config snippet in `CLAUDE_DESKTOP.md` | [`tests/e2e/test_mcp_server_e2e.py`](../../tests/e2e/test_mcp_server_e2e.py) |
 | Claude Code (CLI) | MCP server — [CLAUDE_CODE.md](./CLAUDE_CODE.md) | `claude mcp add` + `~/.claude/CLAUDE.md` block | [`tests/e2e/test_mcp_server_e2e.py`](../../tests/e2e/test_mcp_server_e2e.py) |
+| Mission plane (Memento Mori) — optional, any MCP host | Configure a local store, then paste the rules block — [MEMENTO_MORI_AGENTS.md](./MEMENTO_MORI_AGENTS.md) | rules block in `MEMENTO_MORI_AGENTS.md` §3 | [`tests/unit/memento_mori/test_mcp_tools.py`](../../tests/unit/memento_mori/test_mcp_tools.py) |
 | GitHub Copilot — **experimental, not yet working** | VS Code extension / gateway middleware / log replay — [COPILOT.md](./COPILOT.md) | see `COPILOT.md` | no Copilot-specific test; Patterns 2–3 reuse the raw-strings/MCP e2e paths, Pattern 1 (VS Code extension) is untested pseudocode |
+
+## Two planes, two contracts
+
+Everything in the table above is the **conversation** plane: it measures the health of
+a dialogue and its signals are applied *silently*. Horizon also ships an optional
+**mission** plane (Memento Mori) that measures elapsed calendar time against goals —
+ages, deadlines, stalls, entity latency. It is **inert unless a mission store is
+configured**, and its contract is deliberately inverted: mission signals are
+**surfaced to the operator with their numbers**, never absorbed silently. Events carry
+a `plane` field (`"conversation"` | `"mission"`) so hosts route the two correctly.
+See [MEMENTO_MORI_AGENTS.md](./MEMENTO_MORI_AGENTS.md).
 
 ## The common contract
 

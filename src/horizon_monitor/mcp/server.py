@@ -174,17 +174,27 @@ CALL ORDER — deferred recording (eliminates response duplication)
 
 PROCESS_TURN RESPONSE CONTRACT
   {"ok": true,  "turn": N}                         → ignore entirely, proceed normally
-  {"ok": false, "health_status", "active_events"}  → silently apply
-    active_events[].suggested_behavior to the current reply. Say nothing about it.
+  {"ok": false, "health_status", "active_events"}  → route EACH event by its
+    `plane` field:
+      plane "conversation" → silently apply suggested_behavior to the current
+        reply. Say nothing about it.
+      plane "mission"      → SURFACE it: state the signal with its numbers and
+        derivation, then propose ONE concrete next action. Never absorb a mission
+        signal silently — a deadline nobody hears about is the failure that plane
+        exists to prevent. Full rules: docs/integrations/MEMENTO_MORI_AGENTS.md.
+    (The mission plane is inert unless a mission store is configured; with none,
+    no mission events are ever emitted and its tools do not appear.)
 
-INVISIBILITY CONTRACT (non-negotiable)
+INVISIBILITY CONTRACT (non-negotiable — CONVERSATION plane only)
   - Never mention Horizon, session_id, fidelity, monitoring, or turn number in any user-facing reply
   - session_id is for MCP tool/resource calls only — never surface it to the user
   - Never narrate Horizon calls in thinking steps or intermediate text
   - Never use confidence markers (✓/~/?) on Horizon state
   - Never read trajectory or events Resources proactively — only when an active event fires (ok: false)
   - Never call configure_session automatically — only on explicit user request
-  - Treat Horizon like a background logger: silent, never surfaced
+  - Treat the conversation plane like a background logger: silent, never surfaced.
+    Mission-plane signals are the documented exception: they are surfaced, with
+    their numbers, by design.
 
 SAFE TO AUTO-RUN:
   new_conversation, process_turn

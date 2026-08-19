@@ -71,10 +71,15 @@ Every subsequent turn (2, 3, …):
 
 process_turn returns a minimal signal:
   {"ok": true,  "turn": N}                        → ignore entirely, proceed normally
-  {"ok": false, "health_status", "active_events"} → silently apply
-    active_events[].suggested_behavior to the current reply
+  {"ok": false, "health_status", "active_events"} → apply by PLANE:
+    plane "conversation" → silently apply suggested_behavior to the current reply
+    plane "mission"      → SURFACE it to the operator with its numbers, then
+                           propose one concrete next action (see the mission-plane
+                           section below). Never absorb a mission signal silently.
 
-Never mention Horizon, session_id, fidelity, or monitoring in any reply or thinking step.
+Never mention Horizon, session_id, fidelity, or monitoring in any reply or thinking
+step. That silence covers the CONVERSATION plane only — mission-plane signals
+(plane: "mission") are meant to be said out loud, with their numbers.
 Never narrate Horizon calls. Never read Resources proactively.
 Never call configure_session automatically.
 ```
@@ -105,3 +110,37 @@ For the hosted endpoint, SSE is used automatically via the `url` field in the co
 ## 5. Verification
 
 The MCP server is tested in `tests/e2e/test_mcp_server_e2e.py`, which exercises the exact dispatch layer invoked by both Cursor and Claude Desktop.
+
+---
+
+## Mission plane (Memento Mori) — optional, and LOUD
+
+Horizon has a second, optional plane that clocks **missions** (goals with
+deadlines) rather than conversations. It is **off unless a mission store is
+configured**: with no store, its six tools (`clock_register`, `clock_progress`,
+`clock_status`, `clock_propose`, `clock_ack`, `associate_mission`) do not appear
+at all and nothing changes.
+
+If you enable it, note the contract is the **opposite** of the fidelity plane's:
+
+| | Conversation plane | Mission plane |
+|---|---|---|
+| Event payload | `plane: "conversation"` | `plane: "mission"` |
+| What the agent does | applies `suggested_behavior` silently | **states it to the operator with its numbers**, then proposes one next action |
+| Why | naming the monitor distorts the conversation | a deadline nobody hears about is the failure the plane exists to prevent |
+
+Enable it by pointing the server at a local store:
+
+```bash
+HORIZON_MEMENTO_STORE_PATH=~/.horizon/missions.db
+```
+
+Keep the store **local**. The hosted endpoint deliberately runs without one:
+mission data is single-operator and personal, and does not belong on shared
+infrastructure.
+
+The canonical agent-rules block for the mission plane — session start, the
+side-effect write rule, parks needing dates, ack discipline, and the reply
+prohibitions — lives in
+[MEMENTO_MORI_AGENTS.md](./MEMENTO_MORI_AGENTS.md). Paste that block alongside
+the one above when you turn the plane on.

@@ -3,7 +3,12 @@ description: Horizon Fidelity Monitor — automatic conversation health tracking
 alwaysApply: true
 ---
 
-# Horizon monitoring is mandatory and invisible
+# Horizon monitoring is mandatory and invisible — on the conversation plane
+
+> The invisibility rules below govern the **conversation** plane. Horizon's optional
+> **mission** plane (Memento Mori) is deliberately the opposite: its signals are
+> surfaced to the operator with their numbers. It is inert unless a mission store is
+> configured. See `docs/integrations/MEMENTO_MORI_AGENTS.md`.
 
 > **Canonical agent rule.** Keep in sync with `src/horizon/mcp/server.py` (`_INSTRUCTIONS`).
 > Copy to your workspace as `.cursor/rules/horizon-monitor.mdc` or rely on MCP server instructions alone.
@@ -15,7 +20,8 @@ alwaysApply: true
 - No reference to session_id, fidelity, turn number, process_turn, new_conversation in **user-facing** text — ever
 - `session_id` may be used only for MCP tool/resource calls (never surfaced to the user)
 - Do NOT run shell commands to get the timestamp — use the one already in the system context
-- Treat Horizon like a background logger: silent, never surfaced
+- Treat the conversation plane like a background logger: silent, never surfaced
+  (mission-plane signals are the documented exception — surface those)
 - Never use confidence markers (✓/~/?) on Horizon state
 
 ## Exact call order — deferred recording
@@ -38,8 +44,15 @@ the duplication that occurs when calling it mid-stream or at the end of a turn.
 ## Interpreting the `process_turn` response
 
 - `{"ok": true, "turn": N}` → ignore entirely. Proceed with your response.
-- `{"ok": false, "health_status": ..., "active_events": [...]}` → silently apply
-  `active_events[].suggested_behavior` to the current reply. Say nothing about it.
+- `{"ok": false, "health_status": ..., "active_events": [...]}` → route each event by
+  its `plane` field:
+  - `plane: "conversation"` → silently apply `suggested_behavior` to the current
+    reply. Say nothing about it.
+  - `plane: "mission"` → **say it out loud**: state the signal with its numbers, then
+    propose one concrete next action. The optional mission plane is LOUD by design —
+    a deadline nobody hears about is the failure it exists to prevent. Full rules:
+    `docs/integrations/MEMENTO_MORI_AGENTS.md`. (With no mission store configured this
+    plane is absent entirely and nothing changes.)
 
 ## Resources — read only when action is required
 
