@@ -380,3 +380,128 @@ def test_e24_signals_consume_the_engine_argmax_rather_than_recomputing(store):
             assert sig.payload["slot_label"] == engine_winner.slot_label
             assert sig.payload["n"] == engine_winner.n
             assert sig.payload["censored"] == engine_winner.censored
+
+
+# --------------------------------------------------------------------------
+# E-25 — third-party display-name retention (PRD §8)
+# --------------------------------------------------------------------------
+def test_e25_person_display_name_flagged_for_retention_after_the_wait_closes(store):
+    """PRD §8 keeps a third party's display name "only for the open wait ...
+    with short retention after the wait ends". The engine must FLAG
+    eligibility; nothing may delete operator data silently."""
+    root = _root(store)
+    mission = store.register_item(
+        kind=ItemKind.MISSION,
+        title="m",
+        parent_id=root,
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    person = store.register_item(
+        kind=ItemKind.ENTITY,
+        title="a-real-persons-actual-name",
+        parent_id=mission,
+        namespace="person",
+        person_namespace_confirmed=True,
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    store.record_event(
+        item_id=person,
+        kind=EventKind.STAGE_ENTER,
+        valid_time=datetime(2026, 5, 1, tzinfo=UTC),
+        stage="review",
+    )
+    store.record_event(
+        item_id=person,
+        kind=EventKind.STAGE_EXIT,
+        valid_time=datetime(2026, 6, 1, tzinfo=UTC),
+        stage="review",
+    )
+
+    # retention disabled -> no flag (the check is opt-in, operator-declared)
+    off = engine.evaluate(store.snapshot(), T_EVAL, MementoConfig(store_path=None))
+    row_off = next(r for r in off.items if r.item_id == person)
+    assert row_off.retention_due is False
+
+    # wait closed 2026-06-01; evaluating 2026-08-18 is 78 days later
+    cfg = MementoConfig(store_path=None, person_name_retention_days=30)
+    on = engine.evaluate(store.snapshot(), T_EVAL, cfg)
+    row_on = next(r for r in on.items if r.item_id == person)
+    assert (
+        row_on.retention_due is True
+    ), "a person wait closed well beyond the retention window must be flagged"
+
+    # an OPEN wait is never retention-due — the name is still needed to act
+    other = store.register_item(
+        kind=ItemKind.ENTITY,
+        title="another-name",
+        parent_id=mission,
+        namespace="person",
+        person_namespace_confirmed=True,
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    store.record_event(
+        item_id=other,
+        kind=EventKind.STAGE_ENTER,
+        valid_time=datetime(2026, 8, 1, tzinfo=UTC),
+        stage="review",
+    )
+    on2 = engine.evaluate(store.snapshot(), T_EVAL, cfg)
+    assert next(r for r in on2.items if r.item_id == other).retention_due is False
+
+
+def test_e25_redaction_is_explicit_and_scoped_to_person_entities(store):
+    """The operation exists, removes only the name, and refuses slot entities —
+    the plane flags, the operator redacts."""
+    from horizon_monitor.memento.errors import RetentionScopeError
+
+    root = _root(store)
+    mission = store.register_item(
+        kind=ItemKind.MISSION,
+        title="m",
+        parent_id=root,
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    person = store.register_item(
+        kind=ItemKind.ENTITY,
+        title="a-real-persons-actual-name",
+        parent_id=mission,
+        namespace="person",
+        person_namespace_confirmed=True,
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    slot = store.register_item(
+        kind=ItemKind.ENTITY,
+        title="vendor-queue",
+        parent_id=mission,
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    store.record_event(
+        item_id=person,
+        kind=EventKind.STAGE_ENTER,
+        valid_time=datetime(2026, 5, 1, tzinfo=UTC),
+        stage="s",
+    )
+    store.record_event(
+        item_id=person,
+        kind=EventKind.STAGE_EXIT,
+        valid_time=datetime(2026, 6, 1, tzinfo=UTC),
+        stage="s",
+    )
+
+    store.redact_person_display_name(person)
+    snap = store.snapshot()
+    item = next(i for i in snap.items if i.item_id == person)
+    assert "a-real-persons-actual-name" not in item.title
+    assert item.title == store.REDACTED_TITLE
+
+    # the measurement survives redaction — only the name went
+    report = engine.evaluate(snap, T_EVAL, MementoConfig(store_path=None))
+    row = next(r for r in report.items if r.item_id == person)
+    assert row.time_in_stage_days == 31
+
+    # functional slots are not personal data and are out of scope
+    try:
+        store.redact_person_display_name(slot)
+        raise AssertionError("redaction must refuse a slot-namespace entity")
+    except RetentionScopeError as e:
+        assert "person-namespace" in str(e)

@@ -1,7 +1,7 @@
 # Horizon Memento Mori — Technical Specification
 
 **Status:** design — implementation not started. Derived from
-[`horizon_memento_mori_intent.yaml`](horizon_memento_mori_intent.yaml) (v0.8) and
+[`horizon_memento_mori_intent.yaml`](horizon_memento_mori_intent.yaml) (v1.0) and
 [`../product/MEMENTO_MORI_PRD.md`](../product/MEMENTO_MORI_PRD.md).
 Sub-module intents: [`intents/memento_store_intent.yaml`](intents/memento_store_intent.yaml) ·
 [`intents/memento_engine_intent.yaml`](intents/memento_engine_intent.yaml) ·
@@ -43,6 +43,7 @@ class MementoConfig:
     per_turn_fire_cap: int = 1
     stale_ack_days: int = 30
     cost_of_delay_threshold: Decimal | None = None   # gates signal.cost_of_delay
+    person_name_retention_days: int | None = None    # PRD §8 display-name retention
 ```
 
 `MementoConfig` hangs off the existing `Config`; `store_path is None` must make every
@@ -278,13 +279,24 @@ tests/integration/memento_mori/ ... # process_turn wiring, MCP tools
 ## 8. Error Handling
 
 Schema violations raise typed exceptions (`UndatedDeferralError`, `RootlessItemError`,
-`DuplicateRootError`, `PersonNamespaceUnflaggedError`) with messages that state the
+`DuplicateRootError`, `PersonNamespaceUnflaggedError`, `RetentionScopeError`) with messages that state the
 rule and the fix — never silently coerced. Store corruption (orphaned parent) fails the
 evaluation loudly. Missing optional inputs (no rate, no λ, empty comparable class)
 degrade *by omission with an explanatory field*, never by substitution of a guessed
 value.
 
-## 9. Non-Goals (binding, from intent v0.7)
+### 8.1 Display-name retention (PRD §8)
+
+A person-namespace entity's display name is kept only for the open wait. With
+`person_name_retention_days` declared, the engine flags `retention_due` on a row
+whose wait closed beyond that window; `MementoStore.redact_person_display_name`
+is the explicit operation that acts on the flag, replacing the title and leaving
+every recorded latency intact. The plane never purges on its own — silent
+deletion of operator data is irreversible and would be control rather than
+measurement. Redaction is scoped to person entities; functional slots are not
+personal data and are refused with `RetentionScopeError`.
+
+## 9. Non-Goals (binding, from intent v1.0)
 
 Duration estimation · task management · progress/latency semantic judgment · financial
 modelling beyond rate×duration arithmetic · purchase advice · counterfactuals ·

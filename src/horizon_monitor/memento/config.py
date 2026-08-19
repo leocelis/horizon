@@ -48,6 +48,17 @@ class MementoConfig:
 
     ttl_proposal_percentile: float = 0.80
 
+    person_name_retention_days: int | None = None
+    """Days after a person-namespace entity's wait CLOSES before its display
+    name is due for redaction (PRD §8: a third party's display name is kept
+    "only for the open wait ... with short retention after the wait ends").
+
+    None disables the check. The plane never deletes on its own — it flags
+    ``retention_due`` on the row and offers
+    ``MementoStore.redact_person_display_name``; destroying operator data
+    silently would be control, not measurement, and is irreversible.
+    """
+
     cost_of_delay_threshold: Decimal | None = None
     """Operator-set threshold above which accrued cost-of-delay fires
     ``signal.cost_of_delay`` (PRD §5.2). The signal is only ever computable

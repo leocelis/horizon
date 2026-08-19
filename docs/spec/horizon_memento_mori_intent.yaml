@@ -149,6 +149,30 @@
 #                     without a test existing — written. New engine sub-intent
 #                     constraint censored_latency_semantics (conflict_prone,
 #                     execution_derived oracle). Parent constraints: still 7.
+#   v1.1  2026-08-19  PRD CONFORMANCE PASS (26 PRD claims executed against the
+#                     shipped code, not inferred from test names). 25 passed;
+#                     the one real gap was PRD 8's promise that a third
+#                     party's display name is kept "only for the open wait,
+#                     with short retention after the wait ends" — no retention
+#                     path existed. Implemented as FLAG-then-operator-acts:
+#                     config.person_name_retention_days (opt-in, operator
+#                     declared) makes the engine set ItemClock.retention_due on
+#                     a person entity whose wait CLOSED beyond the window (an
+#                     open wait is never due — the name is still needed to
+#                     act), and MementoStore.redact_person_display_name is the
+#                     explicit operation, scoped to person entities
+#                     (RetentionScopeError otherwise) and leaving every
+#                     recorded latency intact. The plane deliberately does NOT
+#                     purge on its own: silent deletion of operator data is
+#                     irreversible and is control, not measurement. Two probe
+#                     findings were NOT defects and are recorded so they are
+#                     not "fixed" later by mistake: (a) under the per-turn cap
+#                     a later turn firing a DIFFERENT item's first edge is
+#                     correct, so the edge invariant is per (item, signal_type)
+#                     pair, not per-turn counts; (b) a person's display name
+#                     appearing in its OWN item row is the PRD 8 carve-out —
+#                     the ban is on ranking/comparison surfaces, which are
+#                     redacted. Constraints: still 7.
 
 parent_intent: "horizon_intent.yaml"
 

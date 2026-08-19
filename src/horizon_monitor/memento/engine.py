@@ -49,7 +49,11 @@ def evaluate(snapshot: StoreSnapshot, t_eval: datetime, config: MementoConfig) -
     stage_by_item: dict[str, tuple[int | None, bool | None]] = {}
     for item in sorted(snapshot.items, key=lambda i: i.item_id):
         row, stage_days, stage_open = _evaluate_item(
-            item, events_by_item.get(item.item_id, ()), root, eval_date
+            item,
+            events_by_item.get(item.item_id, ()),
+            root,
+            eval_date,
+            retention_days=config.person_name_retention_days,
         )
         rows.append(row)
         stage_by_item[item.item_id] = (stage_days, stage_open)
@@ -166,12 +170,24 @@ def _evaluate_item(
     events: tuple[ClockEvent, ...],
     root: Item | None,
     eval_date: date,
+    retention_days: int | None = None,
 ) -> tuple[ItemClock, int | None, bool | None]:
     """Per-item arithmetic (MEMENTO_MORI_TECH_SPEC.md §4 step 2). Returns
     the ItemClock row plus (stage_days, stage_open) so callers building
     path comparisons/slowest-entity don't have to re-walk events."""
     age_days, future_dated = _age_days(item.created_valid, eval_date)
     stage_days, stage_open, wait_ratio, stage_omitted = _stage_sojourn(events, eval_date)
+
+    # PRD §8: a third party's display name is kept only for the open wait,
+    # with short retention after it ends. Flag only — the plane never deletes
+    # operator data on its own (irreversible, and control rather than
+    # measurement); MementoStore.redact_person_display_name is the operation.
+    retention_due = False
+    if retention_days is not None and item.namespace == "person" and stage_open is False:
+        exits = [e.valid_time for e in events if e.kind == EventKind.STAGE_EXIT]
+        if exits:
+            closed_days = (eval_date - max(exits).date()).days
+            retention_due = closed_days > retention_days
 
     days_remaining: int | None = None
     ttl_state: str | None = None
@@ -254,6 +270,7 @@ def _evaluate_item(
         horizon_share=horizon_share,
         time_in_stage_days=stage_days,
         is_open_stage=stage_open,
+        retention_due=retention_due,
         wait_vs_touch_ratio=wait_ratio,
         future_dated=future_dated,
         derivation="; ".join(derivation_parts),

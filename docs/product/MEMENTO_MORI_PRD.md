@@ -352,7 +352,11 @@ are a product failure mode, not just a legal one.
 **May be recorded:** the operator's own timestamps; **functional slot** labels
 ("counsel," "vendor queue," "operator") with sojourns; a third party's display name
 only for an open wait the operator must act on, with short retention after the wait
-closes.
+closes — implemented as an operator-declared retention window that flags an expired
+name for redaction, plus an explicit redaction operation that removes the name and
+leaves every recorded latency intact. The plane flags; it never purges silently,
+because deleting operator data unasked is irreversible and is control rather than
+measurement.
 
 **Must stay aggregate or pseudonymous:** any view comparing people; cross-mission
 responsiveness of a named other; exports and agent prompts (no person-rank tables —

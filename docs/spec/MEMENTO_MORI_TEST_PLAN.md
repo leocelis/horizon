@@ -66,6 +66,7 @@ review. Untagged cases are supporting coverage.
 | E-20 | `slowest_entity` n | `n` equals the population the argmax summarised (matches the derivation's own "over N recorded entities"), never a constant | §6 | [GOLDEN] |
 | E-23 | Open vs closed sojourn | a 1-day open sojourn must NOT outrank a 400-day closed one; blocking_entity names the open one; equal latencies break toward the open (still accruing) | §6 | [GOLDEN] |
 | E-24 | One argmax, not two | `signals._due_predicates` consumes the engine's `slowest_entities` rows; no duplicated argmax survives in the signals module | §6 | [PROPERTY] |
+| E-25 | Display-name retention | with `person_name_retention_days` declared, a person entity whose wait CLOSED beyond the window is flagged `retention_due`; an OPEN wait never is; `redact_person_display_name` removes only the name (latency survives) and refuses slot entities | §8 | [HUMAN] |
 | E-21 | Person-namespace redaction is complete | a person winner is still measured, but both its title AND its resolvable `entity_item_id` are withheld from report and payload — an id resolves to the name through the store | §8 | [HUMAN] |
 | E-19 | Horizon share | M1 elapsed 78d vs H remaining ⇒ share **≈ 0.0595** (78/1310) crosses the 0.05 rung | §6 | [GOLDEN] |
 

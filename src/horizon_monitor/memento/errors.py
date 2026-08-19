@@ -141,6 +141,24 @@ class ArtifactProvenanceRequiredError(SchemaError):
         )
 
 
+class RetentionScopeError(SchemaError):
+    """Display-name redaction was requested on a non-person entity."""
+
+    def __init__(self, item_id: str, namespace: str | None) -> None:
+        self._init_message(
+            "RetentionScopeError",
+            fix=(
+                f"redact_person_display_name applies only to person-namespace "
+                f"entities; {item_id!r} is namespace={namespace!r}. Slot labels "
+                "are functional, not personal data, and are not retention-bound."
+            ),
+            rule=(
+                "PRD 8 - a third party's display name is kept only for the open "
+                "wait, with short retention after the wait ends."
+            ),
+        )
+
+
 class StoreCorruptionError(MementoError):
     """A stored item references a parent_id that no longer resolves.
 

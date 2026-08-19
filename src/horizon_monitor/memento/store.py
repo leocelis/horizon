@@ -32,7 +32,9 @@ from horizon_monitor.memento.errors import (
     DuplicateRootError,
     NonFiniteRootError,
     PersonNamespaceUnflaggedError,
+    RetentionScopeError,
     RootlessItemError,
+    StoreCorruptionError,
     UndatedDeferralError,
 )
 from horizon_monitor.memento.models import (
@@ -316,6 +318,31 @@ class MementoStore:
             conn.execute(
                 "UPDATE mm_items SET status = ?, superseded_by = ? WHERE item_id = ?",
                 (status, superseded_by, item_id),
+            )
+
+    REDACTED_TITLE = "[redacted — retention]"
+
+    def redact_person_display_name(self, item_id: str) -> None:
+        """Replace a person-namespace entity's display name with a placeholder.
+
+        PRD §8 keeps a third party's display name only for the open wait, with
+        short retention after it ends. The engine FLAGS eligibility
+        (``ItemClock.retention_due``); this is the explicit operation that acts
+        on it, so the destruction is always a recorded decision rather than a
+        silent background sweep. Latency measurement is unaffected — only the
+        name goes.
+        """
+        with self._txn() as conn:
+            row = conn.execute(
+                "SELECT namespace FROM mm_items WHERE item_id = ?", (item_id,)
+            ).fetchone()
+            if row is None:
+                raise StoreCorruptionError(f"unknown item_id {item_id!r}")
+            if row["namespace"] != "person":
+                raise RetentionScopeError(item_id, row["namespace"])
+            conn.execute(
+                "UPDATE mm_items SET title = ? WHERE item_id = ?",
+                (self.REDACTED_TITLE, item_id),
             )
 
     @staticmethod

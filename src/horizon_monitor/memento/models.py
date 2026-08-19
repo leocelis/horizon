@@ -180,6 +180,11 @@ class ItemClock:
     is_open_stage: bool | None = None
     wait_vs_touch_ratio: float | None = None
     future_dated: bool = False
+    retention_due: bool = False
+    """True for a person-namespace entity whose wait closed longer ago than
+    config.person_name_retention_days — its display name is due for redaction
+    (PRD §8). Advisory: the plane flags, the operator redacts."""
+
     derivation: str = ""
     n: int | None = None
     omitted: str | None = None

@@ -25,7 +25,7 @@ intent:
     alarm philosophy (memento/philosophy.md). The plane is only ever additive to
     process_turn for sessions explicitly associated with missions. The agent/MCP
     surface (clock_register, clock_progress, clock_status, clock_propose, clock_ack,
-    associate_mission) added in parent v0.8 is specified here, not in a new segment:
+    associate_mission) added in parent v0.8 (current: v1.0) is specified here, not in a new segment:
     docs/integrations/MEMENTO_MORI_AGENTS.md §3 is the canonical, test-checked
     (M-6) list of what ships.
 
