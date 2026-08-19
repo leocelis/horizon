@@ -343,8 +343,47 @@ different question: *is this goal still moving, and against what clock?* A month
 individually healthy conversations that advance nothing is, to a conversation monitor, a
 month of perfect health.
 
-**It is off by default.** With no store configured its six tools do not register and
+**The name is the design.** Every store has exactly one **root horizon** — a finite end
+date you choose. Everything else hangs off it, so every day an item spends is a share of
+a budget that is visibly running out. Without a finite root, deferring work costs
+nothing and "later" is free forever. That is the failure this plane exists to make
+visible.
+
+**It is off by default.** With no store configured, its six tools do not register and
 nothing in your integration changes.
+
+### The problem it catches
+
+A task was given until 20 July. It is now 18 August and nobody has touched the mission
+since 2 July. A decision was parked "until things calm down" with a revisit date of
+10 August that has quietly passed. The work has been sitting with one party for three
+weeks. None of that is visible in any conversation, in any tracker's status column, or
+in a model's context window — and each turn of each conversation about it looks healthy.
+
+The mission plane reports it as: mission 78 days old, 47 days since progress, task
+lifespan expired, park 8 days overdue, currently blocked on `operator` for 21 days and
+counting.
+
+### Vocabulary
+
+Everything is an **item** in a tree under the root horizon. There are eight kinds:
+
+| Kind | What it is |
+|---|---|
+| `horizon` | the finite root — exactly one per store, and the denominator for every share |
+| `mission` | a goal with a clock; the thing that can stall |
+| `task` | a unit of work with a **TTL** — an agreed window whose expiry means *investigate*, never *you estimated badly* |
+| `deadline` | an external date (regulatory, contractual, market), ideally linked to the internal work it gates |
+| `gate` | a checkpoint with an age budget |
+| `entity` | something the work passes through and waits on — a queue, a vendor, a system, you |
+| `deferral` | a park. **Requires a revisit date**; the store refuses one without it |
+| `probe` | a small, dated trial of an alternative way of working, so routes are compared by measurement rather than opinion |
+
+Two more terms appear in the outputs: a **sojourn** is one recorded stay in a stage
+(enter → exit), and the **incumbent** is the way you are working today, as opposed to a
+probe of some alternative.
+
+### Quickstart
 
 ```bash
 export HORIZON_MEMENTO_STORE_PATH=~/.horizon/missions.db   # local, single-operator
@@ -357,35 +396,27 @@ from horizon_monitor.memento import (
     EventKind, ItemKind, MementoConfig, MementoStore, evaluate,
 )
 
-store = MementoStore("missions.db")
+store = MementoStore("missions.db")   # a real file; set this up once
 
-# Exactly one root, and it must be finite — that is what makes elapsed time cost
-# something. Every other item hangs off it.
 root = store.register_item(
-    kind=ItemKind.HORIZON,
-    title="engagement horizon",
+    kind=ItemKind.HORIZON, title="engagement horizon",
     created_valid=datetime(2026, 1, 1, tzinfo=timezone.utc),
     end_date=date(2030, 1, 1),
 )
 mission = store.register_item(
-    kind=ItemKind.MISSION,
-    title="ship-the-thing",
-    parent_id=root,
-    stall_days=14,
+    kind=ItemKind.MISSION, title="ship-the-thing", parent_id=root,
+    stall_days=14,                    # silence longer than this is a stall
     created_valid=datetime(2026, 6, 1, tzinfo=timezone.utc),
 )
-store.record_event(
-    item_id=mission,
-    kind=EventKind.PROGRESS,
+store.record_event(                   # progress: a side-effect of the work
+    item_id=mission, kind=EventKind.PROGRESS,
     valid_time=datetime(2026, 7, 2, tzinfo=timezone.utc),
 )
 
 # The evaluation instant is always a parameter — the engine never reads a clock,
 # so the same store at the same instant always yields the same report.
 report = evaluate(
-    store.snapshot(),
-    datetime(2026, 8, 18, 12, tzinfo=timezone.utc),
-    MementoConfig(),
+    store.snapshot(), datetime(2026, 8, 18, 12, tzinfo=timezone.utc), MementoConfig()
 )
 
 row = next(r for r in report.items if r.item_id == mission)
@@ -395,6 +426,13 @@ print(f"recording path:  {row.recording_path}")           # no recent work
 print(f"horizon share:   {row.horizon_share:.4f}")        # 0.0595
 ```
 
+The store is a real database, so run the setup once — registering a second root raises
+`DuplicateRootError` by design, which is the one-finite-root guarantee working, not a
+bug. For the full picture — an expired task, an overdue park, the blocking entity, a
+refused write and a fired signal — run
+[`examples/memento_mori_mission_clock.py`](examples/memento_mori_mission_clock.py) (no
+arguments, no network, no API key; it uses a fresh temporary store each time).
+
 ### What it measures
 
 | Output | Meaning |
@@ -402,15 +440,17 @@ print(f"horizon share:   {row.horizon_share:.4f}")        # 0.0595
 | Age, days-remaining, TTL state | how old work is, how long is left, whether a task outlived its window |
 | Days-since-progress + recording-path check | a stall — and whether it is *no work* or *no records*, never conflated |
 | Slowest entity / blocking entity | the longest recorded wait, and separately what the work waits on **right now** |
-| Horizon share | what fraction of a finite budget this item has consumed |
-| Cost-of-delay, break-even date | only when *you* declare a rate and amounts |
+| Horizon share | what fraction of the remaining root horizon this item has consumed |
+| Cost-of-delay, break-even date | only when *you* declare an hourly rate and amounts |
 | Path comparison | a probe's recorded sojourn beside the incumbent's accrued delay |
 
 ### 12 signal types (mission plane)
 
 Separate from the conversation plane's [16 event types](#16-event-types-conversation-plane),
 not an extension of them. Each fires **once on an edge** — when its predicate becomes
-true — never again while the condition persists, and at most one new signal per turn.
+true — never again while the condition persists, and at most one new signal per turn, so
+a bad week cannot flood you. Tiers order that cap: **P1** is time-critical, **P2**
+structural, **P3** informational.
 
 | Signal | Fires when | Tier |
 |---|---|---|
@@ -427,10 +467,12 @@ true — never again while the condition persists, and at most one new signal pe
 | `signal.path_ahead` | a probe's recorded sojourn is shorter than the incumbent's accrued delay (descriptive only) | P3 |
 | `signal.breakeven_passed` | a ratified break-even date passes without the measured improvement | P3 |
 
-These ride the existing `process_turn` contract for sessions
-bound with `associate_mission`. Every event carries `plane: "mission"`, and the contract
-is deliberately **loud** — mission signals are surfaced to the operator with their
-numbers, unlike conversation signals, which apply silently.
+These ride the existing `process_turn` contract for sessions bound with
+`associate_mission`. Every event carries `plane: "mission"`, and the contract is
+deliberately **loud** — mission signals are surfaced to the operator with their numbers,
+unlike conversation signals, which apply silently. See
+[agent rules](docs/integrations/MEMENTO_MORI_AGENTS.md) for the block to paste into your
+host.
 
 ### What it refuses
 
@@ -454,8 +496,7 @@ identical evaluation instant produces a byte-identical report.
 **Docs:** [product requirements](docs/product/MEMENTO_MORI_PRD.md) ·
 [technical spec](docs/spec/MEMENTO_MORI_TECH_SPEC.md) ·
 [agent rules](docs/integrations/MEMENTO_MORI_AGENTS.md) ·
-[acceptance test plan](docs/spec/MEMENTO_MORI_TEST_PLAN.md) ·
-runnable example [`examples/memento_mori_mission_clock.py`](examples/memento_mori_mission_clock.py)
+[acceptance test plan](docs/spec/MEMENTO_MORI_TEST_PLAN.md)
 
 ---
 
