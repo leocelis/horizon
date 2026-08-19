@@ -31,6 +31,11 @@ from horizon_monitor.grounding import (
     call_hook,
     estimate_grounding_need,
 )
+from horizon_monitor.memento import engine as memento_engine
+from horizon_monitor.memento import signals as memento_signals
+from horizon_monitor.memento.config import MementoConfig
+from horizon_monitor.memento.signals import AssociationRegistry
+from horizon_monitor.memento.store import MementoStore
 from horizon_monitor.models import (
     ConfigResult,
     ConfigWarning,
@@ -89,6 +94,8 @@ class FidelityMonitor:
         config: Config | None = None,
         store: Any | None = None,
         grounding_hook: ToolHook | None = None,
+        memento_store: MementoStore | None = None,
+        memento_config: MementoConfig | None = None,
     ) -> None:
         """Initialise the monitor.
 
@@ -98,6 +105,19 @@ class FidelityMonitor:
             grounding_hook: Optional callable (see horizon_monitor.grounding.ToolHook) invoked
                             when a turn looks ungrounded. With no hook, Horizon makes
                             zero outbound calls — privacy invariant preserved.
+            memento_store: Optional Memento Mori mission store (a second,
+                            optional plane — horizon_memento_mori_intent.yaml).
+                            With None (the default), this class's behavior is
+                            byte-identical to a build with no memento code at
+                            all: no memento function is ever called
+                            (optional_plane_backward_compat; test plan G-10,
+                            M-4). Configuring it does not enable anything on
+                            its own — a session must still be bound to a
+                            mission via associate_mission() (test plan G-11,
+                            M-3) before any mission signal reaches it.
+            memento_config: Tunables for the mission plane (stall thresholds,
+                            per-turn fire cap, …). Defaults to MementoConfig()
+                            when memento_store is set and this is omitted.
         """
         self._config = config or Config()
         self._sessions: dict[str, Session] = {}
@@ -108,6 +128,13 @@ class FidelityMonitor:
         self._store = store
         self._grounding_hook: ToolHook | None = grounding_hook
         self._last_grounding: dict[str, GroundingResult] = {}
+        self._memento_store = memento_store
+        self._memento_config = memento_config or MementoConfig()
+        # Always constructed — pure in-memory bookkeeping with zero effect
+        # unless BOTH an association exists AND memento_store is configured
+        # (_mission_events_for_turn checks memento_store first and returns
+        # immediately when it is None).
+        self._memento_association = AssociationRegistry()
 
     @property
     def session_count(self) -> int:
@@ -217,6 +244,19 @@ class FidelityMonitor:
     # an error, or a "forget this session" admin action).
     delete_session = end_conversation
 
+    # ── Memento Mori (optional mission plane) ───────────────────────────────
+
+    def associate_mission(self, session_id: str, mission_id: str) -> None:
+        """Bind `session_id` to `mission_id` so that mission's due signals
+        (post-cap, at most one new per turn) start arriving in this
+        session's `process_turn` results, tagged `plane="mission"`
+        (horizon_memento_mori_intent.yaml::interface.tools.associate_mission;
+        test plan G-11, M-3). Calling this with no `memento_store` configured
+        is harmless — the association is recorded but has nothing to feed
+        until a store exists. Association is additive and survives repeated
+        calls / session re-registration (AssociationRegistry.associate)."""
+        self._memento_association.associate(session_id, mission_id)
+
     def process_turn(
         self,
         session_id: str,
@@ -263,6 +303,63 @@ class FidelityMonitor:
                 logprobs,
                 human_latency_ms,
             )
+
+    def _mission_events_for_turn(
+        self, session_id: str, turn_number: int, timestamp: str | None
+    ) -> list[Event]:
+        """Evaluate the mission plane for this turn and return its due
+        signals (post-cap) as `Event(plane="mission")` rows, scoped to only
+        the missions `session_id` has been explicitly associated with via
+        `associate_mission` (test plan G-11, M-3). Returns `[]` — never
+        raises, never touches memento — whenever any of: no memento_store
+        configured, no association for this session, or no host-injected
+        timestamp (the evaluation instant is never guessed; see
+        memento_engine_intent.yaml::pure_function_injected_time).
+        """
+        if self._memento_store is None:
+            return []
+        mission_ids = self._memento_association.missions_for(session_id)
+        if not mission_ids:
+            return []
+        if timestamp is None:
+            return []
+        t_eval = parse_timestamp(timestamp)
+
+        snapshot = self._memento_store.snapshot()
+        report = memento_engine.evaluate(snapshot, t_eval, self._memento_config)
+        signal_report, new_fire_states = memento_signals.evaluate_signals(
+            snapshot, report, t_eval, self._memento_config
+        )
+        for (item_id, signal_type), state in new_fire_states.items():
+            self._memento_store.set_fire_state(item_id, signal_type, state)
+
+        items_by_id = {item.item_id: item for item in snapshot.items}
+        scoped_missions = set(mission_ids)
+        events: list[Event] = []
+        for sig in signal_report.fired:
+            owning_mission = memento_signals.mission_scope_for_item(sig.item_id, items_by_id)
+            if owning_mission not in scoped_missions:
+                continue
+            events.append(
+                Event(
+                    type=f"signal.{sig.signal_type}",
+                    active=True,
+                    confidence=1.0,
+                    turn=turn_number,
+                    suggested_behavior=sig.suggested_behavior,
+                    mode=None,
+                    metadata={
+                        "item_id": sig.item_id,
+                        "tier": sig.tier,
+                        "state": sig.state,
+                        "n": sig.n,
+                        "derivation": sig.derivation,
+                        **sig.payload,
+                    },
+                    plane="mission",
+                )
+            )
+        return events
 
     def _run_pipeline(
         self,
@@ -525,6 +622,16 @@ class FidelityMonitor:
             config,
             agent_response=agent_response,
         )
+
+        # ── Step 13b: Memento Mori mission signals (optional plane) ───────
+        # No memento_store configured, or this session was never associated
+        # with a mission → mission_events is [] and `events` is left exactly
+        # as evaluate_events() produced it (optional_plane_backward_compat;
+        # test plan G-10, G-11, M-3, M-4).
+        mission_events = self._mission_events_for_turn(session.session_id, turn_number, timestamp)
+        if mission_events:
+            events = events + mission_events
+
         session.event_log.extend(events)
 
         # Persist turn if store is configured

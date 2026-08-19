@@ -449,6 +449,23 @@ def ack(
     }
 
 
+def mission_scope_for_item(item_id: str, items_by_id: dict[str, Item]) -> str | None:
+    """Walk ``item_id``'s parent chain to the nearest ancestor of
+    kind=MISSION (or ``item_id`` itself, when it already is one) — the
+    binding unit ``associate_mission`` operates on
+    (memento_signals_intent.yaml::strict_additivity; test plan M-3, G-11).
+    Returns ``None`` when the item has no MISSION ancestor (e.g. it hangs
+    directly off the root), meaning no association can ever scope it in."""
+    seen: set[str] = set()
+    current = items_by_id.get(item_id)
+    while current is not None and current.item_id not in seen:
+        if current.kind == ItemKind.MISSION:
+            return current.item_id
+        seen.add(current.item_id)
+        current = items_by_id.get(current.parent_id) if current.parent_id else None
+    return None
+
+
 class AssociationRegistry:
     """In-memory session -> mission binding
     (interface.tools.associate_mission). Without an explicit association a

@@ -44,12 +44,21 @@ import dataclasses
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 from horizon_monitor import Config, FidelityMonitor, __version__
 from horizon_monitor.mcp.auth import current_key_id
 from horizon_monitor.mcp.session_registry import SessionOwnershipError, SessionRegistry
+from horizon_monitor.memento import engine as memento_engine
+from horizon_monitor.memento import propose as memento_propose
+from horizon_monitor.memento import signals as memento_signals
+from horizon_monitor.memento.config import MementoConfig
+from horizon_monitor.memento.errors import MementoError
+from horizon_monitor.memento.models import EventKind, ItemKind, Provenance
+from horizon_monitor.memento.store import MementoStore
 from horizon_monitor.monitor import SessionNotFoundError
 
 # Per-key session cap on the hosted multi-tenant server (see session_registry.py
@@ -169,6 +178,351 @@ REQUIRE HUMAN APPROVAL:
   configure_session
 """.strip()
 
+# ── FastMCP app ───────────────────────────────────────────────────────────────
+
+mcp = FastMCP(
+    "horizon-fidelity-monitor",
+    instructions=_INSTRUCTIONS,
+    transport_security=_transport_security(),
+)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MEMENTO MORI — optional mission plane (docs/integrations/MEMENTO_MORI_AGENTS.md)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# The mission plane is LOUD (unlike the conversation plane above, which stays
+# invisible): its tool descriptions carry the surface-don't-absorb line so a
+# schema-only client still inherits the behavioral contract (test plan M-5).
+
+_LOUD_CONTRACT_LINE = (
+    "This is the Memento Mori MISSION plane, not the conversation monitor: "
+    "surface this to the operator with its numbers; never absorb it silently. "
+    "See docs/integrations/MEMENTO_MORI_AGENTS.md §1-2."
+)
+
+
+def _memento_store_path_from_env() -> Path | None:
+    """None => the mission plane is disabled entirely; no store is opened
+    and its six tools never register (test plan M-1), mirroring
+    memento_signals_intent.yaml::strict_additivity's "code path not
+    entered" mechanism."""
+    raw = os.environ.get("HORIZON_MEMENTO_STORE_PATH")
+    return Path(raw) if raw else None
+
+
+def _jsonable(obj: Any) -> Any:
+    """Round-trip through JSON so Decimal/date/datetime values in a memento
+    report become JSON-native before crossing the MCP wire, the same way
+    the trajectory/events Resources already do with `default=str`."""
+    return json.loads(json.dumps(obj, default=str))
+
+
+def _serialize_memento_error(exc: MementoError) -> dict:
+    """{error_type, rule, fix} — never a stack trace, never a silent
+    coercion (test plan M-2 [GOLDEN]). Every horizon_monitor.memento.errors
+    exception sets `.rule` and `.fix` as first-class attributes (see
+    memento/errors.py); reading them directly avoids regex-parsing the
+    human-readable message, which broke on rule text containing its own
+    sentence breaks (e.g. PersonRankingRefusedError) during the first pass
+    at this function — see the M-2 section of the implementation report."""
+    return {"error_type": type(exc).__name__, "rule": exc.rule, "fix": exc.fix}
+
+
+def _parse_item_kwargs(item: dict) -> dict[str, Any]:
+    """Map the `item` dict from `clock_register` onto
+    `MementoStore.register_item`'s keyword arguments. Every value is either
+    caller-supplied verbatim or a straightforward type parse — no default is
+    invented for a field the caller omitted (facts_are_caller_provided)."""
+    kwargs: dict[str, Any] = {
+        "kind": ItemKind(item["kind"]),
+        "title": item["title"],
+        "created_valid": datetime.fromisoformat(item["created_valid"]),
+    }
+    if item.get("parent_id") is not None:
+        kwargs["parent_id"] = item["parent_id"]
+    for date_field in ("end_date", "revisit_date", "ttl_start", "ttl_end", "deadline_date"):
+        if item.get(date_field) is not None:
+            kwargs[date_field] = date.fromisoformat(item[date_field])
+    for passthrough in (
+        "deadline_kind",
+        "gates_item_id",
+        "age_budget_days",
+        "stall_days",
+        "namespace",
+    ):
+        if item.get(passthrough) is not None:
+            kwargs[passthrough] = item[passthrough]
+    if item.get("person_namespace_confirmed") is not None:
+        kwargs["person_namespace_confirmed"] = bool(item["person_namespace_confirmed"])
+    if item.get("amount") is not None:
+        kwargs["amount"] = Decimal(str(item["amount"]))
+    return kwargs
+
+
+def _parse_event_kwargs(event: dict) -> dict[str, Any]:
+    """Map the `event` dict from `clock_progress` onto
+    `MementoStore.record_event`'s keyword arguments."""
+    kwargs: dict[str, Any] = {
+        "kind": EventKind(event["kind"]),
+        "valid_time": datetime.fromisoformat(event["valid_time"]),
+    }
+    if event.get("tx_time") is not None:
+        kwargs["tx_time"] = datetime.fromisoformat(event["tx_time"])
+    for passthrough in ("stage", "wait_or_touch", "correction_of"):
+        if event.get(passthrough) is not None:
+            kwargs[passthrough] = event[passthrough]
+    if event.get("payload") is not None:
+        kwargs["payload"] = event["payload"]
+    provenance = event.get("provenance")
+    if provenance is not None:
+        kwargs["provenance"] = Provenance(
+            source_system=provenance.get("source_system"),
+            native_id=provenance.get("native_id"),
+            raw_timestamp=(
+                datetime.fromisoformat(provenance["raw_timestamp"])
+                if provenance.get("raw_timestamp")
+                else None
+            ),
+        )
+    return kwargs
+
+
+def register_memento_tools(
+    app: FastMCP, store_path: Path | None
+) -> tuple[MementoStore, MementoConfig] | None:
+    """Register the six mission-plane tools on `app` iff `store_path` is
+    not None. With `store_path=None`, this function returns None and
+    registers NOTHING — the six tools are absent from `app`'s tool
+    discovery entirely, not merely disabled when called (test plan M-1),
+    the same "code path not entered" mechanism `store_path=None` already
+    guarantees for the library API (G-10).
+
+    Returns the constructed `(MementoStore, MementoConfig)` so the caller
+    can hand the same store to the `FidelityMonitor` singleton that backs
+    `process_turn` — one store, one config, shared by the tools and the
+    turn pipeline.
+    """
+    if store_path is None:
+        return None
+
+    memento_store = MementoStore(store_path)
+    memento_config = MementoConfig(store_path=store_path)
+
+    @app.tool(
+        name="clock_register",
+        title="Register or update a clocked mission item",
+        description=(
+            "Create a rooted-tree item (kind: horizon | mission | task | deadline | "
+            "gate | entity | deferral | probe) in the mission store. `item` carries "
+            "kind, title, created_valid (ISO 8601), and kind-specific fields "
+            "(end_date, revisit_date, ttl_start/ttl_end, deadline_date, "
+            "deadline_kind, gates_item_id, age_budget_days, stall_days, namespace, "
+            "amount, parent_id). Schema violations (undated deferral, root-less "
+            "item, unflagged person namespace, duplicate/non-finite root, ...) "
+            "return a typed {error_type, rule, fix} — relay it to the operator "
+            "verbatim, never route around it; e.g. an undated deferral means ask "
+            "the operator for a revisit_date, never invent one. " + _LOUD_CONTRACT_LINE
+        ),
+    )
+    def clock_register(item: dict) -> dict:
+        try:
+            item_id = memento_store.register_item(**_parse_item_kwargs(item))
+            return {"item_id": item_id}
+        except MementoError as exc:
+            return {"error": _serialize_memento_error(exc)}
+
+    @app.tool(
+        name="clock_progress",
+        title="Record a mission progress/stage/artifact event",
+        description=(
+            "Append one event (kind: progress | stage_enter | stage_exit | "
+            "artifact | ratify | ack) to an item's bitemporal log. `event` carries "
+            "kind, valid_time (ISO 8601, when the fact happened), and optionally "
+            "stage, wait_or_touch, payload, correction_of, and provenance "
+            "(required for kind=artifact: source_system, native_id, "
+            "raw_timestamp). Record this as a side effect of real work in the "
+            "SAME turn — never a separate logging session, never a fabricated or "
+            "assumed event. " + _LOUD_CONTRACT_LINE
+        ),
+    )
+    def clock_progress(item_id: str, event: dict) -> dict:
+        try:
+            event_id = memento_store.record_event(item_id=item_id, **_parse_event_kwargs(event))
+            return {"event_id": event_id}
+        except MementoError as exc:
+            return {"error": _serialize_memento_error(exc)}
+
+    @app.tool(
+        name="clock_status",
+        title="Full mission clock surface",
+        description=(
+            "Return the ClockReport for `timestamp` (the host-injected evaluation "
+            "instant; ISO 8601 — omit only when you genuinely have no clock): ages, "
+            "TTL states, latencies, horizon shares, path comparisons, and money "
+            "(only when a rate is declared). Optional `scope` (a mission_id) "
+            "filters the report to that mission's subtree. Open your first "
+            "substantive reply for an associated mission with any red state here, "
+            "numbers included. " + _LOUD_CONTRACT_LINE
+        ),
+    )
+    def clock_status(scope: str | None = None, timestamp: str | None = None) -> dict:
+        try:
+            t_eval = datetime.fromisoformat(timestamp) if timestamp else datetime.now(timezone.utc)
+            snapshot = memento_store.snapshot()
+            report = memento_engine.evaluate(snapshot, t_eval, memento_config)
+            d = report.to_dict()
+            if scope:
+                items_by_id = {i.item_id: i for i in snapshot.items}
+
+                def _in_scope(iid: str) -> bool:
+                    return (
+                        iid == scope
+                        or memento_signals.mission_scope_for_item(iid, items_by_id) == scope
+                    )
+
+                d["items"] = [row for row in d["items"] if _in_scope(row["item_id"])]
+                d["slowest_entities"] = [
+                    s for s in d["slowest_entities"] if s["mission_id"] == scope
+                ]
+                d["money"] = [m for m in d["money"] if _in_scope(m["item_id"])]
+                d["path_comparisons"] = [
+                    p for p in d["path_comparisons"] if p["mission_id"] == scope
+                ]
+            return _jsonable(d)
+        except MementoError as exc:
+            return {"error": _serialize_memento_error(exc)}
+
+    @app.tool(
+        name="clock_propose",
+        title="Inert TTL or break-even proposal from recorded history",
+        description=(
+            "kind='ttl': nearest-rank `percentile` (default P80) over the "
+            "caller-supplied `completed_durations_days` — an empty list returns "
+            "proposal=null, never an invented default. kind='breakeven': "
+            "cost_setup, rate, setup_hours, delta_t_hours, lam_per_day (all "
+            "caller-measured) at `timestamp`. Either way the return is "
+            "{item_id, kind, value, sample_size, derivation} and is INERT: "
+            "nothing is applied until an explicit clock_progress(kind=ratify) "
+            "write. Present the derivation and sample size; the operator "
+            "ratifies. " + _LOUD_CONTRACT_LINE
+        ),
+    )
+    def clock_propose(
+        item_id: str,
+        kind: str,
+        completed_durations_days: list[int] | None = None,
+        percentile: float | None = None,
+        cost_setup: str | None = None,
+        rate: str | None = None,
+        setup_hours: str | None = None,
+        delta_t_hours: str | None = None,
+        lam_per_day: float | None = None,
+        timestamp: str | None = None,
+    ) -> dict:
+        try:
+            if kind == "ttl":
+                proposal = memento_propose.ttl_proposal(
+                    item_id=item_id,
+                    completed_durations_days=completed_durations_days or [],
+                    percentile=(
+                        percentile
+                        if percentile is not None
+                        else memento_config.ttl_proposal_percentile
+                    ),
+                )
+            elif kind == "breakeven":
+                t_eval = (
+                    datetime.fromisoformat(timestamp) if timestamp else datetime.now(timezone.utc)
+                )
+                proposal = memento_propose.breakeven_proposal(
+                    item_id=item_id,
+                    t_eval=t_eval.date(),
+                    cost_setup=Decimal(str(cost_setup)),
+                    rate=Decimal(str(rate)),
+                    setup_hours=Decimal(str(setup_hours)),
+                    delta_t_hours=Decimal(str(delta_t_hours)),
+                    lam_per_day=lam_per_day,
+                )
+            else:
+                return {
+                    "error": {
+                        "error_type": "ValueError",
+                        "rule": "clock_propose.kind",
+                        "fix": "kind must be 'ttl' or 'breakeven'",
+                    }
+                }
+            if proposal is None:
+                return {"proposal": None}
+            return {"proposal": _jsonable(dataclasses.asdict(proposal))}
+        except MementoError as exc:
+            return {"error": _serialize_memento_error(exc)}
+
+    @app.tool(
+        name="clock_ack",
+        title="Acknowledge a fired mission signal",
+        description=(
+            "Move the (item_id, signal_type) alarm state machine to ACKED, "
+            "recording `actor`. Call this ONLY on the operator's explicit "
+            "acknowledgement of that exact signal — never self-ack to quiet a "
+            "signal you find repetitive; the engine already caps and "
+            "edge-triggers, and silence belongs to the operator, not the agent. "
+            "Authorization is enforced by host rules, not by this tool. " + _LOUD_CONTRACT_LINE
+        ),
+    )
+    def clock_ack(item_id: str, signal_type: str, actor: str, timestamp: str | None = None) -> dict:
+        try:
+            t_eval = datetime.fromisoformat(timestamp) if timestamp else datetime.now(timezone.utc)
+            prior = memento_store.get_fire_state(item_id, signal_type) or {}
+            current_rung = prior.get("rung", 0)
+            new_state = memento_signals.ack(
+                item_id=item_id,
+                signal_type=signal_type,
+                valid_time=t_eval,
+                actor=actor,
+                current_rung=current_rung if isinstance(current_rung, int) else 0,
+            )
+            memento_store.set_fire_state(item_id, signal_type, new_state)
+            event_id = memento_store.record_event(
+                item_id=item_id,
+                kind=EventKind.ACK,
+                valid_time=t_eval,
+                payload={"signal_type": signal_type, "actor": actor},
+            )
+            return {"acked": True, "event_id": event_id}
+        except MementoError as exc:
+            return {"error": _serialize_memento_error(exc)}
+
+    @app.tool(
+        name="associate_mission",
+        title="Bind this session to a mission",
+        description=(
+            "Bind `session_id` to `mission_id` so that mission's due signals "
+            "(post-cap, at most one new per turn) start arriving in "
+            'process_turn\'s active_events, tagged plane="mission". Without '
+            "this call, a configured mission store still emits ZERO events into "
+            "this session. Call at the start of any conversation that concerns a "
+            "known mission, before the first clock_status. " + _LOUD_CONTRACT_LINE
+        ),
+    )
+    def associate_mission(session_id: str, mission_id: str) -> dict:
+        monitor = _get_monitor()
+        monitor.associate_mission(session_id, mission_id)
+        return {"associated": True, "session_id": session_id, "mission_id": mission_id}
+
+    return memento_store, memento_config
+
+
+_MEMENTO_STORE_PATH = _memento_store_path_from_env()
+_memento_registration = register_memento_tools(mcp, _MEMENTO_STORE_PATH)
+_memento_store: MementoStore | None
+_memento_config: MementoConfig
+if _memento_registration is not None:
+    _memento_store, _memento_config = _memento_registration
+else:
+    _memento_store, _memento_config = None, MementoConfig()
+
+
 # ── Singleton monitor ─────────────────────────────────────────────────────────
 #
 # One monitor per server process. Stateless between MCP connections for stdio
@@ -181,17 +535,8 @@ _monitor: FidelityMonitor | None = None
 def _get_monitor() -> FidelityMonitor:
     global _monitor
     if _monitor is None:
-        _monitor = FidelityMonitor()
+        _monitor = FidelityMonitor(memento_store=_memento_store, memento_config=_memento_config)
     return _monitor
-
-
-# ── FastMCP app ───────────────────────────────────────────────────────────────
-
-mcp = FastMCP(
-    "horizon-fidelity-monitor",
-    instructions=_INSTRUCTIONS,
-    transport_security=_transport_security(),
-)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -706,7 +1051,9 @@ def create_app(config: Config | None = None) -> FastMCP:
     """Return the FastMCP app (used by cli.py and tests)."""
     if config is not None:
         global _monitor
-        _monitor = FidelityMonitor(config)
+        _monitor = FidelityMonitor(
+            config, memento_store=_memento_store, memento_config=_memento_config
+        )
     return mcp
 
 

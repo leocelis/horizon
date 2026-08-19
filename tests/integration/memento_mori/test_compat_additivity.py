@@ -5,65 +5,61 @@ existing test suite produces byte-identical results; with a store
 configured, sessions not associated with a mission receive zero memento
 events; association is an explicit registry call."
 
-SCOPE NOTE for the reviewer: `process_turn` wiring (the actual call site that
-would append this plane's due events to `active_events` for an associated
-session) is tracked as a separate, not-yet-implemented integration step —
-see memento_signals_intent.yaml goal text and the parent PR description.
-Until that wiring exists, G-10's "full existing test suite" clause is
-structurally guaranteed by the import graph below (nothing outside
-`horizon_monitor.memento` imports it, so no other test can be affected by
-memento's presence), and G-11 is verified at the registry unit itself. The
-end-to-end "process_turn appends zero events for an unassociated session"
-check is UNVERIFIED until that wiring lands, and is called out again in the
-final report.
+UPDATED (v0.8 MCP/agent integration): the `process_turn` wiring this file's
+docstring used to flag as not-yet-implemented now exists —
+`FidelityMonitor._mission_events_for_turn` (monitor.py), gated first on
+`memento_store is not None` and then on `AssociationRegistry.missions_for`.
+That means `horizon_monitor.monitor` now legitimately imports
+`horizon_monitor.memento`, so the old "zero modules outside memento import
+memento" structural check no longer holds — and was always a proxy, not the
+constraint itself. `test_store_path_none_...` below is rewritten to assert
+the actual constraint (no memento function is ever CALLED when no store is
+configured) directly, by making every memento entry point raise if
+reached. The end-to-end "process_turn appends zero events for an
+unassociated session" check (G-11 in the running system, not just the
+registry unit) is exercised in
+`tests/integration/memento_mori/test_process_turn_wiring.py::test_g11_configured_store_unassociated_session_zero_mission_events`
+— this file keeps the registry-level unit checks.
 """
 
 from __future__ import annotations
 
-import ast
-from pathlib import Path
+from unittest.mock import patch
 
-import horizon_monitor
 from horizon_monitor.memento.config import MementoConfig
 from horizon_monitor.memento.signals import AssociationRegistry
+from horizon_monitor.monitor import FidelityMonitor
 
 
-def _module_import_names(py_file: Path) -> set[str]:
-    tree = ast.parse(py_file.read_text(encoding="utf-8"))
-    names: set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            names.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            names.add(node.module)
-    return names
+def _boom(*args, **kwargs):
+    raise AssertionError("memento function called with no memento_store configured")
 
 
-def test_store_path_none_is_the_default_and_no_other_module_imports_memento() -> None:
+def test_store_path_none_is_the_default_and_no_memento_function_is_called() -> None:
     """G-10: `store_path=None` is MementoConfig's default (an integrator who
-    never opts in gets exactly that), and no module outside
-    `horizon_monitor.memento` itself references the memento package at all
-    — so no other code path in the existing test suite can be entered by,
-    or diverge because of, memento's presence in the tree."""
+    never opts in gets exactly that). With `memento_store` unset on
+    `FidelityMonitor`, `process_turn` never calls a single memento function
+    — proven by making `memento_engine.evaluate` and
+    `memento_signals.evaluate_signals` raise if invoked — so no other code
+    path in the existing test suite can be entered by, or diverge because
+    of, memento's presence in the tree."""
     assert MementoConfig().store_path is None
 
-    package_root = Path(horizon_monitor.__file__).parent
-    memento_root = package_root / "memento"
+    monitor = FidelityMonitor()
+    assert monitor._memento_store is None
+    session_id = monitor.new_conversation()
 
-    offending: list[str] = []
-    for py_file in package_root.rglob("*.py"):
-        if memento_root in py_file.parents or py_file.parent == memento_root:
-            continue
-        imports = _module_import_names(py_file)
-        if any(
-            name == "horizon_monitor.memento" or name.startswith("horizon_monitor.memento.")
-            for name in imports
-        ):
-            offending.append(str(py_file))
-
-    assert (
-        offending == []
-    ), f"non-memento modules importing memento (breaks strict_additivity): {offending}"
+    with (
+        patch("horizon_monitor.monitor.memento_engine.evaluate", side_effect=_boom),
+        patch("horizon_monitor.monitor.memento_signals.evaluate_signals", side_effect=_boom),
+    ):
+        result = monitor.process_turn(
+            session_id,
+            "hello",
+            "hi there",
+            timestamp="2026-08-18T12:00:00+00:00",
+        )
+    assert all(e.plane == "conversation" for e in result.events)
 
 
 def test_unassociated_session_has_zero_missions() -> None:

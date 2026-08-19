@@ -66,6 +66,13 @@ WHEN A MISSION EVENT ARRIVES in active_events:
     ONE concrete next action (investigate / re-date / record progress /
     close). Do not proceed with unrelated work before surfacing it.
 
+NEW ITEMS — register, don't narrate:
+  - When work reveals a new task, deadline, gate, entity, or deferral under
+    an associated mission, call clock_register for it — do not just mention
+    it in prose. A deferral without a revisit_date is rejected by the store
+    (see PARKS AND DATES below); every other kind needs only its required
+    fields.
+
 WRITES — the side-effect rule (capture dies otherwise):
   - When you complete real work tied to a mission IN THIS TURN, record it:
     clock_progress with the fact and its date. One write, same turn, as a

@@ -52,6 +52,17 @@ class Event:
 
     metadata: dict = field(default_factory=dict)
 
+    plane: Literal["conversation", "mission"] = "conversation"
+    """Which plane emitted this event. Added in the Memento Mori integration
+    (horizon_memento_mori_intent.yaml v0.8 signal_channel) as a
+    backward-compatible field: every event this module (events/evaluator.py)
+    has always emitted keeps its default 'conversation' value with no other
+    byte of its payload changed (test plan M-4). 'mission' events are
+    produced only by horizon_monitor.monitor's memento integration, never
+    by the conversation-plane evaluator, and unlike conversation events they
+    are meant to be surfaced to the operator, not absorbed silently — see
+    docs/integrations/MEMENTO_MORI_AGENTS.md §1."""
+
 
 @dataclass(frozen=True)
 class TurnResult:

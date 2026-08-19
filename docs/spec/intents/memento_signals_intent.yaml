@@ -1,6 +1,7 @@
 # memento_signals_intent.yaml — sub-module intent (segments f–g: signal state machine,
-# integration, compat, adapters). Parent: ../horizon_memento_mori_intent.yaml (v0.7);
-# its 7 constraints all apply. Tests: ../MEMENTO_MORI_TEST_PLAN.md (G-*, R-*, J-1).
+# integration, compat, adapters, agent/MCP surface). Parent:
+# ../horizon_memento_mori_intent.yaml (v0.8); its 7 constraints all apply.
+# Tests: ../MEMENTO_MORI_TEST_PLAN.md (G-*, M-*, R-*, J-1).
 
 parent_intent: "../horizon_memento_mori_intent.yaml"
 scope: { level: "module", type: "component", granularity: "fine" }
@@ -22,12 +23,16 @@ intent:
   goal: |
     State machine and integration per MEMENTO_MORI_TECH_SPEC.md §§5–6 and the shipped
     alarm philosophy (memento/philosophy.md). The plane is only ever additive to
-    process_turn for sessions explicitly associated with missions.
+    process_turn for sessions explicitly associated with missions. The agent/MCP
+    surface (clock_register, clock_progress, clock_status, clock_propose, clock_ack,
+    associate_mission) added in parent v0.8 is specified here, not in a new segment:
+    docs/integrations/MEMENTO_MORI_AGENTS.md §3 is the canonical, test-checked
+    (M-6) list of what ships.
 
 constraints:
   - name: "edge_not_level"
     requirement: "An event fires exactly once on predicate false→true or on a higher enumerated escalation rung; persisting true predicates re-fire never; the escalation-rung enum is closed and contains no turn-count or elapsed-turns member"
-    test: "tests/unit/memento_mori/test_signals_edges.py::test_fire_once_and_no_turn_rung"   # plan G-1, G-3, G-4 [GOLDEN]
+    test: "tests/unit/memento_mori/test_signals_edges.py::test_fire_once_and_no_turn_rung"   # plan G-1, G-3, G-4 [GOLDEN]; also test_escalation_only_on_new_rung_not_on_turns, test_signal_state_enum_has_no_turn_count_member
     test_provenance: "ai_generated"
     entropy: "near-zero"
     priority: 2
@@ -36,7 +41,7 @@ constraints:
 
   - name: "ack_and_cap"
     requirement: "ACK moves (item, type) to ACKED: visible on clock_status, silent per-turn until an escalation rung or STALE (after stale_ack_days without progress, one low-tier event). At most per_turn_fire_cap (default 1) new RAISED/ESCALATED per associated turn; priority P1>P2>P3 then fewest days-remaining; suppressed events appear in the report"
-    test: "tests/unit/memento_mori/test_signals_ack_cap.py::test_ack_silences_and_cap_holds"   # plan G-2, G-5, G-6, G-7 [GOLDEN]
+    test: "tests/unit/memento_mori/test_signals_ack_cap.py::test_ack_silences_mission_stalled"   # plan G-2, G-5, G-6, G-7 [GOLDEN]; also test_stale_fires_once_after_ack_timeout_with_no_progress, test_per_turn_cap_holds_over_smallco, test_priority_order_p1_before_p2_then_fewest_days_remaining
     test_provenance: "ai_generated"
     entropy: "near-zero"
     priority: 2
@@ -45,7 +50,7 @@ constraints:
 
   - name: "no_person_ranking_in_output"
     requirement: "suggested_behavior templates and generated payloads contain no person-ordered lists; slowest_entity payloads use slot labels; person-namespace entities never appear in rankings or shareable text; a template linter enforces this in CI"
-    test: "tests/unit/memento_mori/test_signals_no_ranking.py::test_templates_and_payloads_slot_only"   # plan G-9 [HUMAN]
+    test: "tests/unit/memento_mori/test_signals_no_ranking.py::test_suggested_behavior_templates_carry_no_ranking_language"   # plan G-9 [HUMAN]; also test_slowest_entity_payload_redacts_person_namespace_winner
     test_provenance: "ai_generated"
     entropy: "near-zero"
     priority: 1
@@ -54,17 +59,28 @@ constraints:
 
   - name: "strict_additivity"
     requirement: "With store_path=None the memento code path is not entered and the full existing test suite produces byte-identical results; with a store configured, sessions not associated with a mission receive zero memento events; association is an explicit registry call"
-    test: "tests/integration/memento_mori/test_compat_additivity.py::test_unconfigured_identical_and_unassociated_silent"   # plan G-10, G-11 [PROPERTY]
+    test: "tests/integration/memento_mori/test_compat_additivity.py::test_store_path_none_is_the_default_and_no_memento_function_is_called"   # plan G-10, G-11 [PROPERTY]; also test_unassociated_session_has_zero_missions, test_association_is_explicit_and_survives_reregistration
     test_provenance: "ai_generated"
     entropy: "near-zero"
     priority: 1
     assumption_status: "KNOWN"
     consequence_if_violated: "The optional plane becomes a mandatory behavior change on upgrade; existing integrators inherit signals they never opted into"
 
+  - name: "mcp_agent_surface"
+    requirement: "Six mission tools (clock_register, clock_progress, clock_status, clock_propose, clock_ack, associate_mission) register on the MCP server iff store_path is not None, and do not appear at all when it is None (M-1); every MementoError crossing the MCP boundary serializes to exactly {error_type, rule, fix} with no stack trace and no other coercion (M-2); process_turn emits mission-plane events (plane=\"mission\") only for sessions explicitly associate_mission'd, scoped to that session's missions, while unassociated/unconfigured sessions get zero (M-3, reuses strict_additivity's G-10/G-11 mechanism); every event the conversation-plane evaluator has always emitted keeps plane=\"conversation\" as the only new field, byte-identical otherwise (M-4); every mission tool's MCP description embeds the loud-contract line from docs/integrations/MEMENTO_MORI_AGENTS.md §2 (M-5); the shipped tool set matches docs/integrations/MEMENTO_MORI_AGENTS.md §3's named tools exactly, both directions (M-6)"
+    test: "tests/unit/memento_mori/test_mcp_tools.py::test_m1_six_mission_tools_register_when_store_configured"   # plan M-1..M-2, M-5..M-6 [GOLDEN/PROPERTY]; also test_m1_mission_tools_do_not_appear_at_all_with_store_path_none, test_m2_typed_error_serialization_has_no_stack_trace_and_no_coercion [GOLDEN], test_m2_second_golden_case_covers_a_refusal_error [GOLDEN], test_m2_every_serialized_error_has_all_three_keys_and_is_a_memento_error, test_m2_clock_register_returns_typed_error_not_a_raised_exception, test_m5_every_mission_tool_description_carries_the_loud_contract_line, test_m5_conversation_tool_descriptions_do_not_carry_the_loud_contract_line, test_m6_agents_doc_section_3_names_every_shipped_tool_and_no_other; M-3/M-4 in tests/integration/memento_mori/test_process_turn_wiring.py::test_m3_associated_session_receives_the_mission_event and siblings (test_g11_configured_store_unassociated_session_zero_mission_events, test_m3_association_survives_session_re_registration, test_m3_scoping_ignores_missions_the_session_was_not_associated_with, test_m4_mission_event_carries_plane_mission, test_m4_conversation_events_are_byte_identical_except_the_new_plane_field, test_m4_full_conversation_only_regression_suite_marker_is_unaffected)
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 1
+    assumption_status: "KNOWN"
+    conflict_prone: true
+    anti_pattern: "Do not add caller-identity/authorization logic inside clock_ack or the engine — the operator-authorization rule for who may ACK is enforced by host instructions (docs/integrations/MEMENTO_MORI_AGENTS.md), not by this code; the tool only records the actor string it is given. Do not let the MCP layer coerce or reformat {error_type, rule, fix} — those three strings come verbatim from the MementoError subclass's own rule/fix attributes, never re-derived by string-parsing str(exc)."
+    consequence_if_violated: "Schema-only MCP clients (no prose context) silently absorb mission alarms as if they were conversation-plane noise, or ship a tool surface that drifts from the one document (MEMENTO_MORI_AGENTS.md) agents are told to trust — reintroducing exactly the silent-drift failure the loud-contract line and M-6 exist to catch"
+
 constraint_satisfiability:
-  analysis: "Four constraints; edge/cap/ack compose as one state machine; additivity is an outer guard; no ranking is an output filter — no pairwise tension."
+  analysis: "Five constraints; edge/cap/ack compose as one state machine; additivity is an outer guard; no ranking is an output filter; mcp_agent_surface is a presentation-layer wrapper around additivity (M-3/M-4 reuse G-10/G-11's mechanism) plus three independent checks (M-1 discovery gating, M-2 error shape, M-5/M-6 doc-code sync) — no pairwise tension with the other four."
   joint_satisfaction_test: "tests/unit/memento_mori/test_signals_joint.py::test_state_machine_cap_ranking_additivity_one_flow"
 
 verification:
-  protocol: "Parent Rule-2 applies. Golden fixtures G-1/G-3/G-5/G-8 over the smallco fixture; property test G-10 runs the existing suite twice. Replay oracles R-1/R-2 validate the thesis surface end to end."
+  protocol: "Parent Rule-2 applies. Golden fixtures G-1/G-3/G-5/G-8 and M-2's error-shape golden case over the smallco fixture; property tests G-10/M-1 run the existing suite/tool registry twice (once configured, once store_path=None). Replay oracles R-1/R-2 validate the thesis surface end to end."
 review_gate: { status: "PENDING_SIGNOFF" }
