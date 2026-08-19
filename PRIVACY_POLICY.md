@@ -113,6 +113,43 @@ Your IP address may appear in DigitalOcean's access logs as described in §1.4.
 
 ---
 
+### 1.6 Mission plane store — "Memento Mori" (if enabled)
+
+The mission plane measures elapsed calendar time against goals. Unlike every other part
+of Horizon, its value depends on **remembering across sessions**, so when it is enabled
+it writes durable records: item titles you supply (mission, task, deadline, entity and
+deferral names), the dates you declare (`created_valid`, `end_date`, `revisit_date`, TTL
+windows, deadline dates), optional monetary amounts, an append-only event log of the
+facts you record, and per-signal state so a standing condition is reported once rather
+than on every turn.
+
+**Everything in the mission store is supplied by you.** The engine records only facts
+passed to it through the mission tools; it never infers, scrapes, or derives a date,
+duration or amount on its own.
+
+**Third-party names.** An `entity` may be a functional slot (`vendor-queue`, `reviewer`)
+or a named person. Person-namespace entities must be flagged explicitly at write time —
+the store rejects them otherwise — and their display names are excluded from every
+ranking surface. `redact_person_display_name()` replaces a name with a placeholder while
+preserving the latency measurement, so a third party's identity can be removed without
+destroying your own record of how long something waited.
+
+**Erasure.** `MementoStore.erase_all()` destroys every mission record — items, event log
+and signal state — and reports per-table counts of what was destroyed. Erasure is
+deliberately all-or-nothing: there is no selective row delete, because `mm_events` is
+append-only precisely so that any figure the plane reports traces back to a fact you
+recorded. A per-row delete would be a history-editing tool wearing a privacy label.
+Erasure is **not** exposed as an MCP tool — it is an operator action, so that no turn of
+conversation can talk an agent into destroying your history.
+
+**On the hosted server:** The mission plane is **not enabled** in the default hosted
+deployment. No mission data is written for standard hosted-server usage. If that changes,
+this section and §5 will be updated in the same release, and the data location, retention
+period and legal basis will be stated here before any mission data is stored.
+
+**On self-hosted deployments:** If you enable the mission store, you are the controller
+for the data it holds, on the same terms as §1.2.
+
 ## 2. Grounding Hook — Privacy Invariant and Its Limits
 
 Horizon's core pipeline is **privacy by default**: zero external network calls are made
@@ -196,10 +233,17 @@ data protection supervisory authority. A list of EU supervisory authorities is a
 at: <https://www.edpb.europa.eu/about-edpb/about-edpb/members_en>
 
 **Note on session-level data:** Because Horizon does not retain raw message text, and
-because the default hosted deployment does not use `PersistentDynamicsStore`, there is
-typically very little personal data held by the hosted server at rest. Erasure requests
-for active session state are handled by clearing the session from memory (effectively
-immediate given that sessions are ephemeral and clear on server restart).
+because the default hosted deployment enables neither `PersistentDynamicsStore` (§1.2)
+nor the mission plane store (§1.6), there is typically very little personal data held by
+the hosted server at rest. Erasure requests for active session state are handled by
+clearing the session from memory (effectively immediate given that sessions are ephemeral
+and clear on server restart).
+
+**Where a durable store is enabled** — either optional store, on the hosted server or a
+self-hosted deployment — erasure is a deletion against that store, not a memory clear.
+For the mission plane the mechanism is `MementoStore.erase_all()` (§1.6). Deployments
+that enable a durable store must be able to honour an erasure request against it; on
+self-hosted deployments that obligation is the operator's, per §1.2 and §1.6.
 
 ---
 

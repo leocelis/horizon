@@ -345,6 +345,39 @@ class MementoStore:
                 (self.REDACTED_TITLE, item_id),
             )
 
+    def erase_all(self) -> dict[str, int]:
+        """Destroy every mission record in this store. The right-to-erasure path.
+
+        Erasure is deliberately **all-or-nothing**. There is no selective row
+        delete and there must not be one: ``mm_events`` is append-only precisely
+        so that any number the plane reports traces back to a fact the operator
+        recorded. A per-row delete would be a history-rewriting tool wearing a
+        privacy label — it could quietly remove the one stall that made a
+        mission look bad, and every surviving number would still be presented
+        with full authority.
+
+        Complements :meth:`redact_person_display_name`, which removes one third
+        party's display name while preserving the latency measurement. This
+        removes the records themselves. The schema and its ``schema_version``
+        row survive, so the store stays usable and a fresh horizon can be
+        registered immediately afterwards.
+
+        Returns per-table counts of what was destroyed, so the caller can record
+        the erasure rather than merely perform it.
+        """
+        counts: dict[str, int] = {}
+        with self._txn() as conn:
+            for table in ("mm_fires", "mm_events", "mm_items"):
+                counts[table] = conn.execute(
+                    f"SELECT COUNT(*) AS c FROM {table}"  # noqa: S608 - fixed literals
+                ).fetchone()["c"]
+                conn.execute(f"DELETE FROM {table}")  # noqa: S608 - fixed literals
+            counts["mm_meta"] = conn.execute(
+                "SELECT COUNT(*) AS c FROM mm_meta WHERE key != 'schema_version'"
+            ).fetchone()["c"]
+            conn.execute("DELETE FROM mm_meta WHERE key != 'schema_version'")
+        return counts
+
     @staticmethod
     def _row_to_item(row: sqlite3.Row) -> Item:
         return Item(
