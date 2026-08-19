@@ -99,6 +99,7 @@ def _due_predicates(
     eval_date: date,
     config: MementoConfig,
     money_blocks: tuple = (),
+    slowest_entities: tuple = (),
 ) -> list[_Predicate]:
     """Every currently-true-or-tracked predicate over the snapshot, before
     any edge/ack/cap logic is applied."""
@@ -261,45 +262,36 @@ def _due_predicates(
                 )
             )
 
-    for mission_id, entities in entities_by_mission.items():
-        measured = [
-            (e, rows_by_id[e.item_id])
-            for e in entities
-            if rows_by_id[e.item_id].time_in_stage_days is not None
-        ]
-        if len(measured) < 1:
-            continue
-        open_candidates = [pair for pair in measured if pair[1].is_open_stage]
-        pool = open_candidates if open_candidates else measured
-        winner_item, winner_row = max(pool, key=lambda pair: pair[1].time_in_stage_days)
-        # Slot label only — never a person name, mirroring
-        # engine.py::_compute_slowest_entities exactly
-        # (memento_signals_intent.yaml::no_person_ranking_in_output; a
-        # person-namespace entity may still win the argmax, but its title
-        # never reaches a payload or a suggested_behavior string).
-        slot_label = winner_item.title if winner_item.namespace != "person" else "person"
-        # rung encodes identity so a change in winner is a genuine edge, not
-        # a level: hash the item_id into a small int via its position in a
-        # stable sort of all entity ids (deterministic, no ambient state).
-        rung = sorted(items_by_id).index(winner_item.item_id)
+    # slowest_entity — consume the engine's already-computed rows rather than
+    # recomputing the argmax here. Two copies of one decision is how the two
+    # modules drift apart; the engine owns the semantics (argmax over ALL
+    # recorded sojourns, open sojourns flagged as censored lower bounds) and
+    # this module only turns them into predicates.
+    for slowest in slowest_entities:
+        # rung encodes WHICH entity won, so a change of winner is a genuine
+        # edge rather than a level: position in a stable sort of all item ids
+        # (deterministic, no ambient state). A withheld person id sorts last.
+        rung = (
+            sorted(items_by_id).index(slowest.entity_item_id)
+            if slowest.entity_item_id in items_by_id
+            else len(items_by_id)
+        )
         predicates.append(
             _Predicate(
-                mission_id,
+                slowest.mission_id,
                 "slowest_entity",
                 TIER["slowest_entity"],
-                len(measured) >= 1,
+                True,
                 rung,
-                f"slowest_entity winner={slot_label!r} time_in_stage_days="
-                f"{winner_row.time_in_stage_days}d over {len(measured)} recorded entities",
+                slowest.derivation,
                 {
-                    # Person-namespace winners are reported by slot label only;
-                    # the item_id is withheld because it is resolvable to a name
-                    # through the store (no_person_ranking_in_output).
-                    "entity_item_id": (
-                        None if winner_item.namespace == "person" else winner_item.item_id
-                    ),
-                    "slot_label": slot_label,
-                    "n": len(measured),
+                    # Person-namespace winners arrive from the engine already
+                    # redacted (slot label only, id withheld) — this module
+                    # never re-derives identity (no_person_ranking_in_output).
+                    "entity_item_id": slowest.entity_item_id,
+                    "slot_label": slowest.slot_label,
+                    "n": slowest.n,
+                    "censored": slowest.censored,
                 },
                 _NO_TIEBREAK,
             )
@@ -437,6 +429,7 @@ def evaluate_signals(
         eval_date,
         config,
         money_blocks=report.money,
+        slowest_entities=report.slowest_entities,
     )
 
     fired: list[Signal] = []

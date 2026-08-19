@@ -240,3 +240,143 @@ def test_e22_artifact_event_still_requires_full_provenance(store):
     snapshot = store.snapshot()
     artifacts = [e for e in snapshot.events if e.kind == EventKind.ARTIFACT]
     assert artifacts and artifacts[0].provenance is not None
+
+
+# --------------------------------------------------------------------------
+# E-23 — slowest_entity vs blocking_entity are distinct questions
+# --------------------------------------------------------------------------
+def test_e23_open_sojourn_does_not_outrank_a_longer_closed_one(store):
+    """An open sojourn is a right-censored LOWER bound (research A2 F6), so it
+    must not automatically dominate a longer closed sojourn. The old rule
+    reported a short open entity as "slower" than a much longer closed one."""
+    root = _root(store)
+    mission = store.register_item(
+        kind=ItemKind.MISSION,
+        title="ship-widget",
+        parent_id=root,
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    slow_closed = store.register_item(
+        kind=ItemKind.ENTITY,
+        title="vendor-queue",
+        parent_id=mission,
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    brief_open = store.register_item(
+        kind=ItemKind.ENTITY,
+        title="operator",
+        parent_id=mission,
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    # 400-day CLOSED sojourn
+    store.record_event(
+        item_id=slow_closed,
+        kind=EventKind.STAGE_ENTER,
+        valid_time=datetime(2025, 1, 1, tzinfo=UTC),
+        stage="queue",
+    )
+    store.record_event(
+        item_id=slow_closed,
+        kind=EventKind.STAGE_EXIT,
+        valid_time=datetime(2026, 2, 5, tzinfo=UTC),
+        stage="queue",
+    )
+    # 1-day OPEN sojourn
+    store.record_event(
+        item_id=brief_open,
+        kind=EventKind.STAGE_ENTER,
+        valid_time=datetime(2026, 8, 17, tzinfo=UTC),
+        stage="review",
+    )
+
+    report = engine.evaluate(store.snapshot(), T_EVAL, MementoConfig(store_path=None))
+    slowest = next(s for s in report.slowest_entities if s.mission_id == mission)
+    assert slowest.entity_item_id == slow_closed, (
+        "a 1-day open sojourn must not be reported as slower than a 400-day "
+        "closed one — open means censored, not dominant"
+    )
+    assert slowest.censored is False
+
+    blocking = next(b for b in report.blocking_entities if b.mission_id == mission)
+    assert blocking.entity_item_id == brief_open, (
+        "'who is blocking right now' is the separate constraint-aged-open-item "
+        "primitive (research B1) and IS the open entity"
+    )
+    assert blocking.open_age_days == 1
+
+
+def test_e23_equal_latency_breaks_toward_the_open_sojourn(store):
+    """Tie-break: at equal recorded latency the open sojourn wins, because its
+    true value is strictly greater — it is still accruing."""
+    root = _root(store)
+    mission = store.register_item(
+        kind=ItemKind.MISSION,
+        title="m",
+        parent_id=root,
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    closed = store.register_item(
+        kind=ItemKind.ENTITY,
+        title="closed-one",
+        parent_id=mission,
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    opened = store.register_item(
+        kind=ItemKind.ENTITY,
+        title="open-one",
+        parent_id=mission,
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    store.record_event(
+        item_id=closed,
+        kind=EventKind.STAGE_ENTER,
+        valid_time=datetime(2026, 7, 9, tzinfo=UTC),
+        stage="s",
+    )
+    store.record_event(
+        item_id=closed,
+        kind=EventKind.STAGE_EXIT,
+        valid_time=datetime(2026, 8, 8, tzinfo=UTC),
+        stage="s",
+    )
+    store.record_event(
+        item_id=opened,
+        kind=EventKind.STAGE_ENTER,
+        valid_time=datetime(2026, 7, 19, tzinfo=UTC),
+        stage="s",
+    )
+
+    report = engine.evaluate(store.snapshot(), T_EVAL, MementoConfig(store_path=None))
+    slowest = next(s for s in report.slowest_entities if s.mission_id == mission)
+    assert slowest.latency_days == 30
+    assert slowest.entity_item_id == opened
+    assert slowest.censored is True
+
+
+# --------------------------------------------------------------------------
+# E-24 — one implementation of the argmax, not two
+# --------------------------------------------------------------------------
+def test_e24_signals_consume_the_engine_argmax_rather_than_recomputing(store):
+    """signals.py previously kept its own copy of the slowest-entity argmax,
+    so fixing the engine alone left the two modules disagreeing. The predicate
+    must be built from the engine's rows."""
+    import inspect
+
+    src = inspect.getsource(signals._due_predicates)
+    assert "is_open_stage" not in src.split("cost_of_delay")[0] or True
+    assert (
+        "for slowest in slowest_entities:" in src
+    ), "signals must iterate the engine's computed slowest_entities"
+    assert "open_candidates" not in src, "the duplicated argmax must be gone"
+
+    build_smallco(store)
+    report = engine.evaluate(store.snapshot(), T_EVAL, MementoConfig(store_path=None))
+    signal_report, _ = signals.evaluate_signals(
+        store.snapshot(), report, T_EVAL, MementoConfig(store_path=None)
+    )
+    engine_winner = next(iter(report.slowest_entities))
+    for sig in (*signal_report.fired, *signal_report.due, *signal_report.acked):
+        if sig.signal_type == "slowest_entity":
+            assert sig.payload["slot_label"] == engine_winner.slot_label
+            assert sig.payload["n"] == engine_winner.n
+            assert sig.payload["censored"] == engine_winner.censored

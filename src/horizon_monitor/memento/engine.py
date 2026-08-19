@@ -57,6 +57,7 @@ def evaluate(snapshot: StoreSnapshot, t_eval: datetime, config: MementoConfig) -
     rows_by_id = {row.item_id: row for row in rows}
 
     slowest_entities = _compute_slowest_entities(snapshot.items, rows_by_id)
+    blocking = _compute_blocking_entities(snapshot.items, rows_by_id)
     money_blocks = _compute_money_blocks(snapshot.items, rows_by_id, config)
     path_comparisons = _compute_path_comparisons(snapshot.items, stage_by_item, eval_date)
 
@@ -64,6 +65,7 @@ def evaluate(snapshot: StoreSnapshot, t_eval: datetime, config: MementoConfig) -
         evaluated_at=t_eval,
         items=tuple(rows),
         slowest_entities=tuple(slowest_entities),
+        blocking_entities=tuple(blocking),
         money=tuple(money_blocks),
         path_comparisons=tuple(path_comparisons),
         proposals=(),
@@ -293,17 +295,30 @@ def _compute_slowest_entities(
         if not measured:
             continue
 
-        open_candidates = [pair for pair in measured if pair[1].is_open_stage]
-        pool = open_candidates if open_candidates else measured
-        winner_item, winner_row = max(pool, key=lambda pair: pair[1].time_in_stage_days)
+        # argmax over EVERY recorded sojourn, open and closed alike. An open
+        # sojourn is a right-censored lower bound (research A2 F6), so it does
+        # NOT automatically outrank a longer closed one — that shortcut would
+        # report a 1-day open entity as "slower" than a 400-day closed one.
+        # Equal latencies break toward the open sojourn, whose true value is
+        # strictly greater because it is still accruing.
+        winner_item, winner_row = max(
+            measured,
+            key=lambda pair: (pair[1].time_in_stage_days, pair[1].is_open_stage),
+        )
 
         is_person = winner_item.namespace == "person"
         slot_label = "person" if is_person else winner_item.title
+        censored = bool(winner_row.is_open_stage)
         derivation = (
             f"slowest_entity = argmax(time_in_stage_days) over {len(measured)} recorded "
-            f"entities; winner {slot_label!r} time_in_stage_days="
-            f"{winner_row.time_in_stage_days}d, is_open={winner_row.is_open_stage} "
-            f"({'an open sojourn dominates any closed one' if open_candidates else 'closed sojourns only'})"
+            f"entities (open and closed alike); winner {slot_label!r} "
+            f"time_in_stage_days={winner_row.time_in_stage_days}d, "
+            f"is_open={winner_row.is_open_stage}"
+            + (
+                " — still accruing, so this is a censored lower bound"
+                if censored
+                else " — closed sojourn, final value"
+            )
         )
         result.append(
             SlowestEntity(
@@ -316,6 +331,7 @@ def _compute_slowest_entities(
                 slot_label=slot_label,
                 latency_days=winner_row.time_in_stage_days,
                 is_open=bool(winner_row.is_open_stage),
+                censored=censored,
                 derivation=derivation,
                 # n is the size of the population the argmax summarised, not a
                 # constant (memento_engine_intent.yaml::derivation_on_every_row
@@ -324,6 +340,51 @@ def _compute_slowest_entities(
             )
         )
     return result
+
+
+def _compute_blocking_entities(items, rows_by_id) -> list:
+    """The oldest currently-OPEN entity per mission — "who is blocking now".
+
+    Research B1 keeps this as its own primitive (the constraint-aged open
+    item) precisely because it answers a different question from
+    slowest_entity: a closed sojourn can be the longest ever recorded while
+    nothing is waiting on it today. Same slot-label redaction rule.
+    """
+    from horizon_monitor.memento.models import BlockingEntity
+
+    entities_by_mission: dict[str, list] = {}
+    for item in items:
+        if item.kind == ItemKind.ENTITY and item.parent_id is not None:
+            entities_by_mission.setdefault(item.parent_id, []).append(item)
+
+    out: list = []
+    for mission_id in sorted(entities_by_mission):
+        open_rows = [
+            (e, rows_by_id[e.item_id])
+            for e in entities_by_mission[mission_id]
+            if rows_by_id[e.item_id].time_in_stage_days is not None
+            and rows_by_id[e.item_id].is_open_stage
+        ]
+        if not open_rows:
+            continue
+        winner_item, winner_row = max(open_rows, key=lambda p: p[1].time_in_stage_days)
+        is_person = winner_item.namespace == "person"
+        slot_label = "person" if is_person else winner_item.title
+        out.append(
+            BlockingEntity(
+                mission_id=mission_id,
+                entity_item_id=None if is_person else winner_item.item_id,
+                slot_label=slot_label,
+                open_age_days=winner_row.time_in_stage_days,
+                derivation=(
+                    f"blocking_entity = argmax(open sojourn age) over {len(open_rows)} "
+                    f"OPEN entities; winner {slot_label!r} open_age_days="
+                    f"{winner_row.time_in_stage_days}d (still accruing)"
+                ),
+                n=len(open_rows),
+            )
+        )
+    return out
 
 
 def _compute_money_blocks(

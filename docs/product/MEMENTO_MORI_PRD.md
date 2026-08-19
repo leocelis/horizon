@@ -6,7 +6,7 @@
 
 > **Scope:** This is the **public PRD** shipped with the OSS repo. It is derived from the
 > intent artifact [`docs/spec/horizon_memento_mori_intent.yaml`](../spec/horizon_memento_mori_intent.yaml)
-> (v0.9) and a 17-topic source-audited research pack (private workspace; load-bearing
+> (v1.0) and a 17-topic source-audited research pack (private workspace; load-bearing
 > citations are reproduced inline). Implementation follows the intent's constraint
 > segments; nothing in this document overrides the intent's constraints.
 
@@ -253,7 +253,7 @@ people faster and more stressed, not wiser (Mark, Gudith & Klocke, CHI 2008).
 | `signal.deferral_expired` | a deferral passes its revisit date | P2 |
 | `signal.gate_aging` | a gate exceeds its age budget with no progress | P2 |
 | `signal.mission_stalled` | zero progress events for the mission's threshold (paired with the recording-path check) | P2 |
-| `signal.slowest_entity` | the identity of a mission's slowest entity changes, or one entity's recorded latency first dominates the mission's critical path — descriptive max over recorded latencies (operator included), slot labels, n and derivation attached; never a distributional claim | P2 |
+| `signal.slowest_entity` | the identity of a mission's slowest entity changes — descriptive argmax over all recorded latencies (operator included), slot labels, with n, `censored`, and derivation attached; never a distributional claim | P2 |
 | `signal.clock_unpaired` | a deadline exists with no linked internal state | P2 |
 | `signal.horizon_share` | an item's elapsed time crosses a threshold share of the remaining root horizon | P3 |
 | `signal.cost_of_delay` | accrued cost-of-delay crosses an operator threshold (only when rate and amount are declared) | P3 |
@@ -283,7 +283,8 @@ enter the store only as caller-supplied metadata.
 | Days-since-progress; stall predicate | Max progress-event time vs threshold | None |
 | Progress-per-day / completion rate λ | Count ÷ conserved window | None (degrades to counts without a valid window) |
 | Time-in-stage; wait-vs-touch | Stage-timestamp subtraction; declared quantiles with n | None |
-| Slowest entity per mission | Max of recorded per-entity latencies (operator included) | None |
+| Slowest entity per mission | Argmax of recorded per-entity latencies over **all** sojourns, open and closed alike (operator included); an open sojourn is flagged `censored` — a right-censored lower bound, never an automatic winner | None |
+| Blocking entity per mission | Argmax of **open** sojourn age — "who is blocking right now", a distinct question from "who was slowest" | None |
 | Horizon share | Item elapsed ÷ root remaining | None |
 | TTL proposal | Percentile over the operator's own completed comparables (empirical quantiles / Kaplan–Meier with censoring); derivation + sample size shown; **empty comparable class → no proposal**; **inert until ratified** | None — reference-class arithmetic, not prediction |
 | Cost-of-delay | value_at_stake (caller) × elapsed × rate (caller) | None |
@@ -447,5 +448,5 @@ retrospective-replay fixtures are the external oracles).
 - Goldratt, E. M. — Theory of Constraints lineage; Little, J. D. C. — L = λW; lean value-stream lead/touch decomposition (vocabulary and discipline; plant-specific constants deliberately not imported).
 - METR (2025–2026). Measuring AI ability to complete long tasks (time-horizon methodology).
 
-**Engineering reference:** [`docs/spec/horizon_memento_mori_intent.yaml`](../spec/horizon_memento_mori_intent.yaml) (v0.9, 7 constraints, joint-satisfaction test) ·
+**Engineering reference:** [`docs/spec/horizon_memento_mori_intent.yaml`](../spec/horizon_memento_mori_intent.yaml) (v1.0, 7 constraints, joint-satisfaction test) ·
 [`docs/spec/HORIZON_TECH_SPEC.md`](../spec/HORIZON_TECH_SPEC.md) (existing plane; the mission plane's tech spec and sub-module intents follow this PRD).

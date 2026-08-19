@@ -125,6 +125,30 @@
 #                     wall clock; the response now carries eval_instant_source
 #                     so a defaulted instant is auditable. Sub-module intents
 #                     move to status implemented. Constraints unchanged at 7.
+#   v1.0  2026-08-19  SLOWEST-ENTITY SEMANTICS CORRECTED AGAINST THE RESEARCH,
+#                     plus the duplicate-implementation drift it exposed. The
+#                     shipped rule let ANY open sojourn outrank ANY closed one,
+#                     so a 1-day open entity was reported "slower" than a
+#                     400-day closed one. Research A2 F6 (Kaplan-Meier) is
+#                     explicit that an open sojourn is RIGHT-CENSORED — a lower
+#                     bound, not a final value — and research B1 keeps "the
+#                     constraint-aged open item" as its OWN primitive while
+#                     rejecting the collapse of constraint identification into
+#                     "name the slowest". Therefore: slowest_entity is now the
+#                     argmax over ALL recorded sojourns with an explicit
+#                     `censored` flag on an open winner (equal latencies break
+#                     toward the open one, whose true value is strictly
+#                     greater), and a NEW blocking_entity primitive reports the
+#                     oldest OPEN sojourn — "who is blocking now" as a separate
+#                     question from "who was slowest". signals.py had kept a
+#                     second private copy of the argmax and would have silently
+#                     disagreed with the engine after this change; it now
+#                     consumes the engine's rows (one implementation, guarded
+#                     by a test). The E-4 golden fixture was corrected
+#                     accordingly. Also: test plan case M-7 had been listed
+#                     without a test existing — written. New engine sub-intent
+#                     constraint censored_latency_semantics (conflict_prone,
+#                     execution_derived oracle). Parent constraints: still 7.
 
 parent_intent: "horizon_intent.yaml"
 

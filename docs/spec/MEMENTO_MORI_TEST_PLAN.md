@@ -48,7 +48,7 @@ review. Untagged cases are supporting coverage.
 | E-1 | Ages & remaining | M1 age **78d**; D1 remaining **43d**; H remaining **1232d**; F1 expired by **8d**; T1 ttl_state **expired** (29d past) | §6 | [GOLDEN] |
 | E-2 | days_since_progress | M1 = **47d** (since 2026-07-02) → stalled (>14) | §6 | [GOLDEN] |
 | E-3 | Recording-path check | M1 has events ⇒ "no recent work"; a mission with zero events ever ⇒ "no capture" — distinct flags | §4.3 | [HUMAN] |
-| E-4 | Entity latency | E1 time-in-stage 25d (closed); E2 open 21d; slowest_entity = **E2 "operator"** (open sojourn dominates) | §6 | [GOLDEN] |
+| E-4 | Entity latency | E1 25d (closed); E2 21d (open); slowest_entity = **E1 "vendor-queue"** (argmax over all sojourns; open is a censored lower bound, not an automatic winner), n=2, censored=False; blocking_entity = **E2 "operator"**, open 21d | §6 | [GOLDEN] |
 | E-5 | Wait/touch only from caller labels | events without labels contribute to no wait/touch ratio; no inference | §4.3 | |
 | E-6 | λ on non-conserved window | window with arrivals≠departures ⇒ `λ=None`; break-even degrades to cycle count N, **no date** (covered in `test_engine_degradation.py` / `test_engine_joint.py`) | §6 | [HUMAN] |
 | E-7 | Determinism | two `evaluate()` calls, same snapshot+instant ⇒ **byte-identical** serialized report | §3.3 | [PROPERTY] |
@@ -64,6 +64,8 @@ review. Untagged cases are supporting coverage.
 | E-17 | Path comparison | P1 sojourn **4d** vs incumbent accrued **17d** (since 2026-08-01); base-rate column separate and provenance-labelled; no synthetic latency fields exist in the schema | §7 | [GOLDEN] |
 | E-18 | Counterfactual refusal | API surface has no "would-have-taken" computation; requesting one is a typed refusal | §3.2 | |
 | E-20 | `slowest_entity` n | `n` equals the population the argmax summarised (matches the derivation's own "over N recorded entities"), never a constant | §6 | [GOLDEN] |
+| E-23 | Open vs closed sojourn | a 1-day open sojourn must NOT outrank a 400-day closed one; blocking_entity names the open one; equal latencies break toward the open (still accruing) | §6 | [GOLDEN] |
+| E-24 | One argmax, not two | `signals._due_predicates` consumes the engine's `slowest_entities` rows; no duplicated argmax survives in the signals module | §6 | [PROPERTY] |
 | E-21 | Person-namespace redaction is complete | a person winner is still measured, but both its title AND its resolvable `entity_item_id` are withheld from report and payload — an id resolves to the name through the store | §8 | [HUMAN] |
 | E-19 | Horizon share | M1 elapsed 78d vs H remaining ⇒ share **≈ 0.0595** (78/1310) crosses the 0.05 rung | §6 | [GOLDEN] |
 

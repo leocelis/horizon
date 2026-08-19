@@ -59,7 +59,11 @@ SESSION START (when the conversation concerns a known mission):
   1. Call associate_mission(session_id, mission_id).
   2. Call clock_status for that scope and OPEN your first substantive reply
      with any red state, numbers included: expired TTLs/deferrals, stall
-     days, deadline windows, slowest entity (slot label), horizon share.
+     days, deadline windows, horizon share, and BOTH entity readings when
+     present — slowest entity (longest recorded sojourn; say "still
+     accruing" when it is flagged censored) and blocking entity (who the
+     mission is waiting on right now). They are different questions and may
+     name different slots; never merge them into one claim.
 
 WHEN A MISSION EVENT ARRIVES in active_events:
   - State it to the operator with its numbers and derivation, then propose

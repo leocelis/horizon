@@ -37,11 +37,22 @@ def test_entity_time_in_stage_and_slowest_entity(store) -> None:
     assert e2.time_in_stage_days == golden["entity_e2_time_in_stage_days"] == 21
     assert e2.is_open_stage is golden["entity_e2_is_open"] is True
 
+    # E-4: the argmax ranges over ALL recorded sojourns. E1's CLOSED 25d
+    # outranks E2's OPEN 21d — an open sojourn is a right-censored lower bound
+    # (research A2 F6), not an automatic winner.
     slowest = next(s for s in report.slowest_entities if s.mission_id == ids["M1"])
-    assert slowest.entity_item_id == ids["E2"]
-    assert slowest.slot_label == golden["slowest_entity_slot_label"] == "operator"
-    assert slowest.is_open is True
-    assert "open" in slowest.derivation.lower()
+    assert slowest.entity_item_id == ids["E1"]
+    assert slowest.slot_label == golden["slowest_entity_slot_label"] == "vendor-queue"
+    assert slowest.latency_days == golden["slowest_entity_latency_days"] == 25
+    assert slowest.is_open is False
+    assert slowest.censored is golden["slowest_entity_censored"] is False
+    assert slowest.n == golden["slowest_entity_n"] == 2
+
+    # "Who is blocking right now" is the separate primitive (research B1).
+    blocking = next(b for b in report.blocking_entities if b.mission_id == ids["M1"])
+    assert blocking.entity_item_id == ids["E2"]
+    assert blocking.slot_label == golden["blocking_entity_slot_label"] == "operator"
+    assert blocking.open_age_days == golden["blocking_entity_open_age_days"] == 21
 
 
 def test_wait_touch_ratio_only_from_caller_labels(store) -> None:

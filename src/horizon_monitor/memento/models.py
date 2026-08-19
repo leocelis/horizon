@@ -208,6 +208,32 @@ class SlowestEntity:
     is_open: bool
     derivation: str
     n: int = 1
+    censored: bool = False
+    """True when the winner's sojourn is still open: the recorded latency is a
+    right-censored LOWER BOUND (A2 research F6 — an open sojourn's true
+    duration is >= its current age), not a final value."""
+
+    def to_dict(self) -> dict:
+        return dataclasses.asdict(self)
+
+
+@dataclass(frozen=True)
+class BlockingEntity:
+    """The oldest currently-OPEN entity on a mission — "who is blocking right
+    now", which is a different question from "who was slowest".
+
+    Research B1 lists this as its own primitive ("constraint-aged open item":
+    the open item on the tagged constraint entity with max age) and explicitly
+    rejects collapsing constraint identification into "name the slowest
+    person". Slot label only, same redaction rule as SlowestEntity.
+    """
+
+    mission_id: str
+    entity_item_id: str | None
+    slot_label: str
+    open_age_days: int
+    derivation: str
+    n: int = 1
 
     def to_dict(self) -> dict:
         return dataclasses.asdict(self)
@@ -360,6 +386,7 @@ class ClockReport:
     evaluated_at: datetime
     items: tuple[ItemClock, ...]
     slowest_entities: tuple[SlowestEntity, ...] = ()
+    blocking_entities: tuple[BlockingEntity, ...] = ()
     money: tuple[MoneyBlock, ...] = ()
     path_comparisons: tuple[PathComparison, ...] = ()
     proposals: tuple[Proposal, ...] = ()
@@ -371,6 +398,7 @@ class ClockReport:
             "evaluated_at": self.evaluated_at.isoformat(),
             "items": [i.to_dict() for i in self.items],
             "slowest_entities": [s.to_dict() for s in self.slowest_entities],
+            "blocking_entities": [b.to_dict() for b in self.blocking_entities],
             "money": [m.to_dict() for m in self.money],
             "path_comparisons": [p.to_dict() for p in self.path_comparisons],
             "proposals": [dataclasses.asdict(p) for p in self.proposals],

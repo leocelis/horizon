@@ -157,8 +157,15 @@ Pure function `evaluate(store_snapshot, t_eval) -> ClockReport`. Steps, in order
      degrade to counts
    - entity `time_in_stage`, `wait_vs_touch` (only over caller-labelled events),
      summarized as declared quantiles with `n`
-   - `slowest_entity` per mission = argmax of recorded entity latencies (operator
-     entity included); slot label in output
+   - `slowest_entity` per mission = argmax of recorded entity latencies over
+     **all** sojourns, open and closed (operator entity included); slot label in
+     output; an open winner carries `censored: true` because its recorded value
+     is a lower bound (research A2 F6). Equal latencies break toward the open
+     sojourn, whose true value is strictly greater.
+   - `blocking_entity` per mission = argmax of **open** sojourn age — the
+     constraint-aged open item (research B1), answering "who is blocking now"
+     rather than "who was slowest". The two are computed and reported
+     separately and may name different entities.
    - `horizon_share = age_days / max(1, root_days_remaining_at_item_creation)` and
      current share vs remaining
 3. **Monetary block** (skipped entirely when `time_value_rate is None`; every
@@ -206,7 +213,7 @@ Per `(item_id, signal_type)` a row in `mm_fires`:
 | deferral_expired | `t_eval.date() > revisit_date` | P2 |
 | gate_aging | `age_days > age_budget_days` and no PROGRESS since budget start | P2 |
 | mission_stalled | `days_since_progress > stall_days` (recording-path check attached) | P2 |
-| slowest_entity | identity of argmax changes, or first computation with ≥2 entities | P2 |
+| slowest_entity | identity of the argmax winner changes (payload carries n, censored, derivation) | P2 |
 | clock_unpaired | DEADLINE with `gates_item_id is None` at first evaluation | P2 |
 | horizon_share | share crosses next configured rung | P3 |
 | cost_of_delay | accrued CoD crosses caller threshold (rate+amount+threshold all declared) | P3 |

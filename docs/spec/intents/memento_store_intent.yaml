@@ -1,5 +1,5 @@
 # memento_store_intent.yaml — sub-module intent (segment a: store + tree + schema)
-# Parent: ../horizon_memento_mori_intent.yaml (v0.9). Parent's 7 constraints all apply;
+# Parent: ../horizon_memento_mori_intent.yaml (v1.0). Parent's 7 constraints all apply;
 # this artifact adds the store-local ones. Tests: ../MEMENTO_MORI_TEST_PLAN.md (S-*).
 
 parent_intent: "../horizon_memento_mori_intent.yaml"

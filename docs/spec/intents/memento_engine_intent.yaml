@@ -1,5 +1,5 @@
 # memento_engine_intent.yaml — sub-module intent (segments b–e: evaluation, proposals,
-# money, paths). Parent: ../horizon_memento_mori_intent.yaml (v0.9); its 7 constraints
+# money, paths). Parent: ../horizon_memento_mori_intent.yaml (v1.0); its 7 constraints
 # all apply. Tests: ../MEMENTO_MORI_TEST_PLAN.md (E-*).
 
 parent_intent: "../horizon_memento_mori_intent.yaml"
@@ -62,6 +62,21 @@ constraints:
     assumption_status: "KNOWN"
     consequence_if_violated: "Untraceable numbers acquire the authority of measurement without its accountability; a wrong input becomes indistinguishable from a wrong measurement"
 
+  - name: "censored_latency_semantics"
+    requirement: "slowest_entity is the argmax over ALL recorded entity sojourns, open and closed alike; an open winner is flagged censored (its recorded latency is a lower bound, research A2 F6) and never outranks a longer closed sojourn merely for being open; equal latencies break toward the open sojourn. The oldest OPEN sojourn is reported separately as blocking_entity (research B1 constraint-aged open item) — 'who is blocking now' and 'who was slowest' are distinct outputs that may name different entities. Exactly one implementation of this argmax exists; consumers read the engine's rows"
+    test: "tests/unit/memento_mori/test_review_fixes.py::test_e23_open_sojourn_does_not_outrank_a_longer_closed_one"   # plan E-4, E-23, E-24 [GOLDEN/PROPERTY]; also test_e23_equal_latency_breaks_toward_the_open_sojourn, test_e24_signals_consume_the_engine_argmax_rather_than_recomputing
+    test_provenance: "execution_derived"
+    execution_oracle:
+      kind: "golden_fixture"
+      path: "tests/fixtures/memento_mori/smallco_golden.json"
+      note: "Hand-checked E-4 values; corrected in v1.0 when the open-dominates rule was removed"
+    entropy: "near-zero"
+    priority: 1
+    assumption_status: "KNOWN"
+    conflict_prone: true
+    anti_pattern: "Do NOT re-introduce 'an open sojourn dominates any closed one'. It reads as intuitive (the open item is what you can still act on) and it is what the first implementation did, but it makes a 1-day open entity outrank a 400-day closed one and silently redefines 'slowest' as 'currently open'. The currently-open question has its own field: blocking_entity."
+    consequence_if_violated: "The plane's thesis signal names the wrong entity, and the operator attacks a latency that is not the largest recorded one"
+
   - name: "typed_refusals"
     requirement: "Requests for refused computations (NPV/discounting, currency conversion, forecast Δt or TTL, invented λ, counterfactual sojourns, inferential path dominance) raise typed refusal errors naming the violated rule; no code path returns an approximation instead"
     test: "tests/unit/memento_mori/test_engine_refusals.py::test_refusal_list_enforced"   # plan E-16, E-18 [HUMAN]
@@ -73,7 +88,7 @@ constraints:
 
 constraint_satisfiability:
   analysis: |
-    Five constraints; one tension examined: derivation_on_every_row vs
+    Six constraints; one tension examined: derivation_on_every_row vs
     degrade_by_omission — an omitted block still carries a derivation-shaped
     explanation field ("omitted: no conserved window"), so both are satisfied on the
     same report. Jointly satisfiable.

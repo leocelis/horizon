@@ -1,6 +1,6 @@
 # memento_signals_intent.yaml — sub-module intent (segments f–g: signal state machine,
 # integration, compat, adapters, agent/MCP surface). Parent:
-# ../horizon_memento_mori_intent.yaml (v0.9); its 7 constraints all apply.
+# ../horizon_memento_mori_intent.yaml (v1.0); its 7 constraints all apply.
 # Tests: ../MEMENTO_MORI_TEST_PLAN.md (G-*, M-*, R-*, J-1).
 
 parent_intent: "../horizon_memento_mori_intent.yaml"
