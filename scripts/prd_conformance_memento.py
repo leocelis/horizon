@@ -17,10 +17,10 @@ from decimal import Decimal
 sys.path.insert(0, "src")
 
 from horizon_monitor.memento import engine, money, propose, signals  # noqa: E402
+from horizon_monitor.memento import errors as merr  # noqa: E402
 from horizon_monitor.memento.config import MementoConfig  # noqa: E402
 from horizon_monitor.memento.models import EventKind, ItemKind, Provenance  # noqa: E402
 from horizon_monitor.memento.store import MementoStore  # noqa: E402
-from horizon_monitor.memento import errors as merr  # noqa: E402
 
 UTC = timezone.utc
 T = datetime(2026, 8, 18, 12, 0, tzinfo=UTC)
