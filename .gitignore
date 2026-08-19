@@ -41,6 +41,9 @@ Thumbs.db
 var/
 *.sqlite-journal
 horizon.db
+# Mission-plane stores — the README quickstart writes missions.db into the cwd
+missions.db
+*.memento.db
 *.log
 
 # Local env overrides
