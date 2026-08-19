@@ -128,6 +128,19 @@ single-tenant deployments (no `HORIZON_API_KEYS` differentiation, or `HORIZON_AU
 for local/stdio use) are unaffected — isolation only activates once more than one distinct key
 is actually in use against a shared server process.
 
+**Mission-plane tenant isolation (differs from session isolation — deliberately).**
+The mission plane ("Memento Mori"), when a durable store is configured, isolates on a
+**tenant**, not on the API key. Keys map to an assigned `tenant_id` through a lookup
+table storing only the key's full sha256; every mission query carries the resolved
+tenant as a predicate, and erasure (`MementoStore.erase_all()`) is tenant-scoped by
+construction. The two models differ on purpose: sessions are ephemeral, so key rotation
+correctly ends them; missions are multi-year records, so **rotating a key must retain
+the tenant's history** — revoke the old key, bind the new one, same tenant. A key that
+authenticates but has no active tenant mapping gets no mission access at all (fail
+closed); tenants are provisioned out of band by the operator
+(`scripts/provision_tenant.py`), never auto-created by an inbound request, and tenant
+provisioning/erasure are never exposed as MCP tools.
+
 **Key issuance and accountability.** Abuse of a hosted-server API key can only be acted on
 (key revocation, and where necessary reporting to the platform an anonymous requester used)
 if the key can be traced back to a real, identifiable requester at issuance time. See

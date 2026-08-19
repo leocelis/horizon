@@ -42,6 +42,7 @@ from horizon_monitor.memento.errors import (
     RootlessItemError,
     SchemaError,
     StoreCorruptionError,
+    TenantResolutionError,
     UndatedDeferralError,
 )
 from horizon_monitor.memento.models import (
@@ -88,6 +89,7 @@ __all__ = [
     "SignalReport",
     "SignalState",
     "StoreCorruptionError",
+    "TenantResolutionError",
     "StoreSnapshot",
     "UndatedDeferralError",
     "evaluate",

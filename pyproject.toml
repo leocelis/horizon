@@ -41,6 +41,7 @@ Changelog = "https://github.com/leocelis/horizon/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 geoip = ["geoip2>=4.0"]
 nli = ["torch>=2.0", "transformers>=4.30"]
+mysql = ["PyMySQL>=1.1"]
 mcp = [
     "mcp>=1.13",
     "click>=8.0",

@@ -44,19 +44,20 @@ import dataclasses
 import json
 import logging
 import os
+import time
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 from horizon_monitor import Config, FidelityMonitor, __version__
-from horizon_monitor.mcp.auth import current_key_id
+from horizon_monitor.mcp.auth import current_key_id, current_key_sha
 from horizon_monitor.mcp.session_registry import SessionOwnershipError, SessionRegistry
 from horizon_monitor.memento import engine as memento_engine
 from horizon_monitor.memento import propose as memento_propose
 from horizon_monitor.memento import signals as memento_signals
 from horizon_monitor.memento.config import MementoConfig
-from horizon_monitor.memento.errors import MementoError
+from horizon_monitor.memento.errors import MementoError, TenantResolutionError
 from horizon_monitor.memento.models import EventKind, ItemKind, Provenance
 from horizon_monitor.memento.store import MementoStore
 from horizon_monitor.monitor import SessionNotFoundError
@@ -236,6 +237,13 @@ def _memento_store_path_from_env() -> Path | None:
     return Path(raw) if raw else None
 
 
+def _memento_store_dsn_from_env() -> str | None:
+    """MySQL DSN for durable multi-tenant deployments (mysql://user:pass@host/db).
+    Wins over HORIZON_MEMENTO_STORE_PATH when both are set. Requires the
+    [mysql] extra and a CA certificate — see memento/backends/mysql.py."""
+    return os.environ.get("HORIZON_MEMENTO_STORE_DSN") or None
+
+
 def _jsonable(obj: Any) -> Any:
     """Round-trip through JSON so Decimal/date/datetime values in a memento
     report become JSON-native before crossing the MCP wire, the same way
@@ -314,7 +322,7 @@ def _parse_event_kwargs(event: dict) -> dict[str, Any]:
 
 
 def register_memento_tools(
-    app: FastMCP, store_path: Path | None
+    app: FastMCP, store_path: Path | None, dsn: str | None = None
 ) -> tuple[MementoStore, MementoConfig] | None:
     """Register the six mission-plane tools on `app` iff `store_path` is
     not None. With `store_path=None`, this function returns None and
@@ -328,11 +336,36 @@ def register_memento_tools(
     `process_turn` — one store, one config, shared by the tools and the
     turn pipeline.
     """
-    if store_path is None:
+    if store_path is None and dsn is None:
         return None
 
-    memento_store = MementoStore(store_path)
+    memento_store = MementoStore(store_path, dsn=dsn)
     memento_config = MementoConfig(store_path=store_path)
+
+    # ── Per-request tenant scoping ────────────────────────────────────────
+    # The store binds once per process (one backend connection); the TENANT
+    # is resolved per call from the authenticated key's full sha256 and
+    # bound as a lightweight scope over the same connection. Unknown or
+    # revoked keys FAIL CLOSED with a typed error — the mission plane never
+    # auto-provisions a tenant (see MementoStore.resolve_tenant_for_key_sha).
+    # stdio / auth-disabled callers carry no key sha and stay on 'local'.
+    _tenant_cache: dict[str, tuple[str, float]] = {}
+    _TENANT_CACHE_TTL_S = 60.0  # revocation bites within a minute
+
+    def _scoped_store() -> MementoStore:
+        key_sha = current_key_sha.get()
+        if not key_sha:
+            return memento_store  # local tenant — the stdio / library path
+        now = time.monotonic()
+        hit = _tenant_cache.get(key_sha)
+        if hit is not None and now - hit[1] < _TENANT_CACHE_TTL_S:
+            return memento_store.scoped(hit[0])
+        tenant_id = memento_store.resolve_tenant_for_key_sha(key_sha)
+        if tenant_id is None:
+            _tenant_cache.pop(key_sha, None)
+            raise TenantResolutionError()
+        _tenant_cache[key_sha] = (tenant_id, now)
+        return memento_store.scoped(tenant_id)
 
     @app.tool(
         name="clock_register",
@@ -352,7 +385,7 @@ def register_memento_tools(
     )
     def clock_register(item: dict) -> dict:
         try:
-            item_id = memento_store.register_item(**_parse_item_kwargs(item))
+            item_id = _scoped_store().register_item(**_parse_item_kwargs(item))
             return {"item_id": item_id}
         except MementoError as exc:
             return {"error": _serialize_memento_error(exc)}
@@ -373,7 +406,7 @@ def register_memento_tools(
     )
     def clock_progress(item_id: str, event: dict) -> dict:
         try:
-            event_id = memento_store.record_event(item_id=item_id, **_parse_event_kwargs(event))
+            event_id = _scoped_store().record_event(item_id=item_id, **_parse_event_kwargs(event))
             return {"event_id": event_id}
         except MementoError as exc:
             return {"error": _serialize_memento_error(exc)}
@@ -394,7 +427,7 @@ def register_memento_tools(
     def clock_status(scope: str | None = None, timestamp: str | None = None) -> dict:
         try:
             t_eval, instant_source = _resolve_eval_instant(timestamp)
-            snapshot = memento_store.snapshot()
+            snapshot = _scoped_store().snapshot()
             report = memento_engine.evaluate(snapshot, t_eval, memento_config)
             d = report.to_dict()
             d["eval_instant_source"] = instant_source
@@ -499,7 +532,8 @@ def register_memento_tools(
     def clock_ack(item_id: str, signal_type: str, actor: str, timestamp: str | None = None) -> dict:
         try:
             t_eval, _ = _resolve_eval_instant(timestamp)
-            prior = memento_store.get_fire_state(item_id, signal_type) or {}
+            _store = _scoped_store()
+            prior = _store.get_fire_state(item_id, signal_type) or {}
             current_rung = prior.get("rung", 0)
             new_state = memento_signals.ack(
                 item_id=item_id,
@@ -508,8 +542,8 @@ def register_memento_tools(
                 actor=actor,
                 current_rung=current_rung if isinstance(current_rung, int) else 0,
             )
-            memento_store.set_fire_state(item_id, signal_type, new_state)
-            event_id = memento_store.record_event(
+            _store.set_fire_state(item_id, signal_type, new_state)
+            event_id = _store.record_event(
                 item_id=item_id,
                 kind=EventKind.ACK,
                 valid_time=t_eval,
@@ -540,7 +574,8 @@ def register_memento_tools(
 
 
 _MEMENTO_STORE_PATH = _memento_store_path_from_env()
-_memento_registration = register_memento_tools(mcp, _MEMENTO_STORE_PATH)
+_MEMENTO_STORE_DSN = _memento_store_dsn_from_env()
+_memento_registration = register_memento_tools(mcp, _MEMENTO_STORE_PATH, _MEMENTO_STORE_DSN)
 _memento_store: MementoStore | None
 _memento_config: MementoConfig
 if _memento_registration is not None:

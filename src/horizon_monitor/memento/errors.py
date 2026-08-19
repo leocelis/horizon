@@ -284,3 +284,30 @@ class PersonRankingRefusedError(RefusalError):
                 "rank people in suggested_behavior'."
             ),
         )
+
+
+class TenantResolutionError(MementoError):
+    """An authenticated key has no active tenant mapping — FAIL CLOSED.
+
+    Raised by the MCP layer when a bearer key authenticates but resolves to
+    no row in horizon_api_keys (or only a revoked one). The mission plane
+    never auto-provisions a tenant: creating one on first sight of an
+    unmapped key would let any valid key mint itself a namespace, and would
+    turn a revoked key into a fresh empty tenant instead of a refusal.
+    """
+
+    def __init__(self) -> None:
+        self._init_message(
+            "TenantResolutionError",
+            fix=(
+                "this API key has no active mission-plane tenant. The operator "
+                "provisions tenants out of band (scripts/provision_tenant.py); "
+                "ask them to map this key, or to un-revoke/rotate it. Do not "
+                "retry with a different key on your own initiative."
+            ),
+            rule=(
+                "hosted tenancy: unknown or revoked keys fail closed; tenants "
+                "are assigned by the operator, never derived from a key and "
+                "never auto-created."
+            ),
+        )

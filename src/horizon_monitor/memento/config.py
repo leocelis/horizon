@@ -18,6 +18,9 @@ class MementoConfig:
     """Immutable configuration for a Memento Mori store + evaluation pipeline."""
 
     store_path: Path | None = None
+    # MySQL DSN for durable multi-tenant deployments; wins over store_path
+    # when both are set (requires the [mysql] extra — memento/backends/mysql.py).
+    store_dsn: str | None = None
     """Local SQLite file path. None => the plane is disabled entirely; no
     memento code path is entered anywhere in Horizon."""
 

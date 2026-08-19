@@ -1,11 +1,22 @@
-"""SQLite-backed store for the Memento Mori mission plane.
+"""Backend-agnostic store for the Memento Mori mission plane.
 
-Per MEMENTO_MORI_TECH_SPEC.md §3 and memento_store_intent.yaml. Same
-storage/ conventions as horizon_monitor.storage.sqlite: stdlib sqlite3, WAL
-mode, no external dependencies. This store is deliberately separate from
-the conversation plane's PersistentDynamicsStore — a distinct file, never
-read by the conversation plane, and the mission plane never reads
+Per MEMENTO_MORI_TECH_SPEC.md §3 and memento_store_intent.yaml. SQLite is
+the zero-dependency default (stdlib sqlite3, WAL mode); MySQL is an
+optional extra for durable multi-tenant deployments (see
+memento/backends/). This store is deliberately separate from the
+conversation plane's PersistentDynamicsStore — a distinct file/database,
+never read by the conversation plane, and the mission plane never reads
 conversation content (horizon_memento_mori_intent.yaml::local_first_privacy).
+
+Tenancy: a MementoStore IS a tenant scope. The default tenant is
+``'local'``, so single-operator installs and the entire pre-tenancy API are
+unchanged. ``store.scoped(tenant_id)`` returns a lightweight view over the
+SAME backend connection and lock, predicated on another tenant — every SQL
+statement in this file carries the scope's tenant_id, so cross-tenant reads
+and writes are impossible to express, not merely avoided. Multi-tenant
+callers (the MCP layer) resolve a tenant from authentication and call
+through the scope; erasure (``erase_all``) is scoped by construction, so
+one tenant's erasure request can never touch another's history.
 
 Validation runs BEFORE any row is written, so a rejected write raises
 before touching the database — the store is left byte-identical
@@ -18,7 +29,6 @@ reads the ambient clock (memento_engine_intent.yaml::pure_function_injected_time
 from __future__ import annotations
 
 import json
-import sqlite3
 import threading
 import uuid
 from collections.abc import Generator
@@ -27,6 +37,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
+from horizon_monitor.memento.backends import resolve_backend
 from horizon_monitor.memento.errors import (
     ArtifactProvenanceRequiredError,
     DuplicateRootError,
@@ -46,61 +57,9 @@ from horizon_monitor.memento.models import (
     StoreSnapshot,
 )
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS mm_meta (
-    key   TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-);
+_SCHEMA_VERSION = "2"
 
-CREATE TABLE IF NOT EXISTS mm_items (
-    item_id         TEXT PRIMARY KEY,
-    kind            TEXT NOT NULL,
-    parent_id       TEXT,
-    title           TEXT NOT NULL,
-    created_valid   TEXT NOT NULL,
-    created_tx      TEXT NOT NULL,
-    end_date        TEXT,
-    revisit_date    TEXT,
-    ttl_start       TEXT,
-    ttl_end         TEXT,
-    deadline_date   TEXT,
-    deadline_kind   TEXT,
-    gates_item_id   TEXT,
-    age_budget_days INTEGER,
-    stall_days      INTEGER,
-    namespace       TEXT,
-    amount          TEXT,
-    status          TEXT NOT NULL DEFAULT 'open',
-    superseded_by   TEXT
-);
-
-CREATE TABLE IF NOT EXISTS mm_events (
-    tx_seq          INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id        TEXT NOT NULL UNIQUE,
-    item_id         TEXT NOT NULL,
-    kind            TEXT NOT NULL,
-    valid_time      TEXT NOT NULL,
-    tx_time         TEXT NOT NULL,
-    stage           TEXT,
-    wait_or_touch   TEXT,
-    provenance_source_system TEXT,
-    provenance_native_id     TEXT,
-    provenance_raw_timestamp TEXT,
-    payload         TEXT NOT NULL DEFAULT '{}',
-    correction_of   TEXT
-);
-
-CREATE TABLE IF NOT EXISTS mm_fires (
-    item_id         TEXT NOT NULL,
-    signal_type     TEXT NOT NULL,
-    state           TEXT NOT NULL,
-    PRIMARY KEY (item_id, signal_type)
-);
-
-CREATE INDEX IF NOT EXISTS idx_mm_events_item ON mm_events(item_id);
-"""
-
-_SCHEMA_VERSION = "1"
+LOCAL_TENANT = "local"
 
 
 def _iso(dt: datetime | date | None) -> str | None:
@@ -122,51 +81,75 @@ def _parse_date(s: str | None) -> date | None:
 
 
 class MementoStore:
-    """A local, append-only-discipline SQLite store for one horizon tree.
+    """A tenant-scoped, append-only-discipline store for one horizon tree
+    per tenant.
 
-    Thread-safe via an internal lock, mirroring
-    horizon_monitor.storage.sqlite.PersistentDynamicsStore's pattern.
-    Multiple independent MementoStore instances may point at the same file
-    (multiple agent sessions); SQLite's own writer serialization plus a
-    busy_timeout handle cross-connection concurrency (test S-9).
+    Thread-safe via an internal RLock. Multiple independent MementoStore
+    instances may point at the same SQLite file (multiple agent sessions);
+    SQLite's own writer serialization plus a busy_timeout handle
+    cross-connection concurrency (test S-9). For MySQL, one backend
+    connection per process (the deployment spec's connection budget);
+    scopes share it.
     """
 
-    def __init__(self, store_path: str | Path) -> None:
-        self.store_path = Path(store_path)
-        self.store_path.parent.mkdir(parents=True, exist_ok=True)
-        self._lock = threading.Lock()
-        self._conn = self._connect()
-        self._init_schema()
-
-    def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(str(self.store_path), check_same_thread=False, timeout=30.0)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA busy_timeout=30000")
-        return conn
-
-    def _init_schema(self) -> None:
+    def __init__(
+        self,
+        store_path: str | Path | None = None,
+        *,
+        dsn: str | None = None,
+        tenant_id: str = LOCAL_TENANT,
+    ) -> None:
+        self.store_path = Path(store_path) if store_path is not None else None
+        self._tenant = tenant_id
+        self._lock = threading.RLock()
+        self._b = resolve_backend(store_path=store_path, dsn=dsn)
         with self._lock:
-            self._conn.executescript(SCHEMA)
-            self._conn.execute(
-                "INSERT OR IGNORE INTO mm_meta (key, value) VALUES ('schema_version', ?)",
-                (_SCHEMA_VERSION,),
-            )
-            self._conn.commit()
+            self._b.init_schema()
+
+    @property
+    def tenant_id(self) -> str:
+        return self._tenant
+
+    def scoped(self, tenant_id: str) -> MementoStore:
+        """A view over the SAME backend connection, predicated on another
+        tenant. Cheap enough to create per request; the connection count
+        stays at one per process."""
+        clone = object.__new__(MementoStore)
+        clone.store_path = self.store_path
+        clone._tenant = tenant_id
+        clone._lock = self._lock
+        clone._b = self._b
+        return clone
 
     def close(self) -> None:
         with self._lock:
-            self._conn.close()
+            self._b.close()
+
+    # ── plumbing ──────────────────────────────────────────────────────────
 
     @contextmanager
-    def _txn(self) -> Generator[sqlite3.Connection, None, None]:
+    def _txn(self) -> Generator:
+        """ensure_live() runs at the boundary, before the first statement —
+        never mid-transaction, where a reconnect would silently drop the
+        open transaction's state."""
         with self._lock:
+            self._b.ensure_live()
             try:
-                yield self._conn
-                self._conn.commit()
+                yield self._b
+                self._b.commit()
             except Exception:
-                self._conn.rollback()
+                self._b.rollback()
                 raise
+
+    def _fetchone(self, sql: str, params: tuple = ()):
+        with self._lock:
+            self._b.ensure_live()
+            return self._b.execute(sql, params).fetchone()
+
+    def _fetchall(self, sql: str, params: tuple = ()):
+        with self._lock:
+            self._b.ensure_live()
+            return self._b.execute(sql, params).fetchall()
 
     # ── Items ────────────────────────────────────────────────────────────
 
@@ -192,6 +175,7 @@ class MementoStore:
         """Validate then write a new Item. Raises before writing on any
         schema violation (memento_store_intent.yaml::schema_rejections_total)."""
         with self._lock:
+            self._b.ensure_live()
             self._validate_item(
                 kind=kind,
                 parent_id=parent_id,
@@ -208,16 +192,17 @@ class MementoStore:
             item_id = str(uuid.uuid4())
             created_tx = datetime.now(timezone.utc)
             try:
-                self._conn.execute(
+                self._b.execute(
                     """
                     INSERT INTO mm_items (
-                        item_id, kind, parent_id, title, created_valid, created_tx,
-                        end_date, revisit_date, ttl_start, ttl_end, deadline_date,
-                        deadline_kind, gates_item_id, age_budget_days, stall_days,
-                        namespace, amount, status, superseded_by
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                        tenant_id, item_id, kind, parent_id, title, created_valid,
+                        created_tx, end_date, revisit_date, ttl_start, ttl_end,
+                        deadline_date, deadline_kind, gates_item_id, age_budget_days,
+                        stall_days, namespace, amount, status, superseded_by
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                     """,
                     (
+                        self._tenant,
                         item_id,
                         kind.value,
                         parent_id,
@@ -239,9 +224,9 @@ class MementoStore:
                         None,
                     ),
                 )
-                self._conn.commit()
+                self._b.commit()
             except Exception:
-                self._conn.rollback()
+                self._b.rollback()
                 raise
             return item_id
 
@@ -272,9 +257,10 @@ class MementoStore:
             raise PersonNamespaceUnflaggedError()
 
     def _has_root(self) -> bool:
-        row = self._conn.execute(
-            "SELECT 1 FROM mm_items WHERE kind = ? LIMIT 1", (ItemKind.HORIZON.value,)
-        ).fetchone()
+        row = self._fetchone(
+            "SELECT 1 FROM mm_items WHERE tenant_id = ? AND kind = ? LIMIT 1",
+            (self._tenant, ItemKind.HORIZON.value),
+        )
         return row is not None
 
     def _require_rooted(self, parent_id: str | None) -> None:
@@ -286,9 +272,10 @@ class MementoStore:
             if current in seen:
                 raise RootlessItemError()  # cycle — never terminates at root
             seen.add(current)
-            row = self._conn.execute(
-                "SELECT kind, parent_id FROM mm_items WHERE item_id = ?", (current,)
-            ).fetchone()
+            row = self._fetchone(
+                "SELECT kind, parent_id FROM mm_items WHERE tenant_id = ? AND item_id = ?",
+                (self._tenant, current),
+            )
             if row is None:
                 raise RootlessItemError()
             if row["kind"] == ItemKind.HORIZON.value:
@@ -297,27 +284,35 @@ class MementoStore:
         raise RootlessItemError()
 
     def get_item(self, item_id: str) -> Item | None:
-        row = self._conn.execute("SELECT * FROM mm_items WHERE item_id = ?", (item_id,)).fetchone()
+        row = self._fetchone(
+            "SELECT * FROM mm_items WHERE tenant_id = ? AND item_id = ?",
+            (self._tenant, item_id),
+        )
         return self._row_to_item(row) if row else None
 
     def get_items(self) -> list[Item]:
-        rows = self._conn.execute("SELECT * FROM mm_items ORDER BY item_id").fetchall()
+        rows = self._fetchall(
+            "SELECT * FROM mm_items WHERE tenant_id = ? ORDER BY item_id",
+            (self._tenant,),
+        )
         return [self._row_to_item(r) for r in rows]
 
     def get_root(self) -> Item | None:
-        row = self._conn.execute(
-            "SELECT * FROM mm_items WHERE kind = ? LIMIT 1", (ItemKind.HORIZON.value,)
-        ).fetchone()
+        row = self._fetchone(
+            "SELECT * FROM mm_items WHERE tenant_id = ? AND kind = ? LIMIT 1",
+            (self._tenant, ItemKind.HORIZON.value),
+        )
         return self._row_to_item(row) if row else None
 
     def update_item_status(
         self, item_id: str, status: str, superseded_by: str | None = None
     ) -> None:
         """mm_items rows mutate only status/superseded_by (append_only_bitemporal)."""
-        with self._txn() as conn:
-            conn.execute(
-                "UPDATE mm_items SET status = ?, superseded_by = ? WHERE item_id = ?",
-                (status, superseded_by, item_id),
+        with self._txn() as b:
+            b.execute(
+                "UPDATE mm_items SET status = ?, superseded_by = ? "
+                "WHERE tenant_id = ? AND item_id = ?",
+                (status, superseded_by, self._tenant, item_id),
             )
 
     REDACTED_TITLE = "[redacted — retention]"
@@ -332,29 +327,37 @@ class MementoStore:
         silent background sweep. Latency measurement is unaffected — only the
         name goes.
         """
-        with self._txn() as conn:
-            row = conn.execute(
-                "SELECT namespace FROM mm_items WHERE item_id = ?", (item_id,)
+        with self._txn() as b:
+            row = b.execute(
+                "SELECT namespace FROM mm_items WHERE tenant_id = ? AND item_id = ?",
+                (self._tenant, item_id),
             ).fetchone()
             if row is None:
-                raise StoreCorruptionError(f"unknown item_id {item_id!r}")
+                raise StoreCorruptionError(item_id, "<no such item in this tenant scope>")
             if row["namespace"] != "person":
                 raise RetentionScopeError(item_id, row["namespace"])
-            conn.execute(
-                "UPDATE mm_items SET title = ? WHERE item_id = ?",
-                (self.REDACTED_TITLE, item_id),
+            b.execute(
+                "UPDATE mm_items SET title = ? WHERE tenant_id = ? AND item_id = ?",
+                (self.REDACTED_TITLE, self._tenant, item_id),
             )
 
     def erase_all(self) -> dict[str, int]:
-        """Destroy every mission record in this store. The right-to-erasure path.
+        """Destroy every mission record in THIS TENANT's scope. The
+        right-to-erasure path.
 
-        Erasure is deliberately **all-or-nothing**. There is no selective row
-        delete and there must not be one: ``mm_events`` is append-only precisely
-        so that any number the plane reports traces back to a fact the operator
-        recorded. A per-row delete would be a history-rewriting tool wearing a
-        privacy label — it could quietly remove the one stall that made a
-        mission look bad, and every surviving number would still be presented
-        with full authority.
+        Erasure is deliberately **all-or-nothing within the tenant**. There is
+        no selective row delete and there must not be one: ``mm_events`` is
+        append-only precisely so that any number the plane reports traces back
+        to a fact the operator recorded. A per-row delete would be a
+        history-rewriting tool wearing a privacy label — it could quietly
+        remove the one stall that made a mission look bad, and every surviving
+        number would still be presented with full authority.
+
+        Tenant-scoped by construction: every DELETE carries this scope's
+        tenant_id, so one tenant's erasure request can never touch another
+        tenant's history. If a ``horizon_tenants`` row exists for this tenant
+        its status becomes ``'erased'`` in the same transaction, so an erased
+        tenant is distinguishable from one that never existed.
 
         Complements :meth:`redact_person_display_name`, which removes one third
         party's display name while preserving the latency measurement. This
@@ -366,20 +369,33 @@ class MementoStore:
         the erasure rather than merely perform it.
         """
         counts: dict[str, int] = {}
-        with self._txn() as conn:
+        with self._txn() as b:
             for table in ("mm_fires", "mm_events", "mm_items"):
-                counts[table] = conn.execute(
-                    f"SELECT COUNT(*) AS c FROM {table}"  # noqa: S608 - fixed literals
+                counts[table] = b.execute(
+                    f"SELECT COUNT(*) AS c FROM {table} WHERE tenant_id = ?",  # noqa: S608
+                    (self._tenant,),
                 ).fetchone()["c"]
-                conn.execute(f"DELETE FROM {table}")  # noqa: S608 - fixed literals
-            counts["mm_meta"] = conn.execute(
-                "SELECT COUNT(*) AS c FROM mm_meta WHERE key != 'schema_version'"
+                b.execute(
+                    f"DELETE FROM {table} WHERE tenant_id = ?",  # noqa: S608
+                    (self._tenant,),
+                )
+            counts["mm_meta"] = b.execute(
+                "SELECT COUNT(*) AS c FROM mm_meta "
+                "WHERE tenant_id = ? AND `key` != 'schema_version'",
+                (self._tenant,),
             ).fetchone()["c"]
-            conn.execute("DELETE FROM mm_meta WHERE key != 'schema_version'")
+            b.execute(
+                "DELETE FROM mm_meta WHERE tenant_id = ? AND `key` != 'schema_version'",
+                (self._tenant,),
+            )
+            b.execute(
+                "UPDATE horizon_tenants SET status = 'erased' WHERE tenant_id = ?",
+                (self._tenant,),
+            )
         return counts
 
     @staticmethod
-    def _row_to_item(row: sqlite3.Row) -> Item:
+    def _row_to_item(row) -> Item:
         return Item(
             item_id=row["item_id"],
             kind=ItemKind(row["kind"]),
@@ -419,21 +435,24 @@ class MementoStore:
         """Append an event row. mm_events is insert-only; corrections
         supersede via correction_of, never overwrite (append_only_bitemporal)."""
         with self._lock:
+            self._b.ensure_live()
             if kind == EventKind.ARTIFACT:
                 self._validate_provenance(provenance)
 
             event_id = str(uuid.uuid4())
             resolved_tx_time = tx_time or datetime.now(timezone.utc)
             try:
-                self._conn.execute(
+                self._b.execute(
                     """
                     INSERT INTO mm_events (
-                        event_id, item_id, kind, valid_time, tx_time, stage,
-                        wait_or_touch, provenance_source_system, provenance_native_id,
-                        provenance_raw_timestamp, payload, correction_of
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                        tenant_id, event_id, item_id, kind, valid_time, tx_time,
+                        stage, wait_or_touch, provenance_source_system,
+                        provenance_native_id, provenance_raw_timestamp, payload,
+                        correction_of
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
                     """,
                     (
+                        self._tenant,
                         event_id,
                         item_id,
                         kind.value,
@@ -448,9 +467,9 @@ class MementoStore:
                         correction_of,
                     ),
                 )
-                self._conn.commit()
+                self._b.commit()
             except Exception:
-                self._conn.rollback()
+                self._b.rollback()
                 raise
             return event_id
 
@@ -472,15 +491,19 @@ class MementoStore:
 
     def get_events(self, item_id: str | None = None) -> list[ClockEvent]:
         if item_id is not None:
-            rows = self._conn.execute(
-                "SELECT * FROM mm_events WHERE item_id = ? ORDER BY tx_seq", (item_id,)
-            ).fetchall()
+            rows = self._fetchall(
+                "SELECT * FROM mm_events WHERE tenant_id = ? AND item_id = ? ORDER BY tx_seq",
+                (self._tenant, item_id),
+            )
         else:
-            rows = self._conn.execute("SELECT * FROM mm_events ORDER BY tx_seq").fetchall()
+            rows = self._fetchall(
+                "SELECT * FROM mm_events WHERE tenant_id = ? ORDER BY tx_seq",
+                (self._tenant,),
+            )
         return [self._row_to_event(r) for r in rows]
 
     @staticmethod
-    def _row_to_event(row: sqlite3.Row) -> ClockEvent:
+    def _row_to_event(row) -> ClockEvent:
         provenance = None
         if row["provenance_source_system"] is not None:
             provenance = Provenance(
@@ -505,34 +528,122 @@ class MementoStore:
     # ── Signal fire-state (mm_fires) ────────────────────────────────────
 
     def get_fire_state(self, item_id: str, signal_type: str) -> dict | None:
-        row = self._conn.execute(
-            "SELECT state FROM mm_fires WHERE item_id = ? AND signal_type = ?",
-            (item_id, signal_type),
-        ).fetchone()
+        row = self._fetchone(
+            "SELECT state FROM mm_fires WHERE tenant_id = ? AND item_id = ? AND signal_type = ?",
+            (self._tenant, item_id, signal_type),
+        )
         return json.loads(row["state"]) if row else None
 
     def set_fire_state(self, item_id: str, signal_type: str, state: dict) -> None:
-        with self._txn() as conn:
-            conn.execute(
-                """
-                INSERT INTO mm_fires (item_id, signal_type, state) VALUES (?, ?, ?)
-                ON CONFLICT(item_id, signal_type) DO UPDATE SET state = excluded.state
-                """,
-                (item_id, signal_type, json.dumps(state)),
-            )
+        """SELECT-then-INSERT-or-UPDATE inside one transaction — deliberately
+        NOT a dialect upsert (``ON CONFLICT`` is SQLite-only and
+        ``ON DUPLICATE KEY UPDATE`` hides insert-vs-update intent)."""
+        with self._txn() as b:
+            existing = b.execute(
+                "SELECT 1 FROM mm_fires WHERE tenant_id = ? AND item_id = ? AND signal_type = ?",
+                (self._tenant, item_id, signal_type),
+            ).fetchone()
+            if existing:
+                b.execute(
+                    "UPDATE mm_fires SET state = ? "
+                    "WHERE tenant_id = ? AND item_id = ? AND signal_type = ?",
+                    (json.dumps(state), self._tenant, item_id, signal_type),
+                )
+            else:
+                b.execute(
+                    "INSERT INTO mm_fires (tenant_id, item_id, signal_type, state) "
+                    "VALUES (?, ?, ?, ?)",
+                    (self._tenant, item_id, signal_type, json.dumps(state)),
+                )
 
     def get_all_fire_states(self) -> list[tuple[tuple[str, str], dict]]:
-        rows = self._conn.execute(
-            "SELECT item_id, signal_type, state FROM mm_fires ORDER BY item_id, signal_type"
-        ).fetchall()
+        rows = self._fetchall(
+            "SELECT item_id, signal_type, state FROM mm_fires "
+            "WHERE tenant_id = ? ORDER BY item_id, signal_type",
+            (self._tenant,),
+        )
         return [((r["item_id"], r["signal_type"]), json.loads(r["state"])) for r in rows]
+
+    # ── Tenancy (horizon_tenants / horizon_api_keys) ─────────────────────
+    #
+    # Identity tables are NOT tenant-scoped — they define tenants. They are
+    # written by the operator's provisioning script (scripts/provision_tenant.py),
+    # never by an MCP tool: identity operations are not conversational.
+
+    def resolve_tenant_for_key_sha(self, key_sha256: str) -> str | None:
+        """tenant_id for an ACTIVE (non-revoked) key hash; None otherwise.
+
+        None means FAIL CLOSED: a key that authenticates but has no active
+        mapping gets no mission access. Never auto-provision here — creating
+        a tenant on first sight of an unmapped key would let any valid key
+        mint itself a namespace, and would turn a revoked key into a fresh
+        empty tenant instead of a refusal.
+        """
+        row = self._fetchone(
+            "SELECT tenant_id FROM horizon_api_keys "
+            "WHERE key_sha256 = ? AND revoked_at IS NULL",
+            (key_sha256,),
+        )
+        return row["tenant_id"] if row else None
+
+    def provision_tenant(
+        self, tenant_id: str, display_label: str, key_sha256: str, key_label: str | None = None
+    ) -> None:
+        """Operator-run provisioning: one tenant row + one active key row.
+        Idempotent on the tenant; refuses to re-bind an existing key hash."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._txn() as b:
+            existing = b.execute(
+                "SELECT tenant_id FROM horizon_tenants WHERE tenant_id = ?",
+                (tenant_id,),
+            ).fetchone()
+            if existing is None:
+                b.execute(
+                    "INSERT INTO horizon_tenants (tenant_id, display_label, status, created_at) "
+                    "VALUES (?, ?, 'active', ?)",
+                    (tenant_id, display_label, now),
+                )
+            bound = b.execute(
+                "SELECT tenant_id FROM horizon_api_keys WHERE key_sha256 = ?",
+                (key_sha256,),
+            ).fetchone()
+            if bound is not None:
+                raise ValueError(
+                    f"key hash already bound to tenant {bound['tenant_id']!r}; "
+                    "revoke it first — a key never moves between tenants silently"
+                )
+            b.execute(
+                "INSERT INTO horizon_api_keys (key_sha256, tenant_id, label, created_at, revoked_at) "
+                "VALUES (?, ?, ?, ?, NULL)",
+                (key_sha256, tenant_id, key_label, now),
+            )
+
+    def revoke_key(self, key_sha256: str) -> bool:
+        """Revocation is a row update, not a redeploy. Returns True if a row
+        was revoked. Mission history is untouched — that is the entire point
+        of tenant identity being assigned rather than derived from the key."""
+        with self._txn() as b:
+            row = b.execute(
+                "SELECT revoked_at FROM horizon_api_keys WHERE key_sha256 = ?",
+                (key_sha256,),
+            ).fetchone()
+            if row is None or row["revoked_at"] is not None:
+                return False
+            b.execute(
+                "UPDATE horizon_api_keys SET revoked_at = ? WHERE key_sha256 = ?",
+                (datetime.now(timezone.utc).isoformat(), key_sha256),
+            )
+            return True
 
     # ── Snapshot for the pure evaluation engine ─────────────────────────
 
     def snapshot(self) -> StoreSnapshot:
         """A frozen point-in-time view for engine.evaluate(). Collections
         are ordered by stable keys so two snapshots taken of an unchanged
-        store always compare/serialize identically."""
+        store always compare/serialize identically. Tenant-scoped: contains
+        only this scope's items, events and fire states, so every number
+        the engine computes is derived exclusively from this tenant's
+        recorded facts."""
         items = tuple(self.get_items())
         events = tuple(self.get_events())
         fire_states = tuple(self.get_all_fire_states())

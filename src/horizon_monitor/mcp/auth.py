@@ -36,6 +36,15 @@ current_key_id: contextvars.ContextVar[str] = contextvars.ContextVar(
     "horizon_current_key_id", default="local"
 )
 
+# Full sha256 of the authenticated bearer key. The mission plane's tenant
+# resolution looks this up in horizon_api_keys (never the raw key, never the
+# truncated-for-logging key_id — an 8-char hash is a log label, not an
+# identity). Default "" = no authenticated key (stdio / auth disabled),
+# which the mission layer maps to the 'local' tenant.
+current_key_sha: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "horizon_current_key_sha", default=""
+)
+
 _log = logging.getLogger("horizon_monitor.mcp.auth")
 
 # ── Key store ─────────────────────────────────────────────────────────────────
@@ -155,7 +164,7 @@ class HorizonAuthMiddleware:
             await self.app(scope, receive, send)
             return
 
-        err, key_id = _extract_and_validate(scope)
+        err, key_id, key_sha = _extract_and_validate(scope)
         if err is not None:
             response = JSONResponse(err, status_code=401)
             await response(scope, receive, send)
@@ -182,16 +191,18 @@ class HorizonAuthMiddleware:
 
         _log.info("AUTH  ok  key=%s  path=%s", key_id, path)
         token = current_key_id.set(key_id)
+        sha_token = current_key_sha.set(key_sha)
         try:
             await self.app(scope, receive, send)
         finally:
+            current_key_sha.reset(sha_token)
             current_key_id.reset(token)
 
 
 # ── Validation helpers ────────────────────────────────────────────────────────
 
 
-def _extract_and_validate(scope) -> tuple[dict | None, str | None]:
+def _extract_and_validate(scope) -> tuple[dict | None, str | None, str]:
     """
     Extract and validate the Bearer token from scope headers.
 
@@ -215,37 +226,37 @@ def _extract_and_validate(scope) -> tuple[dict | None, str | None]:
                 "Refusing all requests. Set HORIZON_API_KEYS, or "
                 "HORIZON_AUTH_DISABLED=true for local dev only."
             )
-        }, None
+        }, None, ""
 
     headers: dict[bytes, bytes] = dict(scope.get("headers", []))
     raw_auth: str = headers.get(b"authorization", b"").decode("utf-8", errors="replace")
 
     if not raw_auth:
         _log.warning("AUTH  missing_header  path=%s", path)
-        return {"error": "Missing Authorization header"}, None
+        return {"error": "Missing Authorization header"}, None, ""
 
     if not raw_auth.startswith("Bearer "):
         _log.warning("AUTH  bad_format  path=%s", path)
-        return {"error": "Invalid Authorization header. Expected: Bearer <token>"}, None
+        return {"error": "Invalid Authorization header. Expected: Bearer <token>"}, None, ""
 
     api_key = raw_auth[7:].strip()
 
     if not api_key:
         _log.warning("AUTH  empty_key  path=%s", path)
-        return {"error": "Empty API key"}, None
+        return {"error": "Empty API key"}, None, ""
 
     if AUTH_DISABLED and not VALID_API_KEYS:
         # Explicit dev-mode opt-in with no keys configured — allow.
         _log.warning(
             "AUTH  no_keys_configured  path=%s  — allowed (HORIZON_AUTH_DISABLED=true)", path
         )
-        return None, "unconfigured"
+        return None, "unconfigured", ""
 
     if not _key_matches(api_key):
         _log.warning("AUTH  invalid_key  key_prefix=%s  path=%s", api_key[:8], path)
-        return {"error": "Invalid API key"}, None
+        return {"error": "Invalid API key"}, None, ""
 
-    return None, _key_id(api_key)
+    return None, _key_id(api_key), hashlib.sha256(api_key.encode()).hexdigest()
 
 
 def _key_matches(candidate: str) -> bool:
@@ -284,7 +295,7 @@ async def validate_api_key(request: Request) -> tuple[JSONResponse | None, str |
     if path in _EXEMPT_PATHS:
         return None, None
 
-    err, key_id = _extract_and_validate({"headers": list(request.headers.raw), "path": path})
+    err, key_id, _sha = _extract_and_validate({"headers": list(request.headers.raw), "path": path})
     if err is not None:
         return JSONResponse(err, status_code=401), None
     return None, key_id

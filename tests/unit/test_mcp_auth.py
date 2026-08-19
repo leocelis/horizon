@@ -158,7 +158,7 @@ def test_no_keys_configured_with_auth_disabled_is_allowed_unconfigured() -> None
     """
     auth_module.VALID_API_KEYS = set()
     auth_module.AUTH_DISABLED = True
-    err, key_id = auth_module._extract_and_validate(
+    err, key_id, _sha = auth_module._extract_and_validate(
         {"headers": [(b"authorization", b"Bearer anything-goes")], "path": "/protected"}
     )
     assert err is None
