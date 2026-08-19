@@ -308,7 +308,7 @@ Every `process_turn()` returns a `TurnResult` with 32 fields across five signal 
 
 ---
 
-## 16 Event Types
+## 16 Event Types (conversation plane)
 
 All events default to **observe mode** (emitted, not acted on). Enable active mode via `configure()` once your event achieves ≥ 0.7 precision/recall on your domain.
 
@@ -351,15 +351,48 @@ export HORIZON_MEMENTO_STORE_PATH=~/.horizon/missions.db   # local, single-opera
 ```
 
 ```python
-from horizon_monitor.memento import MementoStore, MementoConfig, evaluate, ItemKind
+from datetime import date, datetime, timezone
+
+from horizon_monitor.memento import (
+    EventKind, ItemKind, MementoConfig, MementoStore, evaluate,
+)
 
 store = MementoStore("missions.db")
-root = store.register_item(kind=ItemKind.HORIZON, title="engagement horizon",
-                           created_valid=..., end_date=date(2030, 1, 1))
-mission = store.register_item(kind=ItemKind.MISSION, title="ship-the-thing",
-                              parent_id=root, created_valid=...)
 
-report = evaluate(store.snapshot(), t_eval, MementoConfig())
+# Exactly one root, and it must be finite — that is what makes elapsed time cost
+# something. Every other item hangs off it.
+root = store.register_item(
+    kind=ItemKind.HORIZON,
+    title="engagement horizon",
+    created_valid=datetime(2026, 1, 1, tzinfo=timezone.utc),
+    end_date=date(2030, 1, 1),
+)
+mission = store.register_item(
+    kind=ItemKind.MISSION,
+    title="ship-the-thing",
+    parent_id=root,
+    stall_days=14,
+    created_valid=datetime(2026, 6, 1, tzinfo=timezone.utc),
+)
+store.record_event(
+    item_id=mission,
+    kind=EventKind.PROGRESS,
+    valid_time=datetime(2026, 7, 2, tzinfo=timezone.utc),
+)
+
+# The evaluation instant is always a parameter — the engine never reads a clock,
+# so the same store at the same instant always yields the same report.
+report = evaluate(
+    store.snapshot(),
+    datetime(2026, 8, 18, 12, tzinfo=timezone.utc),
+    MementoConfig(),
+)
+
+row = next(r for r in report.items if r.item_id == mission)
+print(f"age:             {row.age_days} days")            # 78 days
+print(f"since progress:  {row.days_since_progress} days") # 47 days
+print(f"recording path:  {row.recording_path}")           # no recent work
+print(f"horizon share:   {row.horizon_share:.4f}")        # 0.0595
 ```
 
 ### What it measures
@@ -373,7 +406,28 @@ report = evaluate(store.snapshot(), t_eval, MementoConfig())
 | Cost-of-delay, break-even date | only when *you* declare a rate and amounts |
 | Path comparison | a probe's recorded sojourn beside the incumbent's accrued delay |
 
-Twelve edge-triggered signals ride the existing `process_turn` contract for sessions
+### 12 signal types (mission plane)
+
+Separate from the conversation plane's [16 event types](#16-event-types-conversation-plane),
+not an extension of them. Each fires **once on an edge** — when its predicate becomes
+true — never again while the condition persists, and at most one new signal per turn.
+
+| Signal | Fires when | Tier |
+|---|---|---|
+| `signal.deadline_window` | an external deadline enters its warning window | P1 |
+| `signal.ttl_expired` | a task outlives its ratified lifespan — *investigate the blocker* | P1 |
+| `signal.deferral_expired` | a deferral passes its revisit date | P2 |
+| `signal.gate_aging` | a gate exceeds its age budget with no progress | P2 |
+| `signal.mission_stalled` | no progress events for the mission's threshold (paired with the recording-path check) | P2 |
+| `signal.slowest_entity` | the identity of a mission's slowest recorded entity changes | P2 |
+| `signal.clock_unpaired` | a deadline exists with no linked internal state | P2 |
+| `signal.horizon_share` | an item's elapsed time crosses a threshold share of the remaining root horizon | P3 |
+| `signal.cost_of_delay` | accrued cost-of-delay crosses an operator threshold (rate + amount + threshold all declared) | P3 |
+| `signal.probe_ready` | a probe sojourn completes — enough to *compare numbers*, never a powered test | P3 |
+| `signal.path_ahead` | a probe's recorded sojourn is shorter than the incumbent's accrued delay (descriptive only) | P3 |
+| `signal.breakeven_passed` | a ratified break-even date passes without the measured improvement | P3 |
+
+These ride the existing `process_turn` contract for sessions
 bound with `associate_mission`. Every event carries `plane: "mission"`, and the contract
 is deliberately **loud** — mission signals are surfaced to the operator with their
 numbers, unlike conversation signals, which apply silently.
@@ -393,7 +447,8 @@ Accounting, never estimation. The engine never invents a duration, date, or amou
   wait is measured but never becomes a score, a ranking, or a resolvable identifier
 - missing inputs degrade **by omission with an explanatory field**, never by substitution
 
-Every reported number carries a `derivation` string and its `n`. Identical store plus
+Every row carries a `derivation` string spelling out the arithmetic it came from, and
+any summary statistic additionally carries the `n` it summarised. Identical store plus
 identical evaluation instant produces a byte-identical report.
 
 **Docs:** [product requirements](docs/product/MEMENTO_MORI_PRD.md) ·
