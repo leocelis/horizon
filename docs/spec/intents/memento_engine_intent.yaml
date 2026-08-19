@@ -1,5 +1,5 @@
 # memento_engine_intent.yaml — sub-module intent (segments b–e: evaluation, proposals,
-# money, paths). Parent: ../horizon_memento_mori_intent.yaml (v0.7); its 7 constraints
+# money, paths). Parent: ../horizon_memento_mori_intent.yaml (v0.9); its 7 constraints
 # all apply. Tests: ../MEMENTO_MORI_TEST_PLAN.md (E-*).
 
 parent_intent: "../horizon_memento_mori_intent.yaml"
@@ -7,7 +7,7 @@ scope: { level: "module", type: "component", granularity: "fine" }
 metadata:
   feature_id: "memento_engine"
   category: "mission_dynamics"
-  status: "planned"
+  status: "implemented"
 
 authorship:
   origin: "ai_proposed"
@@ -54,7 +54,7 @@ constraints:
     consequence_if_violated: "Silent substitution is estimation by the back door — the exact failure the plane exists to refuse"
 
   - name: "derivation_on_every_row"
-    requirement: "Every report row exposes derivation (the arithmetic spelled out over named stored records) and n for any summary statistic; monetary rows are traceable to (amount, rate, measured duration); comparison rows contain only latencies computed from really-run paths, base-rate fields separate and provenance-labelled"
+    requirement: "Every report row exposes derivation (the arithmetic spelled out over named stored records) and n for any summary statistic — n is the SIZE OF THE POPULATION the statistic summarised (e.g. slowest_entity n == the number of entities the argmax ranged over), never a constant, and it must agree with the derivation string; monetary rows are traceable to (amount, rate, measured duration); comparison rows contain only latencies computed from really-run paths, base-rate fields separate and provenance-labelled"
     test: "tests/unit/memento_mori/test_engine_derivations.py::test_every_row_traceable"   # plan E-15, E-17, E-19 [GOLDEN]
     test_provenance: "ai_generated"
     entropy: "near-zero"

@@ -50,7 +50,7 @@ review. Untagged cases are supporting coverage.
 | E-3 | Recording-path check | M1 has events ⇒ "no recent work"; a mission with zero events ever ⇒ "no capture" — distinct flags | §4.3 | [HUMAN] |
 | E-4 | Entity latency | E1 time-in-stage 25d (closed); E2 open 21d; slowest_entity = **E2 "operator"** (open sojourn dominates) | §6 | [GOLDEN] |
 | E-5 | Wait/touch only from caller labels | events without labels contribute to no wait/touch ratio; no inference | §4.3 | |
-| E-6 | λ on non-conserved window | window with arrivals≠departures ⇒ `λ=None`; break-even degrades to cycle count N, **no date** | §6 | [HUMAN] |
+| E-6 | λ on non-conserved window | window with arrivals≠departures ⇒ `λ=None`; break-even degrades to cycle count N, **no date** (covered in `test_engine_degradation.py` / `test_engine_joint.py`) | §6 | [HUMAN] |
 | E-7 | Determinism | two `evaluate()` calls, same snapshot+instant ⇒ **byte-identical** serialized report | §3.3 | [PROPERTY] |
 | E-8 | Evaluation instant injection | engine never reads system clock (monkeypatch `datetime.now` to raise; evaluate succeeds) | §4.2 | [PROPERTY] |
 | E-9 | No-network / no-LLM | socket + subprocess guards active during evaluate; zero calls | intent c3 | [PROPERTY] |
@@ -63,6 +63,8 @@ review. Untagged cases are supporting coverage.
 | E-16 | Refusals | requests for NPV, currency conversion, forecast Δt, invented λ ⇒ typed refusal errors naming the rule, never a number | §6 | [HUMAN] |
 | E-17 | Path comparison | P1 sojourn **4d** vs incumbent accrued **17d** (since 2026-08-01); base-rate column separate and provenance-labelled; no synthetic latency fields exist in the schema | §7 | [GOLDEN] |
 | E-18 | Counterfactual refusal | API surface has no "would-have-taken" computation; requesting one is a typed refusal | §3.2 | |
+| E-20 | `slowest_entity` n | `n` equals the population the argmax summarised (matches the derivation's own "over N recorded entities"), never a constant | §6 | [GOLDEN] |
+| E-21 | Person-namespace redaction is complete | a person winner is still measured, but both its title AND its resolvable `entity_item_id` are withheld from report and payload — an id resolves to the name through the store | §8 | [HUMAN] |
 | E-19 | Horizon share | M1 elapsed 78d vs H remaining ⇒ share **≈ 0.0595** (78/1310) crosses the 0.05 rung | §6 | [GOLDEN] |
 
 ## G — Signals (memento_signals_intent)
@@ -80,6 +82,8 @@ review. Untagged cases are supporting coverage.
 | G-9 | No person ranking in behaviors | linter over `suggested_behavior` templates + generated payloads: no person-ordered lists; slowest_entity payload uses slot label | §8 | [HUMAN] |
 | G-10 | Backward compat | `store_path=None` ⇒ full existing test suite byte-identical results; memento code path not entered (coverage assertion) | §3.3 | [PROPERTY] |
 | G-11 | Association scoping | session not associated with any mission ⇒ zero memento events even with a store configured | §6 integration | |
+| G-13 | `cost_of_delay` fires | with rate + item amount + `cost_of_delay_threshold` all declared, the signal fires; absent any of the three there is no predicate at all (omission, not a default cutoff) | §5.2 | [GOLDEN] |
+| G-14 | `breakeven_passed` fires | a RATIFY event carrying `kind="breakeven"` whose date elapsed with no `measured_improvement` fires once; recorded improvement suppresses it | §5.2 | [GOLDEN] |
 | G-12 | Adapter provenance | git_local adapter emits ARTIFACT events with full provenance; adapter cannot create links (API has no such parameter) | §4.3 | |
 
 ## M — MCP surface & agent contract
@@ -91,6 +95,7 @@ review. Untagged cases are supporting coverage.
 | M-3 | associate_mission scoping | events reach process_turn only for associated sessions (pairs with G-11); association survives session re-registration | |
 | M-4 | Plane tag | every mission event payload carries plane="mission"; existing conversation events gain plane="conversation" with no other byte changed (compat) | [PROPERTY] |
 | M-5 | Loud-contract text | each mission tool description contains the surface-don't-absorb line; suggested_behavior templates for mission events instruct surfacing with numbers | [HUMAN] |
+| M-7 | Evaluation-instant provenance | `clock_status` output carries `eval_instant_source` ∈ {injected, host_clock}; the engine itself never reads a clock, and a boundary default is visible rather than silent | [PROPERTY] |
 | M-6 | Instructions doc sync | the §3 rules block in docs/integrations/MEMENTO_MORI_AGENTS.md names every shipped tool and no unshipped one (doc-code consistency check) | [HUMAN] |
 
 ## R — Replay & self-judgment (PRD §9)

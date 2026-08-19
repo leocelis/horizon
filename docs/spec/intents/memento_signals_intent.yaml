@@ -1,6 +1,6 @@
 # memento_signals_intent.yaml — sub-module intent (segments f–g: signal state machine,
 # integration, compat, adapters, agent/MCP surface). Parent:
-# ../horizon_memento_mori_intent.yaml (v0.8); its 7 constraints all apply.
+# ../horizon_memento_mori_intent.yaml (v0.9); its 7 constraints all apply.
 # Tests: ../MEMENTO_MORI_TEST_PLAN.md (G-*, M-*, R-*, J-1).
 
 parent_intent: "../horizon_memento_mori_intent.yaml"
@@ -8,7 +8,7 @@ scope: { level: "module", type: "component", granularity: "fine" }
 metadata:
   feature_id: "memento_signals"
   category: "mission_dynamics"
-  status: "planned"
+  status: "implemented"
 
 authorship:
   origin: "ai_proposed"
@@ -49,7 +49,7 @@ constraints:
     consequence_if_violated: "Without ack semantics and a cap, one bad week floods every turn and the operator tunes the plane out"
 
   - name: "no_person_ranking_in_output"
-    requirement: "suggested_behavior templates and generated payloads contain no person-ordered lists; slowest_entity payloads use slot labels; person-namespace entities never appear in rankings or shareable text; a template linter enforces this in CI"
+    requirement: "suggested_behavior templates and generated payloads contain no person-ordered lists; slowest_entity payloads use slot labels AND withhold the person-namespace winner's resolvable entity_item_id (an id resolves to the title through the store, so redacting only the title is incomplete); person-namespace entities never appear in rankings or shareable text; a template linter enforces this in CI"
     test: "tests/unit/memento_mori/test_signals_no_ranking.py::test_suggested_behavior_templates_carry_no_ranking_language"   # plan G-9 [HUMAN]; also test_slowest_entity_payload_redacts_person_namespace_winner
     test_provenance: "ai_generated"
     entropy: "near-zero"

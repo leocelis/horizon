@@ -200,7 +200,9 @@ class SlowestEntity:
     """
 
     mission_id: str
-    entity_item_id: str
+    entity_item_id: str | None
+    """None when the winner is a person-namespace entity — the latency is
+    still measured and reported, the identity is withheld."""
     slot_label: str
     latency_days: int
     is_open: bool

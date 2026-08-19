@@ -47,6 +47,13 @@ class MementoConfig:
     STALE event fires."""
 
     ttl_proposal_percentile: float = 0.80
+
+    cost_of_delay_threshold: Decimal | None = None
+    """Operator-set threshold above which accrued cost-of-delay fires
+    ``signal.cost_of_delay`` (PRD §5.2). The signal is only ever computable
+    when a rate, an item amount, AND this threshold are all caller-declared
+    — money never enters by default (parent intent: money is a weight on
+    time, never a subsystem)."""
     """Default percentile (nearest-rank) for clock_propose(kind="ttl")."""
 
     def __post_init__(self) -> None:

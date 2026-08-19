@@ -69,6 +69,21 @@ _registry = SessionRegistry(max_sessions_per_key=_MAX_SESSIONS_PER_KEY)
 _NOT_FOUND_HINT = "Call new_conversation first."
 
 
+def _resolve_eval_instant(timestamp: str | None) -> tuple[datetime, str]:
+    """Resolve the evaluation instant and say where it came from.
+
+    The engine itself is pure — ``t_eval`` is always a parameter
+    (memento_engine_intent.yaml::pure_function_injected_time). Somebody at the
+    boundary must still read a wall clock when the host does not inject one, so
+    this is the ONE place that may, and every report it feeds carries
+    ``eval_instant_source`` so an auditor can tell a host-injected instant from
+    a boundary default. Two identical calls with no ``timestamp`` legitimately
+    differ; the field is what makes that visible instead of silent.
+    """
+    if timestamp:
+        return datetime.fromisoformat(timestamp), "injected"
+    return datetime.now(timezone.utc), "host_clock"
+
 def _session_not_found_response(session_id: str) -> dict:
     """Same error shape for 'unknown session' and 'not your session' —
     a caller must not be able to distinguish the two (see SessionOwnershipError)."""
@@ -368,10 +383,11 @@ def register_memento_tools(
     )
     def clock_status(scope: str | None = None, timestamp: str | None = None) -> dict:
         try:
-            t_eval = datetime.fromisoformat(timestamp) if timestamp else datetime.now(timezone.utc)
+            t_eval, instant_source = _resolve_eval_instant(timestamp)
             snapshot = memento_store.snapshot()
             report = memento_engine.evaluate(snapshot, t_eval, memento_config)
             d = report.to_dict()
+            d["eval_instant_source"] = instant_source
             if scope:
                 items_by_id = {i.item_id: i for i in snapshot.items}
 
@@ -433,7 +449,7 @@ def register_memento_tools(
                 )
             elif kind == "breakeven":
                 t_eval = (
-                    datetime.fromisoformat(timestamp) if timestamp else datetime.now(timezone.utc)
+                    _resolve_eval_instant(timestamp)[0]
                 )
                 proposal = memento_propose.breakeven_proposal(
                     item_id=item_id,
@@ -472,7 +488,7 @@ def register_memento_tools(
     )
     def clock_ack(item_id: str, signal_type: str, actor: str, timestamp: str | None = None) -> dict:
         try:
-            t_eval = datetime.fromisoformat(timestamp) if timestamp else datetime.now(timezone.utc)
+            t_eval, _ = _resolve_eval_instant(timestamp)
             prior = memento_store.get_fire_state(item_id, signal_type) or {}
             current_rung = prior.get("rung", 0)
             new_state = memento_signals.ack(

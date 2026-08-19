@@ -6,7 +6,7 @@
 
 > **Scope:** This is the **public PRD** shipped with the OSS repo. It is derived from the
 > intent artifact [`docs/spec/horizon_memento_mori_intent.yaml`](../spec/horizon_memento_mori_intent.yaml)
-> (v0.6) and a 17-topic source-audited research pack (private workspace; load-bearing
+> (v0.9) and a 17-topic source-audited research pack (private workspace; load-bearing
 > citations are reproduced inline). Implementation follows the intent's constraint
 > segments; nothing in this document overrides the intent's constraints.
 
@@ -447,5 +447,5 @@ retrospective-replay fixtures are the external oracles).
 - Goldratt, E. M. — Theory of Constraints lineage; Little, J. D. C. — L = λW; lean value-stream lead/touch decomposition (vocabulary and discipline; plant-specific constants deliberately not imported).
 - METR (2025–2026). Measuring AI ability to complete long tasks (time-horizon methodology).
 
-**Engineering reference:** [`docs/spec/horizon_memento_mori_intent.yaml`](../spec/horizon_memento_mori_intent.yaml) (v0.6, 7 constraints, joint-satisfaction test) ·
+**Engineering reference:** [`docs/spec/horizon_memento_mori_intent.yaml`](../spec/horizon_memento_mori_intent.yaml) (v0.9, 7 constraints, joint-satisfaction test) ·
 [`docs/spec/HORIZON_TECH_SPEC.md`](../spec/HORIZON_TECH_SPEC.md) (existing plane; the mission plane's tech spec and sub-module intents follow this PRD).

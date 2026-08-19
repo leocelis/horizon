@@ -106,6 +106,25 @@
 #                     the product surface — capture depends on the
 #                     side-effect write rule living in host rules.
 #                     Constraints unchanged at 7.
+#   v0.9  2026-08-18  POST-IMPLEMENTATION REVIEW fixes (reviewer pass over the
+#                     shipped code, all four segments). Four defects closed:
+#                     (1) signal.cost_of_delay and signal.breakeven_passed were
+#                     registered but never emitted — two of the twelve
+#                     documented signals were dead code, justified by a note
+#                     claiming the engine computes no per-item MoneyBlock,
+#                     which engine.evaluate() does; both predicates now fire
+#                     from caller-declared facts only (new config field
+#                     cost_of_delay_threshold; breakeven reads a RATIFY event
+#                     payload). (2) SlowestEntity.n was hardcoded to 1 while
+#                     its derivation stated the true population size —
+#                     derivation_on_every_row requires n to BE that size.
+#                     (3) A person-namespace winner had its title redacted but
+#                     its resolvable item_id still emitted; the id is now
+#                     withheld in both report and signal payload. (4) The MCP
+#                     boundary silently defaulted the evaluation instant to the
+#                     wall clock; the response now carries eval_instant_source
+#                     so a defaulted instant is auditable. Sub-module intents
+#                     move to status implemented. Constraints unchanged at 7.
 
 parent_intent: "horizon_intent.yaml"
 
@@ -127,7 +146,7 @@ metadata:
   tags: ["memento-mori", "finite-horizon", "elapsed-time-accounting", "ttl",
          "latency", "blockers", "critical-path", "deadlines", "velocity",
          "agent-planning", "calendar"]
-  status: "in_design"
+  status: "implemented"
 
 # ----------------------------------------------------------------------------
 # AUTHORSHIP

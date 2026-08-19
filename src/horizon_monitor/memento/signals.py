@@ -23,6 +23,7 @@ from datetime import date, datetime, timezone
 from horizon_monitor.memento.config import MementoConfig
 from horizon_monitor.memento.models import (
     ClockReport,
+    EventKind,
     Item,
     ItemClock,
     ItemKind,
@@ -49,15 +50,13 @@ TIER = {
     "breakeven_passed": "P3",
 }
 _TIER_RANK = {"P1": 0, "P2": 1, "P3": 2}
-# "cost_of_delay" and "breakeven_passed" are registered here (tier + text)
-# for callers that ratify a money.MoneyBlock / propose.breakeven_proposal
-# out-of-band and want to feed a predicate through the same state machine,
-# but _due_predicates never emits them itself: engine.evaluate() does not
-# compute a MoneyBlock per item on its own (money.py docstring — a rate and
-# a ratified breakeven proposal are both caller-driven, not auto-derived
-# per row), so there is nothing to check without caller-supplied money
-# facts this module does not have. UNVERIFIED for the reviewer: no G-*
-# test case exercises either signal_type end-to-end.
+# "cost_of_delay" and "breakeven_passed" are emitted by _due_predicates like
+# every other type, but only from caller-declared money facts:
+# cost_of_delay needs a rate + an item amount + config.cost_of_delay_threshold
+# (engine.evaluate() already computes the per-item MoneyBlocks it reads);
+# breakeven_passed needs a RATIFY event whose payload carries a breakeven
+# date. With none of those declared the predicates are simply absent — the
+# degrade-by-omission rule, not a special case. Tests: G-13, G-14.
 
 SUGGESTED_BEHAVIOR = {
     "ttl_expired": "investigate the blocker — this task outlived its ratified lifespan",
@@ -99,6 +98,7 @@ def _due_predicates(
     path_comparisons_by_mission: dict[str, object],
     eval_date: date,
     config: MementoConfig,
+    money_blocks: tuple = (),
 ) -> list[_Predicate]:
     """Every currently-true-or-tracked predicate over the snapshot, before
     any edge/ack/cap logic is applied."""
@@ -289,10 +289,78 @@ def _due_predicates(
                 TIER["slowest_entity"],
                 len(measured) >= 1,
                 rung,
-                f"slowest_entity winner={winner_item.item_id} time_in_stage_days="
+                f"slowest_entity winner={slot_label!r} time_in_stage_days="
                 f"{winner_row.time_in_stage_days}d over {len(measured)} recorded entities",
-                {"entity_item_id": winner_item.item_id, "slot_label": slot_label},
+                {
+                    # Person-namespace winners are reported by slot label only;
+                    # the item_id is withheld because it is resolvable to a name
+                    # through the store (no_person_ranking_in_output).
+                    "entity_item_id": (
+                        None if winner_item.namespace == "person" else winner_item.item_id
+                    ),
+                    "slot_label": slot_label,
+                    "n": len(measured),
+                },
                 _NO_TIEBREAK,
+            )
+        )
+
+    # --- cost_of_delay (P3) ---------------------------------------------
+    # Fires only when a rate, an item amount, and an operator threshold are
+    # ALL caller-declared; engine.evaluate() has already produced the
+    # per-item MoneyBlock this reads. Absent any of the three there is no
+    # predicate at all (degrade by omission, never substitution).
+    if config.cost_of_delay_threshold is not None:
+        for block in money_blocks:
+            if block.cost_of_delay is None:
+                continue
+            crossed = block.cost_of_delay >= config.cost_of_delay_threshold
+            predicates.append(
+                _Predicate(
+                    block.item_id,
+                    "cost_of_delay",
+                    TIER["cost_of_delay"],
+                    crossed,
+                    0,
+                    f"cost_of_delay={block.cost_of_delay} >= threshold="
+                    f"{config.cost_of_delay_threshold} -> {crossed}",
+                    {
+                        "cost_of_delay": str(block.cost_of_delay),
+                        "threshold": str(config.cost_of_delay_threshold),
+                    },
+                    _NO_TIEBREAK,
+                )
+            )
+
+    # --- breakeven_passed (P3) -------------------------------------------
+    # A caller-ratified break-even date (a RATIFY event carrying
+    # kind="breakeven") that the evaluation date has passed with no measured
+    # improvement recorded. The date is always a ratified fact, never minted.
+    for event in snapshot.events:
+        if event.kind != EventKind.RATIFY:
+            continue
+        payload = event.payload or {}
+        if payload.get("kind") != "breakeven":
+            continue
+        raw = payload.get("breakeven_date")
+        if not raw:
+            continue
+        be_date = date.fromisoformat(str(raw)[:10])
+        improved = bool(payload.get("measured_improvement"))
+        predicates.append(
+            _Predicate(
+                event.item_id,
+                "breakeven_passed",
+                TIER["breakeven_passed"],
+                eval_date > be_date and not improved,
+                0,
+                f"ratified breakeven_date={be_date.isoformat()} vs eval_date="
+                f"{eval_date.isoformat()}; measured_improvement={improved}",
+                {
+                    "breakeven_date": be_date.isoformat(),
+                    "measured_improvement": improved,
+                },
+                (eval_date - be_date).days,
             )
         )
 
@@ -362,7 +430,14 @@ def evaluate_signals(
     eval_date = t_eval.date()
     rows_by_id = {row.item_id: row for row in report.items}
     comparisons_by_mission = {c.mission_id: c for c in report.path_comparisons}
-    predicates = _due_predicates(snapshot, rows_by_id, comparisons_by_mission, eval_date, config)
+    predicates = _due_predicates(
+        snapshot,
+        rows_by_id,
+        comparisons_by_mission,
+        eval_date,
+        config,
+        money_blocks=report.money,
+    )
 
     fired: list[Signal] = []
     due: list[Signal] = []

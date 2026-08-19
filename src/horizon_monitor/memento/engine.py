@@ -297,7 +297,8 @@ def _compute_slowest_entities(
         pool = open_candidates if open_candidates else measured
         winner_item, winner_row = max(pool, key=lambda pair: pair[1].time_in_stage_days)
 
-        slot_label = winner_item.title if winner_item.namespace != "person" else "person"
+        is_person = winner_item.namespace == "person"
+        slot_label = "person" if is_person else winner_item.title
         derivation = (
             f"slowest_entity = argmax(time_in_stage_days) over {len(measured)} recorded "
             f"entities; winner {slot_label!r} time_in_stage_days="
@@ -307,12 +308,19 @@ def _compute_slowest_entities(
         result.append(
             SlowestEntity(
                 mission_id=mission_id,
-                entity_item_id=winner_item.item_id,
+                # A person-namespace winner is measured but never identified:
+                # emitting its stable item_id would let any reader resolve the
+                # title through the store, defeating the slot-label redaction
+                # (memento_signals_intent.yaml::no_person_ranking_in_output).
+                entity_item_id=None if is_person else winner_item.item_id,
                 slot_label=slot_label,
                 latency_days=winner_row.time_in_stage_days,
                 is_open=bool(winner_row.is_open_stage),
                 derivation=derivation,
-                n=1,
+                # n is the size of the population the argmax summarised, not a
+                # constant (memento_engine_intent.yaml::derivation_on_every_row
+                # — "n for any summary statistic").
+                n=len(measured),
             )
         )
     return result

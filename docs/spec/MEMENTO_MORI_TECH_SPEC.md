@@ -42,6 +42,7 @@ class MementoConfig:
     horizon_share_rungs: tuple = (0.01, 0.05, 0.10, 0.25)
     per_turn_fire_cap: int = 1
     stale_ack_days: int = 30
+    cost_of_delay_threshold: Decimal | None = None   # gates signal.cost_of_delay
 ```
 
 `MementoConfig` hangs off the existing `Config`; `store_path is None` must make every
@@ -238,8 +239,13 @@ Per `(item_id, signal_type)` a row in `mm_fires`:
   external append-only source into ARTIFACT events with mandatory provenance. V1 ships
   the interface plus a filesystem/git reference adapter; adapters never write links —
   linking an artifact stream to a mission is a caller `clock_register` association.
-- **Evaluation instant:** always host-injected (`timestamp` param, same as the
-  existing plane); the engine never calls `datetime.now()`.
+- **Evaluation instant:** the engine never calls `datetime.now()` — `t_eval` is
+  always a parameter. The MCP boundary is the single place allowed to read a wall
+  clock, and only when the host injects no `timestamp`; when it does, the response
+  carries `eval_instant_source: "host_clock"` (vs `"injected"`) so a
+  boundary-defaulted instant is auditable rather than silent. Two identical calls
+  with no timestamp legitimately differ; that field is what makes the difference
+  visible.
 
 ## 7. Package Structure
 
