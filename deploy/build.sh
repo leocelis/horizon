@@ -28,7 +28,13 @@ echo "============================================================"
 echo ""
 echo "[build:1/4] Verifying dependencies (installed by DO Python buildpack via requirements.txt)..."
 python -m pip install --upgrade pip --quiet
-pip install -e ".[mcp]" --quiet   # idempotent — ensures mcp extras are present
+# [mysql] is required whenever HORIZON_MEMENTO_STORE_DSN is set at RUN time.
+# It must be installed at BUILD time even though nothing here uses it: the DSN
+# is RUN_TIME-scoped, so the mission plane stays disabled during the build and
+# the step-4 import check below cannot exercise the MySQL path. Omitting it
+# builds green and then crashes the container on boot with
+# "MySQL backend requires PyMySQL".
+pip install -e ".[mcp,mysql]" --quiet   # idempotent
 
 # ---------------------------------------------------------------------------
 # 2. Pre-cache the embedding model
@@ -76,6 +82,14 @@ from horizon_monitor.mcp.auth import HorizonAuthMiddleware, generate_api_key
 app = create_app()
 print("  horizon_monitor.mcp.server  OK")
 print("  horizon_monitor.mcp.auth    OK")
+
+# The runtime env differs from the build env: HORIZON_MEMENTO_STORE_DSN is
+# RUN_TIME-scoped, so create_app() above never touches the MySQL backend here.
+# Import its driver explicitly, or a missing extra only surfaces as a boot
+# crash after a green build.
+import pymysql  # noqa: F401
+from horizon_monitor.memento.backends.mysql import MySQLBackend  # noqa: F401
+print(f"  pymysql {pymysql.__version__}          OK (mission-plane MySQL backend)")
 PY
 
 echo ""
