@@ -156,19 +156,19 @@ def test_rotation_preserves_history(tmp_path):
     """T-1: the reason tenant identity is assigned, never derived from the
     key. Rotate the key; the mission history must be fully reachable."""
     store = MementoStore(tmp_path / "missions.db")
-    old_sha = hashlib.sha256(b"hzn_leo_old").hexdigest()
-    new_sha = hashlib.sha256(b"hzn_leo_new").hexdigest()
+    old_sha = hashlib.sha256(b"hzn_test_key_v1").hexdigest()
+    new_sha = hashlib.sha256(b"hzn_test_key_v2").hexdigest()
 
-    store.provision_tenant("leo", "Leo", old_sha)
+    store.provision_tenant("tenant-a", "Tenant A", old_sha)
     scope = store.scoped(store.resolve_tenant_for_key_sha(old_sha))
-    _seed(scope, "leo")
+    _seed(scope, "a")
 
     # rotation = revoke old + bind new, tenant untouched
     store.revoke_key(old_sha)
-    store.provision_tenant("leo", "Leo", new_sha, key_label="rotated")
+    store.provision_tenant("tenant-a", "Tenant A", new_sha, key_label="rotated")
 
     resolved = store.resolve_tenant_for_key_sha(new_sha)
-    assert resolved == "leo"
+    assert resolved == "tenant-a"
     assert len(store.scoped(resolved).get_items()) == 2  # nothing orphaned
 
 
@@ -411,11 +411,11 @@ def test_default_tenant_is_configurable_but_never_overrides_an_authenticated_key
     from horizon_monitor.mcp.server import register_memento_tools
 
     db = tmp_path / "missions.db"
-    monkeypatch.setenv("HORIZON_MEMENTO_TENANT_ID", "leo-laptop")
+    monkeypatch.setenv("HORIZON_MEMENTO_TENANT_ID", "workstation-1")
     store, _cfg = register_memento_tools(FastMCP("t"), db)
     try:
         # unauthenticated: the env var decides
-        assert store.tenant_id == "leo-laptop"
+        assert store.tenant_id == "workstation-1"
 
         # authenticated: the key's mapping decides, env var ignored
         sha = _h.sha256(b"hzn_real_key").hexdigest()

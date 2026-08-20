@@ -223,8 +223,8 @@ def test_a_long_lived_reader_sees_writes_from_another_connection():
 
 @pytest.mark.skipif(not DSN, reason="HORIZON_TEST_MYSQL_DSN not set")
 def test_every_text_column_is_binary_collated_so_tenant_ids_cannot_collide(mysql_store):
-    """A case-insensitive collation makes tenant_id='Leo' match rows stored
-    under 'leo' — one tenant silently reading another's missions.
+    """A case-insensitive collation makes tenant_id='Acme' match rows stored
+    under 'acme' — one tenant silently reading another's missions.
 
     This was live: the database was created without an explicit COLLATE and
     inherited utf8mb4_0900_ai_ci, so an upper-cased tenant id returned another

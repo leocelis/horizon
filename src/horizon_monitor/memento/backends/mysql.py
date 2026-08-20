@@ -28,7 +28,7 @@ Dialect notes (each mirrors a reviewed defect class in the deployment spec):
 * amounts        — stay VARCHAR: Decimal round-trips as exact text
 * collation      — ``utf8mb4_bin``, declared on EVERY table rather than
                    inherited from the database. A case-insensitive collation
-                   makes ``tenant_id='Leo'`` match rows stored under ``'leo'`` —
+                   makes ``tenant_id='Acme'`` match rows stored under ``'acme'`` —
                    a cross-tenant read that no single-tenant test can see. The
                    connection-level ``SET NAMES ... COLLATE utf8mb4_bin`` does
                    NOT protect this: comparing a column against a literal

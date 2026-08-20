@@ -14,7 +14,7 @@ Usage:
   # hosted (MySQL) — DSN + CA via the same env vars the server uses:
   export HORIZON_MEMENTO_STORE_DSN='mysql://user:pass@host:port/horizon'
   export HORIZON_MYSQL_SSL_CA=/path/to/ca.pem
-  python scripts/provision_tenant.py --tenant-id leo --label "Leo" \
+  python scripts/provision_tenant.py --tenant-id acme --label "Acme Corp" \
       --key-env HORIZON_PROVISION_KEY --key-label "desktop"
 
   # local (SQLite):
