@@ -38,14 +38,24 @@ import sys
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--store", help="SQLite store path (or set HORIZON_MEMENTO_STORE_DSN for MySQL)")
+    ap.add_argument(
+        "--store", help="SQLite store path (or set HORIZON_MEMENTO_STORE_DSN for MySQL)"
+    )
     ap.add_argument("--tenant-id", help="assigned, stable tenant id (never derived from the key)")
     ap.add_argument("--label", help="human display label for the tenant")
-    ap.add_argument("--key-env", required=True,
-                    help="name of the env var holding the RAW api key (never pass the key in argv)")
-    ap.add_argument("--key-label", default=None, help="optional label for this key (e.g. 'desktop')")
-    ap.add_argument("--revoke", action="store_true",
-                    help="revoke the key instead of provisioning; tenant + history untouched")
+    ap.add_argument(
+        "--key-env",
+        required=True,
+        help="name of the env var holding the RAW api key (never pass the key in argv)",
+    )
+    ap.add_argument(
+        "--key-label", default=None, help="optional label for this key (e.g. 'desktop')"
+    )
+    ap.add_argument(
+        "--revoke",
+        action="store_true",
+        help="revoke the key instead of provisioning; tenant + history untouched",
+    )
     args = ap.parse_args()
 
     raw_key = os.environ.get(args.key_env, "")
@@ -72,8 +82,10 @@ def main() -> int:
             print("error: --tenant-id and --label are required to provision")
             return 2
         store.provision_tenant(args.tenant_id, args.label, key_sha, key_label=args.key_label)
-        print(f"provisioned tenant {args.tenant_id!r} ({args.label}) "
-              f"with key sha256 {key_sha[:12]}… (label: {args.key_label or '-'})")
+        print(
+            f"provisioned tenant {args.tenant_id!r} ({args.label}) "
+            f"with key sha256 {key_sha[:12]}… (label: {args.key_label or '-'})"
+        )
         return 0
     finally:
         store.close()

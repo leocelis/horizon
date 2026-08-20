@@ -389,6 +389,25 @@ probe of some alternative.
 export HORIZON_MEMENTO_STORE_PATH=~/.horizon/missions.db   # local, single-operator
 ```
 
+<details>
+<summary>Running it somewhere durable and multi-tenant (MySQL)</summary>
+
+A file-backed store is the right default, but it is the wrong choice on any host whose
+filesystem resets between deploys — the plane would look correct and silently forget
+everything, which is worse than not running at all. For those, point it at MySQL 8:
+
+```bash
+pip install "horizon-monitor[mysql]"
+export HORIZON_MEMENTO_STORE_DSN='mysql://user:pass@host:3306/horizon'  # wins over _PATH
+export HORIZON_MYSQL_SSL_CA=/path/to/server-ca.pem   # or ..._CA_B64 for a PEM in an env var
+```
+
+TLS verification is mandatory — the backend refuses to connect without a CA. Each API key
+maps to an **assigned** tenant id (`scripts/provision_tenant.py`), so rotating a key keeps
+that tenant's history; unknown or revoked keys get no mission access at all.
+
+</details>
+
 ```python
 from datetime import date, datetime, timezone
 

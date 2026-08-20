@@ -8,6 +8,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Durable, multi-tenant mission stores.** The mission plane can now persist to
+  **MySQL 8** as well as SQLite, so it survives on platforms with an ephemeral
+  filesystem — where a file-backed store silently resets on every deploy and reports a
+  confidently wrong clock afterwards. Install with `pip install horizon-monitor[mysql]`
+  and set `HORIZON_MEMENTO_STORE_DSN=mysql://user:pass@host:port/db` (it takes
+  precedence over `HORIZON_MEMENTO_STORE_PATH`). SQLite remains the zero-dependency
+  default and its behaviour is unchanged.
+  - **TLS verification is mandatory** for the MySQL backend: it refuses to connect
+    without a CA, supplied as `HORIZON_MYSQL_SSL_CA` (path) or `HORIZON_MYSQL_SSL_CA_B64`
+    (base64 PEM, materialised at startup for hosts with no persistent disk).
+  - **Connection liveness**: managed servers close idle connections, and mission traffic
+    is sparse by design, so the store pings and reconnects with backoff at every
+    transaction and read boundary (never mid-transaction, where a reconnect would drop
+    the open transaction's state). Permanent failures — bad credentials, unknown
+    database, failed TLS trust — fail fast instead of retrying for minutes.
+- **Tenancy.** A `MementoStore` is now a tenant scope, defaulting to `local` so every
+  existing single-operator install and API is unchanged. `store.scoped(tenant_id)`
+  returns a view over the same connection, and every statement carries the scope's
+  tenant, so cross-tenant reads and writes cannot be expressed. Two new tables,
+  `horizon_tenants` and `horizon_api_keys`, map an API key's **full** SHA-256 to an
+  **assigned** tenant id — so rotating a key preserves that tenant's history, which
+  deriving the identity from the key would have destroyed. Unknown or revoked keys fail
+  closed with a typed `TenantResolutionError`; tenants are provisioned out of band by
+  the operator (`scripts/provision_tenant.py`) and never auto-created by an inbound
+  request. Provisioning is deliberately not exposed as an MCP tool.
+- **`MementoStore.erase_all()`** — the right-to-erasure path, destroying a tenant's
+  items, event log and signal state and returning per-table counts so an erasure is
+  recorded rather than merely performed. It is all-or-nothing within the tenant: no
+  selective row delete exists, because `mm_events` is append-only precisely so a reported
+  figure traces back to a recorded fact, and a per-row delete would be a history-editing
+  tool wearing a privacy label. Also deliberately not an MCP tool — erasure is an
+  operator action, so no turn of conversation can talk an agent into destroying a
+  history. See `PRIVACY_POLICY.md` §1.6.
+
+### Changed
+- Mission stores are **schema v2**. Existing v1 SQLite stores migrate automatically and
+  additively on first open — a file backup is taken first, row counts are asserted
+  unchanged, and the migration is gated so re-running is a no-op. Primary keys are not
+  rebuilt (the one step that could lose data); a migrated store keeps its v1 keys, which
+  is correct because SQLite stores are single-tenant.
+
+### Fixed
+- `MementoStore.redact_person_display_name()` raised `TypeError` instead of the typed
+  `StoreCorruptionError` when given an unknown `item_id`, because the error was
+  constructed with the wrong arity.
+
 - **Memento Mori — the mission plane** (`horizon_monitor.memento`, optional and inert
   until a store is configured). A second measurement plane whose unit of analysis is the
   *mission* — a goal with a clock — persisted across sessions, processes and agents.

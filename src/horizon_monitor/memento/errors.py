@@ -311,3 +311,26 @@ class TenantResolutionError(MementoError):
                 "never auto-created."
             ),
         )
+
+
+class KeyAlreadyBoundError(MementoError):
+    """A provisioning attempt tried to bind an API key hash already in use.
+
+    A key never moves between tenants silently: rebinding one would migrate a
+    caller's whole mission history to a different tenant with no record that it
+    happened. Revoke it first, deliberately.
+    """
+
+    def __init__(self, tenant_id: str) -> None:
+        self._init_message(
+            "KeyAlreadyBoundError",
+            fix=(
+                f"this key hash is already bound to tenant {tenant_id!r}. Revoke it "
+                "first (revoke_key), then provision it to the new tenant — the two "
+                "steps are separate so the move is recorded, never silent."
+            ),
+            rule=(
+                "hosted tenancy: a key maps to exactly one tenant for its lifetime; "
+                "rotation replaces the key, never the tenant."
+            ),
+        )

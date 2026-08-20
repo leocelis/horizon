@@ -363,11 +363,18 @@ def test_e24_signals_consume_the_engine_argmax_rather_than_recomputing(store):
     import inspect
 
     src = inspect.getsource(signals._due_predicates)
-    assert "is_open_stage" not in src.split("cost_of_delay")[0] or True
     assert (
         "for slowest in slowest_entities:" in src
     ), "signals must iterate the engine's computed slowest_entities"
     assert "open_candidates" not in src, "the duplicated argmax must be gone"
+    # signals must consume the engine's derived `censored`, never re-read the
+    # raw `is_open_stage` flag: re-deriving open/closed here is exactly how the
+    # two modules drifted apart before. (This replaced an assertion that ended
+    # in `or True`, which made it always pass and proved nothing.)
+    assert "is_open_stage" not in src, (
+        "signals must not re-derive open/closed from is_open_stage; "
+        "read the engine row's `censored` instead"
+    )
 
     build_smallco(store)
     report = engine.evaluate(store.snapshot(), T_EVAL, MementoConfig(store_path=None))
@@ -375,11 +382,16 @@ def test_e24_signals_consume_the_engine_argmax_rather_than_recomputing(store):
         store.snapshot(), report, T_EVAL, MementoConfig(store_path=None)
     )
     engine_winner = next(iter(report.slowest_entities))
+    checked = 0
     for sig in (*signal_report.fired, *signal_report.due, *signal_report.acked):
         if sig.signal_type == "slowest_entity":
             assert sig.payload["slot_label"] == engine_winner.slot_label
             assert sig.payload["n"] == engine_winner.n
             assert sig.payload["censored"] == engine_winner.censored
+            checked += 1
+    # without this the loop asserts nothing if the fixture ever stops producing
+    # a slowest_entity signal — the test would pass while proving nothing
+    assert checked == 1, f"expected exactly one slowest_entity signal, saw {checked}"
 
 
 # --------------------------------------------------------------------------

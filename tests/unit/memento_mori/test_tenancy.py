@@ -8,6 +8,7 @@ proves nothing (the fixture-that-passes-by-luck failure).
 from __future__ import annotations
 
 import hashlib
+import pathlib
 import sqlite3
 from datetime import date, datetime, timezone
 
@@ -16,25 +17,33 @@ import pytest
 from horizon_monitor.memento import (
     EventKind,
     ItemKind,
+    KeyAlreadyBoundError,
     MementoConfig,
     MementoStore,
     evaluate,
 )
+from horizon_monitor.memento import store as store_module
 
 UTC = timezone.utc
 
 
 def _seed(scope: MementoStore, tag: str) -> tuple[str, str]:
     root = scope.register_item(
-        kind=ItemKind.HORIZON, title=f"horizon-{tag}",
-        created_valid=datetime(2026, 1, 1, tzinfo=UTC), end_date=date(2030, 1, 1),
+        kind=ItemKind.HORIZON,
+        title=f"horizon-{tag}",
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+        end_date=date(2030, 1, 1),
     )
     mission = scope.register_item(
-        kind=ItemKind.MISSION, title=f"mission-{tag}", parent_id=root,
-        created_valid=datetime(2026, 7, 2, tzinfo=UTC), stall_days=14,
+        kind=ItemKind.MISSION,
+        title=f"mission-{tag}",
+        parent_id=root,
+        created_valid=datetime(2026, 7, 2, tzinfo=UTC),
+        stall_days=14,
     )
     scope.record_event(
-        item_id=mission, kind=EventKind.PROGRESS,
+        item_id=mission,
+        kind=EventKind.PROGRESS,
         valid_time=datetime(2026, 7, 2, tzinfo=UTC),
     )
     scope.set_fire_state(mission, "mission_stalled", {"state": "RAISED", "tag": tag})
@@ -69,10 +78,14 @@ def test_snapshot_is_tenant_scoped(two_tenants):
     """G-2: snapshot() feeds evaluate(), so a leak here silently computes
     one tenant's numbers from another tenant's facts."""
     _store, a, b, *_ = two_tenants
-    snap_a = a.snapshot()
-    titles = {i.title for i in snap_a.items}
-    assert titles == {"horizon-a", "mission-a"}
-    assert all("b" not in e.item_id or True for e in snap_a.events)
+    snap_a, snap_b = a.snapshot(), b.snapshot()
+    assert {i.title for i in snap_a.items} == {"horizon-a", "mission-a"}
+    # every event in A's snapshot belongs to an item in A's snapshot — the
+    # assertion this replaced was vacuous (`... or True` is always true)
+    a_item_ids = {i.item_id for i in snap_a.items}
+    b_item_ids = {i.item_id for i in snap_b.items}
+    assert {e.item_id for e in snap_a.events} <= a_item_ids
+    assert not ({e.item_id for e in snap_a.events} & b_item_ids)
     assert len(snap_a.events) == 1
     assert len(snap_a.fire_states) == 1
     assert snap_a.fire_states[0][1]["tag"] == "a"
@@ -163,7 +176,7 @@ def test_key_hash_cannot_be_rebound(tmp_path):
     store = MementoStore(tmp_path / "missions.db")
     sha = hashlib.sha256(b"hzn_shared").hexdigest()
     store.provision_tenant("t1", "One", sha)
-    with pytest.raises(Exception, match="already bound"):
+    with pytest.raises(KeyAlreadyBoundError):
         store.provision_tenant("t2", "Two", sha)
 
 
@@ -174,9 +187,7 @@ def test_erasure_marks_tenant_status(tmp_path):
     scope = store.scoped("t-erase")
     _seed(scope, "e")
     scope.erase_all()
-    row = store._fetchone(
-        "SELECT status FROM horizon_tenants WHERE tenant_id = ?", ("t-erase",)
-    )
+    row = store._fetchone("SELECT status FROM horizon_tenants WHERE tenant_id = ?", ("t-erase",))
     assert row["status"] == "erased"
 
 
@@ -271,5 +282,148 @@ def test_migrated_rows_belong_to_local_tenant(tmp_path):
     path = tmp_path / "missions.db"
     _make_v1_store_with_data(path)
     store = MementoStore(path)
-    assert len(store.get_items()) == 2           # 'local' sees everything
+    assert len(store.get_items()) == 2  # 'local' sees everything
     assert store.scoped("someone-else").get_items() == []
+
+
+def test_fresh_and_migrated_sqlite_stores_differ_in_key_shape_by_design(tmp_path):
+    """Documents a real, deliberate divergence so it is never a surprise.
+
+    ALTER TABLE ADD COLUMN cannot change a primary key, and rebuilding one in
+    SQLite (create-copy-swap) is the single migration step that can destroy
+    data — deliberately eliminated. So a MIGRATED store keeps its v1 keys while
+    a FRESH store gets the tenant-composite ones.
+
+    This is safe because SQLite is single-tenant by design (multi-tenant
+    deployments use MySQL, created fresh with composite keys): the constraints
+    differ, but no reachable operation depends on the difference. The test
+    exists so that if someone later builds multi-tenancy on SQLite, this fails
+    loudly and they see the trap first.
+    """
+    fresh_p, mig_p = tmp_path / "fresh.db", tmp_path / "mig.db"
+    MementoStore(fresh_p).close()
+    _make_v1_store_with_data(mig_p)
+    MementoStore(mig_p).close()
+
+    def table_sql(path, table):
+        conn = sqlite3.connect(path)
+        try:
+            return conn.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,)
+            ).fetchone()[0]
+        finally:
+            conn.close()
+
+    # fresh: tenant is part of the key
+    assert "PRIMARY KEY (tenant_id, `key`)" in table_sql(fresh_p, "mm_meta")
+    assert "PRIMARY KEY (tenant_id, item_id, signal_type)" in table_sql(fresh_p, "mm_fires")
+    # migrated: v1 keys survive, tenant_id is a plain column
+    assert "key TEXT PRIMARY KEY" in table_sql(mig_p, "mm_meta")
+    assert "PRIMARY KEY (item_id, signal_type)" in table_sql(mig_p, "mm_fires")
+    assert "tenant_id" in table_sql(mig_p, "mm_meta")
+
+    # and both behave identically for the single tenant they are built for
+    for path in (fresh_p, mig_p):
+        s = MementoStore(path)
+        try:
+            root = s.get_root()
+            if root is None:
+                root = s.register_item(
+                    kind=ItemKind.HORIZON,
+                    title="h",
+                    created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+                    end_date=date(2030, 1, 1),
+                )
+                root = s.get_item(root)
+            m = s.register_item(
+                kind=ItemKind.MISSION,
+                title="m",
+                parent_id=root.item_id,
+                created_valid=datetime(2026, 7, 2, tzinfo=UTC),
+            )
+            s.set_fire_state(m, "mission_stalled", {"state": "RAISED"})
+            assert s.get_fire_state(m, "mission_stalled") == {"state": "RAISED"}
+        finally:
+            s.close()
+
+
+def test_store_sql_uses_only_placeholder_question_marks():
+    """The MySQL backend translates `?` -> `%s` positionally inside execute().
+
+    That translation cannot distinguish a placeholder from a literal `?` in,
+    say, a LIKE pattern — it would corrupt the statement on MySQL while working
+    fine on SQLite, the worst kind of divergence. This pins the constraint that
+    makes the translation safe.
+    """
+    import re
+
+    src = pathlib.Path(store_module.__file__).read_text()
+    # every double-quoted SQL-ish fragment in the store
+    for frag in re.findall(r'"([^"\n]*?)"', src):
+        if not any(k in frag.upper() for k in ("SELECT", "INSERT", "UPDATE", "DELETE")):
+            continue
+        for m in re.finditer(r"\?", frag):
+            before = frag[: m.start()]
+            # a placeholder is preceded by a delimiter, never by a quote/percent
+            assert not before.rstrip().endswith(("'", "%")), (
+                f"literal '?' inside a SQL string would be mangled by the "
+                f"MySQL placeholder translation: {frag!r}"
+            )
+
+
+def test_scoped_carries_every_instance_attribute():
+    """scoped() builds its view with object.__new__, bypassing __init__.
+
+    If __init__ later gains a field, scoped() would silently produce a clone
+    missing it — a defect that surfaces only on the tenant path. This fails the
+    moment the attribute sets diverge.
+    """
+    import tempfile
+
+    store = MementoStore(pathlib.Path(tempfile.mkdtemp()) / "m.db")
+    try:
+        view = store.scoped("t-1")
+        assert set(vars(view)) == set(vars(store)), (
+            "scoped() did not carry every attribute set by __init__; "
+            f"missing={set(vars(store)) - set(vars(view))}"
+        )
+        assert view.tenant_id == "t-1" and store.tenant_id == "local"
+        assert view._b is store._b and view._lock is store._lock
+    finally:
+        store.close()
+
+
+def test_default_tenant_is_configurable_but_never_overrides_an_authenticated_key(
+    tmp_path, monkeypatch
+):
+    """HORIZON_MEMENTO_TENANT_ID sets the tenant for callers with NO key.
+
+    That is what lets a locally-run server read the same tenant a hosted one
+    would resolve for an API key. It must NOT let an authenticated caller reach
+    a different tenant — over an authenticated transport the key's mapping in
+    horizon_api_keys always wins.
+    """
+    import hashlib as _h
+
+    from mcp.server.fastmcp import FastMCP
+
+    from horizon_monitor.mcp import auth as auth_mod
+    from horizon_monitor.mcp.server import register_memento_tools
+
+    db = tmp_path / "missions.db"
+    monkeypatch.setenv("HORIZON_MEMENTO_TENANT_ID", "leo-laptop")
+    store, _cfg = register_memento_tools(FastMCP("t"), db)
+    try:
+        # unauthenticated: the env var decides
+        assert store.tenant_id == "leo-laptop"
+
+        # authenticated: the key's mapping decides, env var ignored
+        sha = _h.sha256(b"hzn_real_key").hexdigest()
+        store.provision_tenant("tenant-from-key", "Real", sha)
+        token = auth_mod.current_key_sha.set(sha)
+        try:
+            assert store.resolve_tenant_for_key_sha(sha) == "tenant-from-key"
+        finally:
+            auth_mod.current_key_sha.reset(token)
+    finally:
+        store.close()

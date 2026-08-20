@@ -63,7 +63,7 @@ dev = [
     "ruff>=0.4",
     "black>=24",
 ]
-full = ["horizon-monitor[geoip,nli,mcp,langsmith,langfuse,otel,arize]"]
+full = ["horizon-monitor[geoip,nli,mcp,mysql,langsmith,langfuse,otel,arize]"]
 
 [project.scripts]
 horizon = "horizon_monitor.mcp.cli:main"

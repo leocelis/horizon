@@ -7,8 +7,14 @@ multi-tenant deployments (``pip install horizon-monitor[mysql]``).
 
 Backends deliberately share one contract:
 
-* ``ph``            — the parameter placeholder token
-* ``execute()``     — run one statement, return a cursor-like with fetchone/fetchall
+* ``execute()``     — run one statement, return a cursor-like with fetchone/fetchall.
+                      The store writes every statement in SQLite style (``?``);
+                      a backend whose driver uses different placeholders
+                      translates inside ``execute()``. Consequence, enforced by
+                      ``test_store_sql_uses_only_placeholder_question_marks``:
+                      no SQL string in the store may contain a ``?`` that is not
+                      a placeholder (e.g. inside a LIKE pattern), because the
+                      translation is positional and cannot tell them apart.
 * ``ensure_live()`` — make the connection usable *now* (no-op for SQLite;
                       ping+reconnect for MySQL, whose servers close idle
                       connections). Called at transaction/read boundaries,

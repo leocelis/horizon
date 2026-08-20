@@ -26,8 +26,16 @@ Dialect notes (each mirrors a reviewed defect class in the deployment spec):
 * timestamps     — stay VARCHAR: MySQL DATETIME drops the UTC offset the
                    store writes via ``isoformat()``
 * amounts        — stay VARCHAR: Decimal round-trips as exact text
-* collation      — ``utf8mb4_bin``: case-insensitive collation would collide
-                   tenant ids differing only in case
+* collation      — ``utf8mb4_bin``, declared on EVERY table rather than
+                   inherited from the database. A case-insensitive collation
+                   makes ``tenant_id='Leo'`` match rows stored under ``'leo'`` —
+                   a cross-tenant read that no single-tenant test can see. The
+                   connection-level ``SET NAMES ... COLLATE utf8mb4_bin`` does
+                   NOT protect this: comparing a column against a literal
+                   resolves to the COLUMN's collation, so the table must carry
+                   it. (Observed live: a database created without an explicit
+                   COLLATE inherited ``utf8mb4_0900_ai_ci`` and an upper-cased
+                   tenant id returned another tenant's rows.)
 * liveness       — managed MySQL closes idle connections (wait_timeout);
                    ``ensure_live()`` pings and reconnects with backoff, and is
                    only called at transaction/read boundaries
@@ -42,9 +50,11 @@ import tempfile
 import time
 import urllib.parse
 
+from horizon_monitor.memento.backends._schema import SCHEMA_VERSION
+
 _log = logging.getLogger("horizon_monitor.memento.mysql")
 
-_SCHEMA_VERSION = "2"
+_SCHEMA_VERSION = SCHEMA_VERSION
 
 DDL = """
 CREATE TABLE IF NOT EXISTS mm_meta (
@@ -52,7 +62,8 @@ CREATE TABLE IF NOT EXISTS mm_meta (
     `key`       VARCHAR(64)  NOT NULL,
     value       TEXT         NOT NULL,
     PRIMARY KEY (tenant_id, `key`)
-) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC
+  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS mm_items (
     tenant_id       VARCHAR(64)  NOT NULL DEFAULT 'local',
@@ -77,7 +88,8 @@ CREATE TABLE IF NOT EXISTS mm_items (
     superseded_by   CHAR(36)         NULL,
     PRIMARY KEY (tenant_id, item_id),
     KEY idx_mm_items_parent (tenant_id, parent_id)
-) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC
+  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS mm_events (
     tx_seq          BIGINT       NOT NULL AUTO_INCREMENT,
@@ -92,12 +104,13 @@ CREATE TABLE IF NOT EXISTS mm_events (
     provenance_source_system VARCHAR(64)  NULL,
     provenance_native_id     VARCHAR(191) NULL,
     provenance_raw_timestamp VARCHAR(64)  NULL,
-    payload         TEXT         NOT NULL,
+    payload         TEXT         NOT NULL DEFAULT ('{}'),
     correction_of   CHAR(36)         NULL,
     PRIMARY KEY (tx_seq),
     UNIQUE KEY uq_mm_events_event (tenant_id, event_id),
     KEY idx_mm_events_item (tenant_id, item_id)
-) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC
+  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS mm_fires (
     tenant_id   VARCHAR(64) NOT NULL DEFAULT 'local',
@@ -105,7 +118,8 @@ CREATE TABLE IF NOT EXISTS mm_fires (
     signal_type VARCHAR(64) NOT NULL,
     state       TEXT        NOT NULL,
     PRIMARY KEY (tenant_id, item_id, signal_type)
-) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC
+  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS horizon_tenants (
     tenant_id     VARCHAR(64)  NOT NULL,
@@ -113,7 +127,8 @@ CREATE TABLE IF NOT EXISTS horizon_tenants (
     status        VARCHAR(16)  NOT NULL DEFAULT 'active',
     created_at    VARCHAR(32)  NOT NULL,
     PRIMARY KEY (tenant_id)
-) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC
+  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS horizon_api_keys (
     key_sha256    CHAR(64)     NOT NULL,
@@ -123,11 +138,41 @@ CREATE TABLE IF NOT EXISTS horizon_api_keys (
     revoked_at    VARCHAR(32)      NULL,
     PRIMARY KEY (key_sha256),
     KEY idx_horizon_api_keys_tenant (tenant_id)
-) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC
+  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 """
 
 _RETRIES = int(os.environ.get("MYSQL_CONN_RETRIES", "7"))
 _DELAY = float(os.environ.get("MYSQL_CONN_DELAY", "2"))
+
+# MySQL server error codes that will NEVER succeed on retry. Retrying these
+# turns a clear misconfiguration into a multi-minute hang: with the default
+# 7 attempts and exponential backoff, a wrong password costs ~126s before
+# surfacing, long enough for a platform health check to kill the container
+# mid-retry and present the operator with a crashloop instead of "access
+# denied". These are canonical numeric codes, not text classification.
+_PERMANENT_ERRNOS = frozenset(
+    {
+        1044,  # access denied for user to database
+        1045,  # access denied (bad credentials)
+        1049,  # unknown database
+        1698,  # access denied (auth plugin)
+        2059,  # authentication plugin cannot be loaded
+    }
+)
+
+# OpenSSL emits this exact constant when CA verification fails; pymysql wraps
+# it in a generic 2003, so the errno alone cannot distinguish "server is down"
+# (retry) from "your CA is wrong" (never retries successfully).
+_PERMANENT_TLS_MARKER = "CERTIFICATE_VERIFY_FAILED"
+
+
+def _is_permanent(exc: BaseException) -> bool:
+    """True when retrying cannot possibly help — fail fast and say why."""
+    errno = exc.args[0] if getattr(exc, "args", None) else None
+    if isinstance(errno, int) and errno in _PERMANENT_ERRNOS:
+        return True
+    return _PERMANENT_TLS_MARKER in str(exc)
 
 
 def _resolve_ca_path() -> str:
@@ -150,8 +195,6 @@ def _resolve_ca_path() -> str:
 
 
 class MySQLBackend:
-    ph = "%s"
-
     def __init__(self, dsn: str) -> None:
         try:
             import pymysql  # noqa: F401
@@ -195,11 +238,32 @@ class MySQLBackend:
             try:
                 conn = pymysql.connect(**self._params)
                 with conn.cursor() as cur:
+                    # READ COMMITTED, not InnoDB's REPEATABLE READ default.
+                    #
+                    # The store holds ONE connection for the life of the
+                    # process, and autocommit is off so multi-statement writes
+                    # stay atomic. Under REPEATABLE READ that combination is a
+                    # trap: the first SELECT pins an MVCC snapshot, and every
+                    # later read on that connection returns the same frozen view
+                    # until something commits. A server that only reads —
+                    # clock_status in a long session — would report the same
+                    # numbers forever while other processes recorded progress.
+                    # A clock that silently stops is the exact failure this
+                    # plane exists to prevent, so reads must see what is true
+                    # NOW, not what was true when the process first looked.
+                    cur.execute("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED")
                     cur.execute("SELECT 1")
                     cur.fetchone()
+                conn.commit()
                 return conn
             except Exception as exc:  # noqa: BLE001
                 last = exc
+                if _is_permanent(exc):
+                    # Credentials, database name, or TLS trust are wrong.
+                    # No amount of waiting fixes any of them.
+                    raise RuntimeError(
+                        f"mysql connection refused for a permanent reason " f"(not retried): {exc}"
+                    ) from exc
                 if attempt < _RETRIES - 1:
                     wait = _DELAY * (2**attempt)
                     _log.warning("mysql connect failed (%s); retry in %.1fs", exc, wait)
@@ -209,7 +273,7 @@ class MySQLBackend:
     # ── contract ─────────────────────────────────────────────────────────
     def execute(self, sql: str, params: tuple = ()):
         cur = self._conn.cursor()
-        cur.execute(sql.replace("?", "%s"), params)
+        cur.execute(sql.replace("?", "%s"), params or None)
         return cur
 
     def commit(self) -> None:

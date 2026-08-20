@@ -16,7 +16,9 @@ import shutil
 import sqlite3
 from pathlib import Path
 
-_SCHEMA_VERSION = "2"
+from horizon_monitor.memento.backends._schema import SCHEMA_VERSION
+
+_SCHEMA_VERSION = SCHEMA_VERSION
 
 # Fresh v2 schema. `key` is backtick-quoted because it is a MySQL reserved
 # word and the store's SQL is written once for both dialects (SQLite accepts
@@ -103,14 +105,10 @@ _MISSION_TABLES = ("mm_items", "mm_events", "mm_fires", "mm_meta")
 
 
 class SqliteBackend:
-    ph = "?"
-
     def __init__(self, store_path: str | Path) -> None:
         self.store_path = Path(store_path)
         self.store_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(
-            str(self.store_path), check_same_thread=False, timeout=30.0
-        )
+        self._conn = sqlite3.connect(str(self.store_path), check_same_thread=False, timeout=30.0)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA busy_timeout=30000")
@@ -178,7 +176,9 @@ class SqliteBackend:
                 (_SCHEMA_VERSION,),
             )
             after = {
-                t: self._conn.execute(f"SELECT COUNT(*) AS c FROM {t}").fetchone()["c"]  # noqa: S608
+                t: self._conn.execute(f"SELECT COUNT(*) AS c FROM {t}").fetchone()[
+                    "c"
+                ]  # noqa: S608
                 for t in _MISSION_TABLES
             }
             if before != after:

@@ -18,15 +18,22 @@ UTC = timezone.utc
 def _seeded(tmp_path):
     store = MementoStore(tmp_path / "missions.db")
     root = store.register_item(
-        kind=ItemKind.HORIZON, title="engagement horizon",
-        created_valid=datetime(2026, 1, 1, tzinfo=UTC), end_date=date(2030, 1, 1),
+        kind=ItemKind.HORIZON,
+        title="engagement horizon",
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+        end_date=date(2030, 1, 1),
     )
     mission = store.register_item(
-        kind=ItemKind.MISSION, title="buyer-outreach", parent_id=root,
-        created_valid=datetime(2026, 7, 2, tzinfo=UTC), stall_days=14,
+        kind=ItemKind.MISSION,
+        title="buyer-outreach",
+        parent_id=root,
+        created_valid=datetime(2026, 7, 2, tzinfo=UTC),
+        stall_days=14,
     )
     store.record_event(
-        item_id=mission, kind=EventKind.PROGRESS, valid_time=datetime(2026, 7, 2, tzinfo=UTC),
+        item_id=mission,
+        kind=EventKind.PROGRESS,
+        valid_time=datetime(2026, 7, 2, tzinfo=UTC),
     )
     store.set_fire_state(mission, "mission_stalled", {"state": "RAISED"})
     return store, root, mission
@@ -52,8 +59,10 @@ def test_store_survives_erasure_and_accepts_a_new_horizon(tmp_path):
     store.erase_all()
 
     fresh = store.register_item(
-        kind=ItemKind.HORIZON, title="new horizon",
-        created_valid=datetime(2027, 1, 1, tzinfo=UTC), end_date=date(2031, 1, 1),
+        kind=ItemKind.HORIZON,
+        title="new horizon",
+        created_valid=datetime(2027, 1, 1, tzinfo=UTC),
+        end_date=date(2031, 1, 1),
     )
     assert store.get_root() is not None
     assert store.get_item(fresh).title == "new horizon"
@@ -64,11 +73,15 @@ def test_erasure_survives_a_reopen(tmp_path):
     path = tmp_path / "missions.db"
     store = MementoStore(path)
     root = store.register_item(
-        kind=ItemKind.HORIZON, title="h", created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+        kind=ItemKind.HORIZON,
+        title="h",
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
         end_date=date(2030, 1, 1),
     )
     store.record_event(
-        item_id=root, kind=EventKind.PROGRESS, valid_time=datetime(2026, 1, 2, tzinfo=UTC),
+        item_id=root,
+        kind=EventKind.PROGRESS,
+        valid_time=datetime(2026, 1, 2, tzinfo=UTC),
     )
     store.erase_all()
     store.close()
@@ -100,7 +113,7 @@ def test_erasure_is_not_exposed_as_an_mcp_tool():
     """
     from horizon_monitor.mcp import server
 
-    src = (server.__file__ or "")
+    src = server.__file__ or ""
     assert src
     text = open(src, encoding="utf-8").read()
     assert "erase_all" not in text, "erase_all is reachable from the MCP surface"
@@ -110,11 +123,17 @@ def test_redaction_and_erasure_are_different_operations(tmp_path):
     """Redaction keeps the measurement; erasure removes the record."""
     store = MementoStore(tmp_path / "missions.db")
     root = store.register_item(
-        kind=ItemKind.HORIZON, title="h", created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+        kind=ItemKind.HORIZON,
+        title="h",
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
         end_date=date(2030, 1, 1),
     )
     person = store.register_item(
-        kind=ItemKind.ENTITY, title="Jane Doe", parent_id=root, namespace="person", person_namespace_confirmed=True,
+        kind=ItemKind.ENTITY,
+        title="Jane Doe",
+        parent_id=root,
+        namespace="person",
+        person_namespace_confirmed=True,
         created_valid=datetime(2026, 2, 1, tzinfo=UTC),
     )
     store.redact_person_display_name(person)

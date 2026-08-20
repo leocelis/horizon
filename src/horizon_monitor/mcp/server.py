@@ -85,6 +85,7 @@ def _resolve_eval_instant(timestamp: str | None) -> tuple[datetime, str]:
         return datetime.fromisoformat(timestamp), "injected"
     return datetime.now(timezone.utc), "host_clock"
 
+
 def _session_not_found_response(session_id: str) -> dict:
     """Same error shape for 'unknown session' and 'not your session' —
     a caller must not be able to distinguish the two (see SessionOwnershipError)."""
@@ -339,7 +340,16 @@ def register_memento_tools(
     if store_path is None and dsn is None:
         return None
 
-    memento_store = MementoStore(store_path, dsn=dsn)
+    # Tenant used by callers that carry NO authenticated key — stdio sessions
+    # and the library path. Defaults to "local". Set HORIZON_MEMENTO_TENANT_ID
+    # to run a local server against a shared (e.g. hosted) store and see the
+    # SAME tenant the hosted server would resolve for your API key; or point it
+    # at a scratch tenant to try things without touching real missions.
+    # It never overrides an authenticated caller: when a bearer key is present
+    # the key's mapping in horizon_api_keys wins, so this cannot be used to
+    # reach another tenant's data over an authenticated transport.
+    default_tenant = os.environ.get("HORIZON_MEMENTO_TENANT_ID", "local").strip() or "local"
+    memento_store = MementoStore(store_path, dsn=dsn, tenant_id=default_tenant)
     memento_config = MementoConfig(store_path=store_path)
 
     # ── Per-request tenant scoping ────────────────────────────────────────
@@ -348,14 +358,15 @@ def register_memento_tools(
     # bound as a lightweight scope over the same connection. Unknown or
     # revoked keys FAIL CLOSED with a typed error — the mission plane never
     # auto-provisions a tenant (see MementoStore.resolve_tenant_for_key_sha).
-    # stdio / auth-disabled callers carry no key sha and stay on 'local'.
+    # stdio / auth-disabled callers carry no key sha and use the default
+    # tenant above (HORIZON_MEMENTO_TENANT_ID, else 'local').
     _tenant_cache: dict[str, tuple[str, float]] = {}
     _TENANT_CACHE_TTL_S = 60.0  # revocation bites within a minute
 
     def _scoped_store() -> MementoStore:
         key_sha = current_key_sha.get()
         if not key_sha:
-            return memento_store  # local tenant — the stdio / library path
+            return memento_store  # default tenant — the stdio / library path
         now = time.monotonic()
         hit = _tenant_cache.get(key_sha)
         if hit is not None and now - hit[1] < _TENANT_CACHE_TTL_S:
@@ -491,9 +502,7 @@ def register_memento_tools(
                     ),
                 )
             elif kind == "breakeven":
-                t_eval = (
-                    _resolve_eval_instant(timestamp)[0]
-                )
+                t_eval = _resolve_eval_instant(timestamp)[0]
                 proposal = memento_propose.breakeven_proposal(
                     item_id=item_id,
                     t_eval=t_eval.date(),

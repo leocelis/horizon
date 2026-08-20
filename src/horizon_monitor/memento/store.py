@@ -41,6 +41,7 @@ from horizon_monitor.memento.backends import resolve_backend
 from horizon_monitor.memento.errors import (
     ArtifactProvenanceRequiredError,
     DuplicateRootError,
+    KeyAlreadyBoundError,
     NonFiniteRootError,
     PersonNamespaceUnflaggedError,
     RetentionScopeError,
@@ -56,8 +57,6 @@ from horizon_monitor.memento.models import (
     Provenance,
     StoreSnapshot,
 )
-
-_SCHEMA_VERSION = "2"
 
 LOCAL_TENANT = "local"
 
@@ -101,6 +100,11 @@ class MementoStore:
     ) -> None:
         self.store_path = Path(store_path) if store_path is not None else None
         self._tenant = tenant_id
+        # RLock, not Lock: register_item holds the lock and then calls
+        # _validate_item -> _has_root -> _fetchone, which acquires it again.
+        # Pre-tenancy those reads went straight to the connection, so a plain
+        # Lock sufficed; routing every read through the scoped _fetchone made
+        # the path re-entrant. A Lock here deadlocks on the first write.
         self._lock = threading.RLock()
         self._b = resolve_backend(store_path=store_path, dsn=dsn)
         with self._lock:
@@ -580,8 +584,7 @@ class MementoStore:
         empty tenant instead of a refusal.
         """
         row = self._fetchone(
-            "SELECT tenant_id FROM horizon_api_keys "
-            "WHERE key_sha256 = ? AND revoked_at IS NULL",
+            "SELECT tenant_id FROM horizon_api_keys " "WHERE key_sha256 = ? AND revoked_at IS NULL",
             (key_sha256,),
         )
         return row["tenant_id"] if row else None
@@ -608,10 +611,7 @@ class MementoStore:
                 (key_sha256,),
             ).fetchone()
             if bound is not None:
-                raise ValueError(
-                    f"key hash already bound to tenant {bound['tenant_id']!r}; "
-                    "revoke it first — a key never moves between tenants silently"
-                )
+                raise KeyAlreadyBoundError(bound["tenant_id"])
             b.execute(
                 "INSERT INTO horizon_api_keys (key_sha256, tenant_id, label, created_at, revoked_at) "
                 "VALUES (?, ?, ?, ?, NULL)",
