@@ -12,7 +12,7 @@
 
 **Design lineage:** the existing Horizon plane measures the health of a *conversation*
 over turns. Memento Mori measures the health of a *mission* over calendar days. Same
-philosophy, different object: external observer, deterministic, local-first,
+philosophy, different object: external observer, deterministic, local by default,
 signals-only.
 
 ---
@@ -133,9 +133,13 @@ An extension to the Horizon library (same package, separate optional plane) that
 - **Not purchase advice.** A latency-reducing purchase is validated
   retrospectively against measured before/after latency, never recommended from
   projected savings.
-- **Not multi-user.** V1 is single-operator and local-first; sharing surfaces are
-  a later, separate decision — which licenses nothing about scoring third
-  parties (§8).
+- **Not a collaboration surface.** The plane is single-operator by default: one local
+  SQLite file, no dependencies, nothing shared. A self-hoster serving more than one
+  operator may point it at MySQL instead, in which case each API key maps to an
+  assigned tenant and every read, write and erasure is tenant-scoped — isolation, not
+  collaboration. There are no shared missions, no cross-tenant views, no team rollups,
+  and this licenses nothing about scoring third parties (§8). Sharing surfaces remain a
+  later, separate decision.
 - **Not a statistics engine.** No p-values, confidence intervals, sequential tests, or
   e-values on path latencies (§7). Error-controlled inference belongs, if anywhere, in
   an optional layer above the engine — never on the core path.

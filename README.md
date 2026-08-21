@@ -386,7 +386,7 @@ probe of some alternative.
 ### Quickstart
 
 ```bash
-export HORIZON_MEMENTO_STORE_PATH=~/.horizon/missions.db   # local, single-operator
+export HORIZON_MEMENTO_STORE_PATH=~/.horizon/missions.db   # the default: one local file
 ```
 
 <details>

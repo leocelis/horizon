@@ -127,9 +127,48 @@ each traceable to `(amount, rate, measured duration)` in the derivation string.
 
 ## 3. Store
 
-- **Backend:** SQLite in WAL mode at `store_path` (same `storage/` conventions as the
-  existing plane). Tables: `mm_items`, `mm_events`, `mm_fires` (signal state), plus
-  `mm_meta` (schema version). All migrations forward-only and reversible by backup.
+- **Backends:** the store's SQL is written once in SQLite placeholder style; a
+  `StoreBackend` adapts dialect, DDL and connection liveness (`memento/backends/`).
+  - **SQLite** (default, zero dependencies) — WAL mode at `store_path`, same
+    `storage/` conventions as the existing plane.
+  - **MySQL 8** (optional extra `[mysql]`) — for deployments whose filesystem does not
+    survive a restart, where a file-backed store silently resets and then reports a
+    confidently wrong clock. Selected by `store_dsn` / `HORIZON_MEMENTO_STORE_DSN`,
+    which takes precedence over `store_path`. TLS verification is mandatory: the
+    backend refuses to connect without a CA.
+- **Tables:** `mm_items`, `mm_events`, `mm_fires` (signal state), `mm_meta` (schema
+  version), `mm_associations` (session → mission bindings), plus the two cross-plane
+  identity tables `horizon_tenants` and `horizon_api_keys`. Seven in total.
+- **Tenancy:** a `MementoStore` *is* a tenant scope, defaulting to `local` so the
+  single-operator API is unchanged. `scoped(tenant_id)` returns a view over the **same**
+  connection — one connection per process, not per tenant — and every statement carries
+  the scope's tenant, so cross-tenant reads and writes cannot be expressed. Identity is
+  **assigned**, never derived from a key: `horizon_api_keys` maps a key's full SHA-256 to
+  a tenant, so rotating a key preserves that tenant's history. Unknown or revoked keys
+  fail closed. Provisioning is an operator action (`scripts/provision_tenant.py`) and is
+  deliberately not an MCP tool.
+  - Store API: `scoped(tenant_id)`, `provision_tenant(...)`, `revoke_key(key_sha256)`,
+    `resolve_tenant_for_key_sha(...)`, `associate_session(session_id, mission_id)`,
+    `missions_for_session(session_id)`, `erase_all()`. Rotation is
+    `revoke_key` + `provision_tenant` on the **same** tenant, which is why history
+    survives it.
+- **Durability of bindings:** `mm_associations` is a table rather than memory because a
+  restart would otherwise empty it silently — the agent keeps its `session_id`, the
+  server no longer recognises it, and mission signals stop with no error on either side.
+- **Connection liveness (MySQL):** managed servers close idle connections and mission
+  traffic is sparse by design, so the backend pings and reconnects at transaction and
+  read boundaries — never mid-transaction. Session settings (isolation) are re-applied on
+  **both** the connect and reconnect paths: a driver's transparent reconnect replays only
+  `init_command`, so a setting applied once after connect is otherwise lost. Isolation is
+  `READ COMMITTED`, not InnoDB's default: one long-lived connection under REPEATABLE READ
+  pins an MVCC snapshot and a mostly-reading server reports the same numbers forever.
+  Permanent failures (bad credentials, unknown database, failed TLS trust) fail fast
+  instead of retrying.
+- **Migrations:** forward-only and reversible by backup. v1 → v2 is additive (a
+  `tenant_id` column, default `'local'`); SQLite primary keys are **not** rebuilt, since
+  a SQLite store is single-tenant by definition and the rebuild is the only step that
+  could lose data. New tables are created by `CREATE TABLE IF NOT EXISTS` on every open,
+  so existing stores gain them without a migration path.
 - **Append-only discipline:** `mm_items` rows mutate only `status/superseded_by`;
   everything else is new rows. `mm_events` is insert-only.
 - **Concurrency:** many agent sessions may write. Writes are single-statement
@@ -262,7 +301,8 @@ src/horizon_monitor/memento/
     __init__.py
     config.py          # MementoConfig
     models.py          # Item, ClockEvent, Provenance, report types
-    store.py           # SQLite store, schema validation, migrations
+    store.py           # tenant-scoped store: validation, tenancy, erasure
+    backends/          # StoreBackend: sqlite.py (default) + mysql.py (extra)
     engine.py          # evaluate(): the pure clock surface
     money.py           # monetary block (guarded by rate presence)
     paths.py           # path comparison + probe arithmetic

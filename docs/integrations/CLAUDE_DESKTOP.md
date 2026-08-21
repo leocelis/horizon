@@ -135,9 +135,15 @@ Enable it by pointing the server at a local store:
 HORIZON_MEMENTO_STORE_PATH=~/.horizon/missions.db
 ```
 
-Keep the store **local**. The hosted endpoint deliberately runs without one:
-mission data is single-operator and personal, and does not belong on shared
-infrastructure.
+A local store is the default and the right choice for a single operator: one
+file, no dependencies, nothing leaves your machine.
+
+If you self-host for more than one operator, the store can instead be a MySQL 8
+database (`pip install horizon-monitor[mysql]`, then set
+`HORIZON_MEMENTO_STORE_DSN`). Mission data is personal, so that path is built to
+isolate it: every API key maps to an assigned tenant, every query carries that
+tenant, and a key with no tenant gets no mission access at all. Provisioning is
+an operator action, never automatic. See SECURITY.md for the isolation model.
 
 The canonical agent-rules block for the mission plane — session start, the
 side-effect write rule, parks needing dates, ack discipline, and the reply

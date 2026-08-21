@@ -487,7 +487,7 @@ intent:
     to planning rather than a retrospective discovery.
 
     The plane inherits Horizon's philosophy wholesale: external observer,
-    deterministic, local-first, framework-agnostic, signals-only. It measures
+    deterministic, local by default, framework-agnostic, signals-only. It measures
     and reports; the agent's controller and the human decide.
 
     Explicitly bounded: elapsed-time ACCOUNTING, never duration ESTIMATION.
@@ -554,7 +554,7 @@ constraints:
     consequence_if_violated: "Existing integrations break or silently change behavior on upgrade; adoption of the plane becomes mandatory instead of chosen"
 
   - name: "local_first_privacy"
-    requirement: "The mission store is a local file/database at an operator-configured path; default configuration sends zero mission data to external services; the engine ships with no bundled mission data of any kind"
+    requirement: "The mission store is operator-configured and defaults to a local file; the DEFAULT configuration sends zero mission data to external services (a self-hoster may opt into a MySQL store, which is their own infrastructure and requires an explicit DSN plus verified TLS); the engine ships with no bundled mission data of any kind"
     test: "tests/unit/memento_mori/test_privacy.py::test_no_external_calls_and_no_bundled_data"
     test_provenance: "ai_generated"
     entropy: "near-zero"
@@ -661,7 +661,7 @@ non_goals:
   - "Actuarial modeling: a lifetime-derived root horizon is computed by arithmetic from operator-supplied inputs (e.g. an operator-chosen expectancy table value); the engine embeds no demographic model and no personal data"
   - "Conversation-level temporal signals (inter-turn gaps, retention, pacing) — already owned by the existing spacetime plane"
   - "Calendar/scheduling integration (creating events, sending reminders to humans) — the delivery surface is the agent's turn context, by design"
-  - "Multi-user/multi-tenant coordination — V1 is single-operator, local-first; sharing surfaces are a later, separate decision"
+  - "Multi-user COORDINATION — no shared missions, cross-tenant views or team rollups. The store is single-operator by default (local SQLite); a self-hoster may point it at MySQL, where each API key maps to an assigned tenant and every read, write and erasure is tenant-scoped. That is isolation, not collaboration; sharing surfaces remain a later, separate decision"
 
 # ----------------------------------------------------------------------------
 # RISKS
