@@ -514,3 +514,88 @@ def test_mission_signals_come_from_the_callers_tenant_not_the_process_default(
     finally:
         srv._MEMENTO_SCOPE_RESOLVER = None
         store.close()
+
+
+def test_session_mission_associations_survive_a_restart(tmp_path):
+    """Associations were memory-only, so every deploy silently emptied them.
+
+    The agent kept the session_id it had stored, the server no longer recognised
+    it, and mission signals stopped arriving with NO error on either side — the
+    worst failure mode for a plane whose job is surfacing what you would
+    otherwise miss.
+    """
+    db = tmp_path / "missions.db"
+    store = MementoStore(db)
+    root = store.register_item(
+        kind=ItemKind.HORIZON,
+        title="h",
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+        end_date=date(2030, 1, 1),
+    )
+    mission = store.register_item(
+        kind=ItemKind.MISSION,
+        title="m",
+        parent_id=root,
+        created_valid=datetime(2026, 7, 2, tzinfo=UTC),
+    )
+    store.associate_session("session-abc", mission)
+    store.associate_session("session-abc", mission)  # idempotent
+    assert store.missions_for_session("session-abc") == (mission,)
+    store.close()
+
+    reopened = MementoStore(db)  # the restart
+    try:
+        assert reopened.missions_for_session("session-abc") == (mission,)
+    finally:
+        reopened.close()
+
+
+def test_associations_are_tenant_scoped_and_erased_with_the_tenant(tmp_path):
+    store = MementoStore(tmp_path / "missions.db")
+    try:
+        a, b = store.scoped("tenant-a"), store.scoped("tenant-b")
+        a.associate_session("shared-session-id", "mission-1")
+        assert a.missions_for_session("shared-session-id") == ("mission-1",)
+        # the same session id in another tenant sees nothing
+        assert b.missions_for_session("shared-session-id") == ()
+        # erasure destroys them (they are that tenant's session data)
+        counts = a.erase_all()
+        assert counts["mm_associations"] == 1
+        assert a.missions_for_session("shared-session-id") == ()
+    finally:
+        store.close()
+
+
+def test_monitor_reads_associations_from_the_store_not_memory(tmp_path, monkeypatch):
+    """The whole point: a monitor built AFTER a restart must still find them."""
+    from mcp.server.fastmcp import FastMCP
+
+    from horizon_monitor import FidelityMonitor
+    from horizon_monitor.mcp.server import register_memento_tools
+
+    db = tmp_path / "missions.db"
+    monkeypatch.setenv("HORIZON_MEMENTO_TENANT_ID", "local")
+    store, cfg = register_memento_tools(FastMCP("t"), db)
+    try:
+        root = store.register_item(
+            kind=ItemKind.HORIZON,
+            title="h",
+            created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+            end_date=date(2030, 1, 1),
+        )
+        mission = store.register_item(
+            kind=ItemKind.MISSION,
+            title="m",
+            parent_id=root,
+            created_valid=datetime(2026, 7, 2, tzinfo=UTC),
+        )
+
+        m1 = FidelityMonitor(memento_store=store, memento_config=cfg)
+        m1.associate_mission("sess-1", mission)
+
+        # a BRAND NEW monitor — what a restarted process builds — must see it
+        m2 = FidelityMonitor(memento_store=store, memento_config=cfg)
+        assert m2._resolve_memento_store().missions_for_session("sess-1") == (mission,)
+        assert m2._memento_association.missions_for("sess-1") == ()  # not from memory
+    finally:
+        store.close()

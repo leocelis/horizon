@@ -390,7 +390,7 @@ class MementoStore:
         """
         counts: dict[str, int] = {}
         with self._txn() as b:
-            for table in ("mm_fires", "mm_events", "mm_items"):
+            for table in ("mm_associations", "mm_fires", "mm_events", "mm_items"):
                 counts[table] = b.execute(
                     f"SELECT COUNT(*) AS c FROM {table} WHERE tenant_id = ?",  # noqa: S608
                     (self._tenant,),
@@ -650,6 +650,45 @@ class MementoStore:
                 (datetime.now(timezone.utc).isoformat(), key_sha256),
             )
             return True
+
+    # ── Session -> mission associations (durable) ────────────────────────
+    #
+    # These bind an agent session to the missions whose signals it should
+    # receive. They were in-memory, which meant every deploy or container move
+    # silently emptied them: the agent kept the session_id it had stored, the
+    # server no longer recognised it, and mission signals stopped arriving with
+    # no error on either side. For a plane whose whole job is surfacing what you
+    # would otherwise miss, "silently stops" is the worst available failure.
+
+    def associate_session(self, session_id: str, mission_id: str) -> None:
+        """Bind a session to a mission. Idempotent, tenant-scoped, durable."""
+        with self._txn() as b:
+            existing = b.execute(
+                "SELECT 1 FROM mm_associations WHERE tenant_id = ? AND session_id = ? "
+                "AND mission_id = ?",
+                (self._tenant, session_id, mission_id),
+            ).fetchone()
+            if existing:
+                return
+            b.execute(
+                "INSERT INTO mm_associations (tenant_id, session_id, mission_id, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (
+                    self._tenant,
+                    session_id,
+                    mission_id,
+                    datetime.now(timezone.utc).isoformat(),
+                ),
+            )
+
+    def missions_for_session(self, session_id: str) -> tuple[str, ...]:
+        """Missions bound to this session, in this tenant. Ordered for stability."""
+        rows = self._fetchall(
+            "SELECT mission_id FROM mm_associations WHERE tenant_id = ? AND session_id = ? "
+            "ORDER BY mission_id",
+            (self._tenant, session_id),
+        )
+        return tuple(r["mission_id"] for r in rows)
 
     # ── Snapshot for the pure evaluation engine ─────────────────────────
 

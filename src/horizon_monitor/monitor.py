@@ -260,8 +260,27 @@ class FidelityMonitor:
         test plan G-11, M-3). Calling this with no `memento_store` configured
         is harmless — the association is recorded but has nothing to feed
         until a store exists. Association is additive and survives repeated
-        calls / session re-registration (AssociationRegistry.associate)."""
+        calls / session re-registration.
+
+        When a store is configured the binding is written THERE, not to the
+        in-memory registry, so it survives a restart. It used to be memory-only:
+        every deploy or container move silently emptied it, the agent kept the
+        session_id it had stored, and mission signals stopped arriving with no
+        error on either side."""
+        store = self._resolve_memento_store()
+        if store is not None:
+            store.associate_session(session_id, mission_id)
+            return
         self._memento_association.associate(session_id, mission_id)
+
+    def _resolve_memento_store(self):
+        """The caller's tenant-scoped store, or None when the plane is off.
+
+        Never raises: an unmapped or revoked key resolves to None, which callers
+        treat as "no mission plane for this caller"."""
+        if self._memento_store_resolver is not None:
+            return self._memento_store_resolver()
+        return self._memento_store
 
     def process_turn(
         self,
@@ -324,7 +343,15 @@ class FidelityMonitor:
         """
         if self._memento_store is None:
             return []
-        mission_ids = self._memento_association.missions_for(session_id)
+        resolved = self._resolve_memento_store()
+        if resolved is None:
+            # unmapped/revoked key — fail closed, silently (this must not raise)
+            return []
+        mission_ids = resolved.missions_for_session(session_id)
+        if not mission_ids:
+            # library callers with no store-backed association fall back to the
+            # in-memory registry
+            mission_ids = self._memento_association.missions_for(session_id)
         if not mission_ids:
             return []
         if timestamp is None:
@@ -334,14 +361,7 @@ class FidelityMonitor:
         # Resolve the caller's tenant scope for THIS turn. Reading (and writing
         # fire state) through the process-default store would serve one tenant's
         # missions to another.
-        store = self._memento_store
-        if self._memento_store_resolver is not None:
-            store = self._memento_store_resolver()
-            if store is None:
-                # The caller's key maps to no active tenant. Fail closed by
-                # emitting nothing — this method's contract is that it never
-                # raises, so refusing here must be silent, not an exception.
-                return []
+        store = resolved
 
         snapshot = store.snapshot()
         report = memento_engine.evaluate(snapshot, t_eval, self._memento_config)

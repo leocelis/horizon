@@ -81,6 +81,14 @@ CREATE TABLE IF NOT EXISTS mm_fires (
 
 CREATE INDEX IF NOT EXISTS idx_mm_events_item ON mm_events(tenant_id, item_id);
 
+CREATE TABLE IF NOT EXISTS mm_associations (
+    tenant_id  TEXT NOT NULL DEFAULT 'local',
+    session_id TEXT NOT NULL,
+    mission_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (tenant_id, session_id, mission_id)
+);
+
 CREATE TABLE IF NOT EXISTS horizon_tenants (
     tenant_id     TEXT NOT NULL,
     display_label TEXT NOT NULL,

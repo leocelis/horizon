@@ -121,6 +121,15 @@ CREATE TABLE IF NOT EXISTS mm_fires (
 ) ENGINE=InnoDB ROW_FORMAT=DYNAMIC
   DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
+CREATE TABLE IF NOT EXISTS mm_associations (
+    tenant_id  VARCHAR(64)  NOT NULL DEFAULT 'local',
+    session_id VARCHAR(191) NOT NULL,
+    mission_id CHAR(36)     NOT NULL,
+    created_at VARCHAR(32)  NOT NULL,
+    PRIMARY KEY (tenant_id, session_id, mission_id)
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC
+  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
 CREATE TABLE IF NOT EXISTS horizon_tenants (
     tenant_id     VARCHAR(64)  NOT NULL,
     display_label VARCHAR(128) NOT NULL,
