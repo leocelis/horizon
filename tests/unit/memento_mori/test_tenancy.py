@@ -427,3 +427,24 @@ def test_default_tenant_is_configurable_but_never_overrides_an_authenticated_key
             auth_mod.current_key_sha.reset(token)
     finally:
         store.close()
+
+
+def test_closing_a_scope_does_not_close_the_parents_connection(tmp_path):
+    """Scopes share ONE connection, so close() on a view must be a no-op.
+
+    Honouring it would tear the connection out from under the owner and every
+    sibling scope. In the hosted server a scope is created per request, so a
+    stray close() in cleanup code would take every tenant offline at once —
+    self-healing on the next ensure_live(), but failing any write in flight.
+    """
+    store = MementoStore(tmp_path / "missions.db")
+    a, b = store.scoped("tenant-a"), store.scoped("tenant-b")
+    try:
+        a.close()  # a caller might reasonably do this
+        assert store.get_items() == []  # parent still usable
+        assert b.get_items() == []  # sibling still usable
+        assert a.get_items() == []  # and the "closed" view itself still works
+        assert store._owns_backend is True
+        assert a._owns_backend is False
+    finally:
+        store.close()

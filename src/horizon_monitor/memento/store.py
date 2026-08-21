@@ -107,6 +107,10 @@ class MementoStore:
         # the path re-entrant. A Lock here deadlocks on the first write.
         self._lock = threading.RLock()
         self._b = resolve_backend(store_path=store_path, dsn=dsn)
+        # Only the store that opened the backend may close it. Scopes are views
+        # over the same connection (see scoped()), so closing one must not tear
+        # the connection out from under the others.
+        self._owns_backend = True
         with self._lock:
             self._b.init_schema()
 
@@ -123,9 +127,21 @@ class MementoStore:
         clone._tenant = tenant_id
         clone._lock = self._lock
         clone._b = self._b
+        clone._owns_backend = False  # a view never closes the shared connection
         return clone
 
     def close(self) -> None:
+        """Close the backend — but only from the store that opened it.
+
+        Calling close() on a scope returned by :meth:`scoped` is a deliberate
+        no-op. Scopes share one connection (that is the point: one connection
+        per process, not per tenant), so honouring close() on a view would tear
+        the connection out from under the owner and every sibling scope. In the
+        hosted server, where a scope is created per request, that would take
+        every tenant offline until the next reconnect.
+        """
+        if not self._owns_backend:
+            return
         with self._lock:
             self._b.close()
 
