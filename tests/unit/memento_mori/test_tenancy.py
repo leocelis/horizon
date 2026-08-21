@@ -448,3 +448,69 @@ def test_closing_a_scope_does_not_close_the_parents_connection(tmp_path):
         assert a._owns_backend is False
     finally:
         store.close()
+
+
+def test_mission_signals_come_from_the_callers_tenant_not_the_process_default(
+    tmp_path, monkeypatch
+):
+    """The six mission tools are tenant-scoped; process_turn's signal path is a
+    SEPARATE consumer and was not.
+
+    It read `self._memento_store` — the store bound at import with the process
+    DEFAULT tenant — so on a multi-tenant host every caller received signals
+    computed from the default tenant's missions, including item titles in the
+    signal payloads, and fire-state writes landed there too. Nothing leaked in
+    practice only because the default tenant happened to be empty.
+    """
+    import hashlib as _h
+
+    from mcp.server.fastmcp import FastMCP
+
+    from horizon_monitor.mcp import auth as auth_mod
+    from horizon_monitor.mcp import server as srv
+
+    db = tmp_path / "missions.db"
+    monkeypatch.setenv("HORIZON_MEMENTO_TENANT_ID", "process-default")
+    store, _cfg = srv.register_memento_tools(FastMCP("t"), db)
+    try:
+        # the process-default tenant owns a stalled mission
+        root = store.register_item(
+            kind=ItemKind.HORIZON,
+            title="default horizon",
+            created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+            end_date=date(2030, 1, 1),
+        )
+        default_mission = store.register_item(
+            kind=ItemKind.MISSION,
+            title="SECRET default mission",
+            parent_id=root,
+            created_valid=datetime(2026, 1, 2, tzinfo=UTC),
+            stall_days=1,
+        )
+
+        # a DIFFERENT tenant's key calls in
+        sha = _h.sha256(b"other-tenants-key").hexdigest()
+        store.provision_tenant("other", "Other", sha)
+
+        resolver = srv._MEMENTO_SCOPE_RESOLVER
+        assert resolver is not None, "the MCP layer must publish a scope resolver"
+
+        token = auth_mod.current_key_sha.set(sha)
+        try:
+            scoped = resolver()
+            assert scoped is not None and scoped.tenant_id == "other"
+            # the other tenant must not see the default tenant's mission at all
+            assert scoped.get_item(default_mission) is None
+            assert [i.title for i in scoped.get_items()] == []
+        finally:
+            auth_mod.current_key_sha.reset(token)
+
+        # and an UNMAPPED key resolves to None -> the signal path emits nothing
+        token = auth_mod.current_key_sha.set(_h.sha256(b"unmapped").hexdigest())
+        try:
+            assert resolver() is None
+        finally:
+            auth_mod.current_key_sha.reset(token)
+    finally:
+        srv._MEMENTO_SCOPE_RESOLVER = None
+        store.close()

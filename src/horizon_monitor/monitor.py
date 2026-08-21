@@ -129,6 +129,12 @@ class FidelityMonitor:
         self._grounding_hook: ToolHook | None = grounding_hook
         self._last_grounding: dict[str, GroundingResult] = {}
         self._memento_store = memento_store
+        # Multi-tenant hosts resolve the CALLER's tenant per turn. Without this
+        # the mission-signal path would read the process-default tenant for
+        # every caller — the six mission tools are scoped via _scoped_store(),
+        # but this path is a separate consumer and was not. Library callers
+        # leave it None and keep the single-store behaviour.
+        self._memento_store_resolver = None
         self._memento_config = memento_config or MementoConfig()
         # Always constructed — pure in-memory bookkeeping with zero effect
         # unless BOTH an association exists AND memento_store is configured
@@ -325,13 +331,25 @@ class FidelityMonitor:
             return []
         t_eval = parse_timestamp(timestamp)
 
-        snapshot = self._memento_store.snapshot()
+        # Resolve the caller's tenant scope for THIS turn. Reading (and writing
+        # fire state) through the process-default store would serve one tenant's
+        # missions to another.
+        store = self._memento_store
+        if self._memento_store_resolver is not None:
+            store = self._memento_store_resolver()
+            if store is None:
+                # The caller's key maps to no active tenant. Fail closed by
+                # emitting nothing — this method's contract is that it never
+                # raises, so refusing here must be silent, not an exception.
+                return []
+
+        snapshot = store.snapshot()
         report = memento_engine.evaluate(snapshot, t_eval, self._memento_config)
         signal_report, new_fire_states = memento_signals.evaluate_signals(
             snapshot, report, t_eval, self._memento_config
         )
         for (item_id, signal_type), state in new_fire_states.items():
-            self._memento_store.set_fire_state(item_id, signal_type, state)
+            store.set_fire_state(item_id, signal_type, state)
 
         items_by_id = {item.item_id: item for item in snapshot.items}
         scoped_missions = set(mission_ids)

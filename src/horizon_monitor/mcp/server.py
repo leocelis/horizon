@@ -378,6 +378,20 @@ def register_memento_tools(
         _tenant_cache[key_sha] = (tenant_id, now)
         return memento_store.scoped(tenant_id)
 
+    def _scoped_store_or_none() -> MementoStore | None:
+        """Same resolution, but returns None instead of raising.
+
+        process_turn's mission-signal path must never raise, so an unmapped or
+        revoked key becomes "no mission events" rather than an exception.
+        """
+        try:
+            return _scoped_store()
+        except TenantResolutionError:
+            return None
+
+    global _MEMENTO_SCOPE_RESOLVER
+    _MEMENTO_SCOPE_RESOLVER = _scoped_store_or_none
+
     @app.tool(
         name="clock_register",
         title="Register or update a clocked mission item",
@@ -582,6 +596,7 @@ def register_memento_tools(
     return memento_store, memento_config
 
 
+_MEMENTO_SCOPE_RESOLVER = None  # set by register_memento_tools when a store exists
 _MEMENTO_STORE_PATH = _memento_store_path_from_env()
 _MEMENTO_STORE_DSN = _memento_store_dsn_from_env()
 _memento_registration = register_memento_tools(mcp, _MEMENTO_STORE_PATH, _MEMENTO_STORE_DSN)
@@ -606,6 +621,10 @@ def _get_monitor() -> FidelityMonitor:
     global _monitor
     if _monitor is None:
         _monitor = FidelityMonitor(memento_store=_memento_store, memento_config=_memento_config)
+    # Mission signals must come from the CALLER's tenant, not the process
+    # default. The six mission tools scope themselves; this path is a separate
+    # consumer and needs the same resolver installed.
+    _monitor._memento_store_resolver = _MEMENTO_SCOPE_RESOLVER
     return _monitor
 
 

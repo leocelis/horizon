@@ -230,6 +230,23 @@ class MySQLBackend:
             "autocommit": False,
         }
 
+    @staticmethod
+    def _apply_session_settings(conn) -> None:
+        """Session state that MUST survive every (re)connection.
+
+        pymysql replays only `init_command` when it reconnects, so a setting
+        applied once after connect is silently lost the moment the connection is
+        rebuilt — and the session reverts to the server default. That is how the
+        READ COMMITTED fix regressed in production: a long-lived, sparsely-used
+        server reconnected on an idle timeout, fell back to REPEATABLE READ,
+        pinned an MVCC snapshot, and went on serving rows that had since been
+        deleted. Applying the settings here, from BOTH the connect path and the
+        reconnect path, is what makes them durable.
+        """
+        with conn.cursor() as cur:
+            cur.execute("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED")
+        conn.commit()
+
     def _connect_with_retry(self):
         import pymysql
 
@@ -237,6 +254,7 @@ class MySQLBackend:
         for attempt in range(_RETRIES):
             try:
                 conn = pymysql.connect(**self._params)
+                self._apply_session_settings(conn)
                 with conn.cursor() as cur:
                     # READ COMMITTED, not InnoDB's REPEATABLE READ default.
                     #
@@ -251,7 +269,6 @@ class MySQLBackend:
                     # A clock that silently stops is the exact failure this
                     # plane exists to prevent, so reads must see what is true
                     # NOW, not what was true when the process first looked.
-                    cur.execute("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED")
                     cur.execute("SELECT 1")
                     cur.fetchone()
                 conn.commit()
@@ -290,7 +307,10 @@ class MySQLBackend:
         transaction/read boundaries — never mid-transaction (see package
         docstring: a mid-transaction reconnect silently drops txn state)."""
         try:
-            self._conn.ping(reconnect=True)
+            # reconnect=False deliberately: pymysql's transparent reconnect does
+            # NOT re-apply session settings (see _apply_session_settings), so we
+            # own the reconnect and rebuild the session ourselves.
+            self._conn.ping(reconnect=False)
         except Exception:  # noqa: BLE001
             _log.warning("mysql connection lost; reconnecting")
             self._conn = self._connect_with_retry()

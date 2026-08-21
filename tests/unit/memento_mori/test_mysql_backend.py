@@ -120,6 +120,15 @@ def test_ensure_live_reconnects_after_server_side_close(mysql_store):
         # simulate wait_timeout: close the socket underneath the backend
         mysql_store._b._conn.close()
         assert {i.title for i in sc.get_items()} == {"live"}  # reconnected
+        # and the session settings survived the reconnect — pymysql replays only
+        # init_command, so a setting applied once after connect is lost when the
+        # connection is rebuilt. That regression is how a long-lived server fell
+        # back to REPEATABLE READ and served rows that had already been deleted.
+        iso = mysql_store._fetchone("SELECT @@transaction_isolation AS i", ())["i"]
+        assert iso == "READ-COMMITTED", (
+            f"isolation reverted to {iso} after reconnect — the frozen-snapshot "
+            "bug is back via the reconnect path"
+        )
     finally:
         sc.erase_all()
 
