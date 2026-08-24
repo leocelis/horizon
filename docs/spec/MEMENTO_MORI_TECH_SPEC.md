@@ -157,7 +157,16 @@ each traceable to `(amount, rate, measured duration)` in the derivation string.
   server no longer recognises it, and mission signals stop with no error on either side.
 - **Connection liveness (MySQL):** managed servers close idle connections and mission
   traffic is sparse by design, so the backend pings and reconnects at transaction and
-  read boundaries — never mid-transaction. Session settings (isolation) are re-applied on
+  read boundaries — never mid-transaction.
+- **Startup budget vs steady-state patience.** The first connect happens while the
+  process is starting and a platform is usually holding a readiness deadline over it, so
+  it is bounded (`HORIZON_MYSQL_STARTUP_BUDGET_S`, default 45s, with a shorter per-attempt
+  connect timeout). Reconnects keep the full ladder. These want opposite things: at
+  startup, fail fast and let the supervisor restart, because something else is watching
+  the clock; mid-life, retry patiently, because nobody is. Unbounded at startup, the full
+  ladder (2+4+8+16+32+64 = 126s of sleeps plus a connect timeout per attempt) outlasts a
+  120s readiness probe, and one transient blip stops being a degraded request and becomes
+  a failed deploy with an automatic rollback. Session settings (isolation) are re-applied on
   **both** the connect and reconnect paths: a driver's transparent reconnect replays only
   `init_command`, so a setting applied once after connect is otherwise lost. Isolation is
   `READ COMMITTED`, not InnoDB's default: one long-lived connection under REPEATABLE READ

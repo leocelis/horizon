@@ -45,6 +45,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lookups ingestion needs for dedupe and incremental pulls.
 
 ### Changed
+- **The initial MySQL connect is now bounded** (`HORIZON_MYSQL_STARTUP_BUDGET_S`,
+  default 45s); reconnects keep the full retry ladder. Startup and steady state want
+  opposite things — at startup a platform is holding a readiness deadline, so failing
+  fast and letting the supervisor restart beats blocking past it. Unbounded, the ladder
+  (126s of sleeps plus a connect timeout per attempt) outlasts a typical 120s readiness
+  probe, turning one transient blip into a failed deploy and a rollback rather than a
+  degraded request.
 - `MementoStore.erase_all()` takes `mark_tenant_erased` (default `True`).
   Destroying a tenant's data and recording that the tenant *exercised erasure*
   are different events; conflating them left maintenance and test cleanup

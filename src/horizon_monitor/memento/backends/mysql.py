@@ -154,6 +154,19 @@ CREATE TABLE IF NOT EXISTS horizon_api_keys (
 _RETRIES = int(os.environ.get("MYSQL_CONN_RETRIES", "7"))
 _DELAY = float(os.environ.get("MYSQL_CONN_DELAY", "2"))
 
+# The FIRST connect happens while the process is still starting up, and a
+# platform is usually holding a readiness deadline over it. The full ladder
+# (2+4+8+16+32+64 = 126s of sleeps, plus a connect timeout per attempt) can
+# outlast that deadline, and then a single transient blip does not degrade the
+# service — it fails the deploy and rolls the release back.
+#
+# Startup and steady state want opposite things. Starting up: fail fast and let
+# the supervisor restart you, because something else is watching the clock.
+# Long-lived: retry patiently, because nobody is. So the budget applies to the
+# initial connect only; ensure_live() keeps the generous ladder.
+_STARTUP_BUDGET_S = float(os.environ.get("HORIZON_MYSQL_STARTUP_BUDGET_S", "45"))
+_STARTUP_CONNECT_TIMEOUT_S = int(os.environ.get("HORIZON_MYSQL_STARTUP_CONNECT_TIMEOUT_S", "10"))
+
 # MySQL server error codes that will NEVER succeed on retry. Retrying these
 # turns a clear misconfiguration into a multi-minute hang: with the default
 # 7 attempts and exponential backoff, a wrong password costs ~126s before
@@ -212,7 +225,10 @@ class MySQLBackend:
                 "MySQL backend requires PyMySQL: pip install horizon-monitor[mysql]"
             ) from exc
         self._params = self._parse(dsn)
-        self._conn = self._connect_with_retry()
+        self._conn = self._connect_with_retry(
+            budget_seconds=_STARTUP_BUDGET_S,
+            connect_timeout=_STARTUP_CONNECT_TIMEOUT_S,
+        )
 
     @staticmethod
     def _parse(dsn: str) -> dict:
@@ -256,13 +272,35 @@ class MySQLBackend:
             cur.execute("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED")
         conn.commit()
 
-    def _connect_with_retry(self):
+    def _connect_with_retry(
+        self,
+        *,
+        budget_seconds: float | None = None,
+        connect_timeout: int | None = None,
+    ):
+        """Connect, retrying transient failures with exponential backoff.
+
+        `budget_seconds` bounds the TOTAL wall time spent trying. Pass it for
+        the initial connect, where a readiness probe is counting; leave it None
+        for reconnects, where patience costs nothing and giving up costs a
+        working process.
+        """
         import pymysql
+
+        params = dict(self._params)
+        if connect_timeout is not None:
+            params["connect_timeout"] = connect_timeout
+        deadline = (time.monotonic() + budget_seconds) if budget_seconds else None
 
         last: Exception | None = None
         for attempt in range(_RETRIES):
+            if deadline is not None and time.monotonic() >= deadline:
+                raise RuntimeError(
+                    f"mysql connection not established within the "
+                    f"{budget_seconds:.0f}s startup budget"
+                ) from last
             try:
-                conn = pymysql.connect(**self._params)
+                conn = pymysql.connect(**params)
                 self._apply_session_settings(conn)
                 with conn.cursor() as cur:
                     # READ COMMITTED, not InnoDB's REPEATABLE READ default.
@@ -292,6 +330,11 @@ class MySQLBackend:
                     ) from exc
                 if attempt < _RETRIES - 1:
                     wait = _DELAY * (2**attempt)
+                    if deadline is not None and time.monotonic() + wait >= deadline:
+                        raise RuntimeError(
+                            f"mysql connection not established within the "
+                            f"{budget_seconds:.0f}s startup budget"
+                        ) from exc
                     _log.warning("mysql connect failed (%s); retry in %.1fs", exc, wait)
                     time.sleep(wait)
         raise RuntimeError(f"mysql connection failed after {_RETRIES} attempts") from last
