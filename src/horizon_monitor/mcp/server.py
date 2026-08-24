@@ -245,6 +245,37 @@ def _memento_store_dsn_from_env() -> str | None:
     return os.environ.get("HORIZON_MEMENTO_STORE_DSN") or None
 
 
+def _setup_guidance(items: list[dict]) -> str | None:
+    """What to do next when the store cannot yet answer anything useful.
+
+    An unconfigured plane and a broken one both return an empty report, and a
+    caller has no way to tell them apart — nor to discover the setup steps,
+    which live in a doc nobody reads before trying. This describes the store's
+    actual state and names the next call; it never invents a date, a duration or
+    a mission, so the accounting/estimation boundary is untouched.
+
+    Returns None once at least one mission exists — this is a setup affordance,
+    not a running commentary. (Alert-fatigue research is about chatty detectors
+    interrupting; a state description on an explicit read is neither.)
+    """
+    if not items:
+        return (
+            "No items in this store yet. Register the root horizon first: "
+            "clock_register(item={kind: 'horizon', title: ..., created_valid: ..., "
+            "end_date: ...}). The end_date is a date the OPERATOR chooses — never "
+            "invent one — and it is the denominator every elapsed-time figure is a "
+            "share of. Then register a mission under it."
+        )
+    if not any(i.get("kind") == "mission" for i in items):
+        return (
+            "A root horizon exists but no mission. Register one: "
+            "clock_register(item={kind: 'mission', parent_id: <horizon id>, title: ..., "
+            "created_valid: <when work actually started>}). Ages are measured from "
+            "created_valid, so use the real start date, not today."
+        )
+    return None
+
+
 def _jsonable(obj: Any) -> Any:
     """Round-trip through JSON so Decimal/date/datetime values in a memento
     report become JSON-native before crossing the MCP wire, the same way
@@ -456,6 +487,7 @@ def register_memento_tools(
             report = memento_engine.evaluate(snapshot, t_eval, memento_config)
             d = report.to_dict()
             d["eval_instant_source"] = instant_source
+            d["setup_guidance"] = _setup_guidance(d.get("items", []))
             if scope:
                 items_by_id = {i.item_id: i for i in snapshot.items}
 
@@ -1152,3 +1184,33 @@ if __name__ == "__main__":
     _log.info("Log: %s", _LOG_PATH)
     _log.info("=" * 60)
     mcp.run(transport="stdio")
+
+
+@mcp.resource(
+    uri="horizon://memento/agent-rules",
+    name="memento_agent_rules",
+    title="Memento Mori agent-rules block",
+    description=(
+        "The canonical host-rules block for the mission plane: when to associate a "
+        "session, how to surface a mission signal, the side-effect write rule, parks "
+        "and dates, ack discipline, and the prohibitions. Read this to behave "
+        "correctly without waiting for it to be pasted into a rules file — the "
+        "mission plane is LOUD and its rules are not guessable from tool names "
+        "alone. Read-only; touches no session or mission state."
+    ),
+    mime_type="text/markdown",
+)
+def get_memento_agent_rules() -> str:
+    """Serve the shipped agent-rules block.
+
+    Shipped as package data next to the module rather than read from the docs
+    tree, so it is present in an installed wheel; a drift test asserts it stays
+    identical to the block published in MEMENTO_MORI_AGENTS.md §3.
+    """
+    from importlib import resources
+
+    return (
+        resources.files("horizon_monitor.memento")
+        .joinpath("agent_rules.md")
+        .read_text(encoding="utf-8")
+    )

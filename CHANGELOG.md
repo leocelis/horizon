@@ -21,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   arrangement, not a conversational act.
   The mission link stays a caller's decision — `item_id` is required and no
   adapter can supply one, by construction.
+- **Setup discoverability.** `clock_status` now returns `setup_guidance`, naming the
+  next concrete call while the store has no root horizon or no mission, and going
+  quiet once one exists. An unconfigured plane and a broken one previously both
+  returned an empty report with no way to tell them apart, and the setup steps
+  lived only in a document. The guidance never proposes a horizon date — that is
+  the operator's to choose.
+- **Resource `horizon://memento/agent-rules`** serves the canonical agent-rules
+  block from the installed package, so a host can read it rather than copy it from
+  the repository. A drift test pins it to the published §3 block.
 - `MementoStore.known_artifact_ids()` / `latest_artifact_time()` — the provenance
   lookups ingestion needs for dedupe and incremental pulls.
 

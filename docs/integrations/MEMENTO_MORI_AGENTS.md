@@ -128,6 +128,23 @@ instructions; mission events (the twelve `signal.*` types of this plane) are sur
 per §3. Events carry their plane in the payload (`plane: "mission" | "conversation"`)
 so hosts and rules can route without name-matching.
 
+## 5b. Discoverability (when the rules block has not been pasted yet)
+
+Two affordances carry the essentials on the tool surface itself, so a host that
+has installed the MCP but not yet completed the checklist is not stranded:
+
+- **Every tool description** ends with the loud-contract line, so an agent that
+  calls a mission tool is told to surface the result rather than absorb it.
+- **`clock_status` returns `setup_guidance`** while the store cannot answer
+  anything useful — naming the next concrete call when there is no root horizon,
+  or no mission under it. It goes quiet once a mission exists: this is a setup
+  affordance, not a running commentary. It never proposes a horizon date; that
+  is the operator's, and inventing one would cross the accounting/estimation
+  boundary the plane exists to hold.
+- **Resource `horizon://memento/agent-rules`** serves the §3 block below from the
+  installed package, so a host can read the rules instead of copying them from
+  GitHub. A drift test asserts the shipped copy matches §3.
+
 ## 6. Adoption checklist (per host)
 
 1. Configure `store_path` (plane off otherwise — zero behavior change).
