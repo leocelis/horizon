@@ -46,6 +46,7 @@ from horizon_monitor.memento.errors import (
     TenantResolutionError,
     UndatedDeferralError,
 )
+from horizon_monitor.memento.ingest import IngestResult, ingest_artifacts
 from horizon_monitor.memento.models import (
     ClockEvent,
     ClockReport,
@@ -78,7 +79,9 @@ __all__ = [
     "ItemKind",
     "MementoConfig",
     "MementoError",
+    "IngestResult",
     "MementoStore",
+    "ingest_artifacts",
     "NonFiniteRootError",
     "PersonNamespaceUnflaggedError",
     "PersonRankingRefusedError",

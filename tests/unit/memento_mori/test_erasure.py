@@ -170,3 +170,48 @@ def test_privacy_policy_only_names_methods_that_exist():
             f"PRIVACY_POLICY.md section 1.6 promises `{method}()`, "
             "which does not exist on MementoStore"
         )
+
+
+def test_erase_all_separates_data_deletion_from_tenant_erasure_status(tmp_path):
+    """Destroying a tenant's data and recording that the tenant *exercised
+    erasure* are different events, and conflating them misstates live tenants.
+
+    Maintenance and test cleanup destroy data without anyone invoking a right;
+    flipping the tenant to `erased` there would leave an active tenant labelled
+    as erased. The default stays True because this method IS the erasure path.
+    """
+    store = MementoStore(tmp_path / "missions.db")
+    try:
+        store.provision_tenant("t-live", "Live Tenant", "a" * 64)
+        scope = store.scoped("t-live")
+
+        def seed():
+            root = scope.register_item(
+                kind=ItemKind.HORIZON,
+                title="h",
+                created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+                end_date=date(2030, 1, 1),
+            )
+            scope.register_item(
+                kind=ItemKind.MISSION,
+                title="m",
+                parent_id=root,
+                created_valid=datetime(2026, 7, 2, tzinfo=UTC),
+            )
+
+        seed()
+
+        # maintenance cleanup — data goes, status must not change
+        counts = scope.erase_all(mark_tenant_erased=False)
+        assert counts["mm_items"] == 2
+        assert scope.get_items() == []
+        row = store._fetchone("SELECT status FROM horizon_tenants WHERE tenant_id = ?", ("t-live",))
+        assert row["status"] == "active", "cleanup mislabelled a live tenant as erased"
+
+        # the real erasure path still records that the right was exercised
+        seed()
+        scope.erase_all()
+        row = store._fetchone("SELECT status FROM horizon_tenants WHERE tenant_id = ?", ("t-live",))
+        assert row["status"] == "erased"
+    finally:
+        store.close()

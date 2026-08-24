@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Artifact ingestion — capture that does not depend on remembering.**
+  `ingest_artifacts(store, adapter, *, item_id)` turns an adapter's records into
+  `ARTIFACT` events. The adapters and their interface already shipped, but nothing
+  consumed them; this is the missing half. Ingestion is idempotent (dedupe on the
+  source's own `(source_system, native_id)`, never a payload hash) and incremental
+  (`since` defaults to the newest artifact already recorded), so it is safe to run
+  on a schedule — which matters, because a capture path that is unsafe to re-run
+  will not be automated, and one that is not automated depends on somebody
+  remembering. `scripts/ingest_artifacts.py` is the operator/cron entry point.
+  Deliberately **not** an MCP tool: subscribing to a source is a standing
+  arrangement, not a conversational act.
+  The mission link stays a caller's decision — `item_id` is required and no
+  adapter can supply one, by construction.
+- `MementoStore.known_artifact_ids()` / `latest_artifact_time()` — the provenance
+  lookups ingestion needs for dedupe and incremental pulls.
+
+### Changed
+- `MementoStore.erase_all()` takes `mark_tenant_erased` (default `True`).
+  Destroying a tenant's data and recording that the tenant *exercised erasure*
+  are different events; conflating them left maintenance and test cleanup
+  labelling live tenants as `erased`. The default is unchanged, so the
+  right-to-erasure path behaves exactly as before.
+
 - **Durable, multi-tenant mission stores.** The mission plane can now persist to
   **MySQL 8** as well as SQLite, so it survives on platforms with an ephemeral
   filesystem — where a file-backed store silently resets on every deploy and reports a

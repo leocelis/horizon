@@ -294,6 +294,29 @@ Per `(item_id, signal_type)` a row in `mm_fires`:
   with no timestamp legitimately differ; that field is what makes the difference
   visible.
 
+## 6b. Ingestion
+
+`ingest_artifacts(store, adapter, *, item_id, since=None)` turns an adapter's
+`RawArtifact` records into `ARTIFACT` events. It is the only path from a source
+into the store, and it exists because adapters deliberately cannot do it: the
+interface has no method or parameter capable of attaching an item, so the
+mission link must come from a caller. `item_id` is required and has no default.
+
+- **Idempotent.** Dedupe is on the source's own `(source_system, native_id)` —
+  never a payload hash, which changes when a source amends a message. A repeat
+  run records nothing and reports what it skipped.
+- **Incremental.** `since` defaults to the newest artifact already recorded from
+  that source, so each run asks only for what is new. An explicit `since`
+  overrides it.
+- **Provenance-enforced.** `ARTIFACT` events require the full triple; the store
+  validates before writing, so a malformed source cannot half-land.
+- **Tenant-scoped**, like every other store operation.
+- **Not an MCP tool.** Subscribing to a source is a standing arrangement, not a
+  conversational act, so it belongs to the operator and the scheduler
+  (`scripts/ingest_artifacts.py`) and never depends on an agent choosing to run
+  it. That is the whole point: an agent that must remember to record is worth
+  nothing on the day it forgets (PRD §4.3).
+
 ## 7. Package Structure
 
 ```
@@ -309,6 +332,7 @@ src/horizon_monitor/memento/
     propose.py         # ttl / breakeven proposals
     signals.py         # state machine, cap, predicates
     philosophy.md      # the alarm philosophy document (shipped)
+    ingest.py          # adapter records -> ARTIFACT events (caller supplies the link)
     adapters/
         base.py        # ArtifactAdapter interface
         git_local.py   # reference adapter

@@ -426,8 +426,12 @@ Sequenced by dependency (no dates; the plane will clock its own build):
 6. **Signal integration** — event state machine, ack, cap, escalation facts, alarm
    philosophy document; wiring into `process_turn` for associated sessions;
    backward-compat guarantee (no store → no behavior change)
-7. **Artifact adapters** — subscribe to append-only sources (git, trackers, mail
-   metadata) with provenance; caller-write linking
+7. **Artifact adapters + ingestion** — pull-based readers over append-only sources
+   (git reference adapter shipped; trackers and mail metadata are the same
+   interface), each record carrying provenance. `ingest_artifacts()` writes them
+   as `ARTIFACT` events against a caller-supplied mission: idempotent on the
+   source's native id, incremental from the last recorded artifact, and run by
+   the operator or a scheduler rather than exposed as a tool
 
 Each segment lands against its constraint set per the intent's verification protocol
 (ai-generated tests cannot self-certify; golden clock-report fixtures and

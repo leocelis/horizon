@@ -361,7 +361,7 @@ class MementoStore:
                 (self.REDACTED_TITLE, self._tenant, item_id),
             )
 
-    def erase_all(self) -> dict[str, int]:
+    def erase_all(self, *, mark_tenant_erased: bool = True) -> dict[str, int]:
         """Destroy every mission record in THIS TENANT's scope. The
         right-to-erasure path.
 
@@ -384,6 +384,12 @@ class MementoStore:
         removes the records themselves. The schema and its ``schema_version``
         row survive, so the store stays usable and a fresh horizon can be
         registered immediately afterwards.
+
+        `mark_tenant_erased` separates two things that are not the same event:
+        destroying a tenant's data, and recording that the tenant *exercised
+        erasure*. The default is True because this is the right-to-erasure
+        path. Pass False for maintenance or test cleanup, where flipping a live
+        tenant to `erased` would misstate its status.
 
         Returns per-table counts of what was destroyed, so the caller can record
         the erasure rather than merely perform it.
@@ -408,10 +414,11 @@ class MementoStore:
                 "DELETE FROM mm_meta WHERE tenant_id = ? AND `key` != 'schema_version'",
                 (self._tenant,),
             )
-            b.execute(
-                "UPDATE horizon_tenants SET status = 'erased' WHERE tenant_id = ?",
-                (self._tenant,),
-            )
+            if mark_tenant_erased:
+                b.execute(
+                    "UPDATE horizon_tenants SET status = 'erased' WHERE tenant_id = ?",
+                    (self._tenant,),
+                )
         return counts
 
     @staticmethod
@@ -650,6 +657,38 @@ class MementoStore:
                 (datetime.now(timezone.utc).isoformat(), key_sha256),
             )
             return True
+
+    # ── Artifact provenance lookups (for ingestion) ──────────────────────
+
+    def known_artifact_ids(self, source_system: str) -> frozenset[str]:
+        """Native ids already recorded from `source_system`, for this tenant.
+
+        Ingestion is re-runnable because of this: an append-only log that
+        double-counts the same commit would inflate every interval derived from
+        it. Dedupe is on `(source_system, native_id)` — the source's own
+        identifier — never on a hash of the payload, which changes when the
+        source rewrites a message.
+        """
+        rows = self._fetchall(
+            "SELECT provenance_native_id FROM mm_events WHERE tenant_id = ? "
+            "AND provenance_source_system = ? AND provenance_native_id IS NOT NULL",
+            (self._tenant, source_system),
+        )
+        return frozenset(r["provenance_native_id"] for r in rows)
+
+    def latest_artifact_time(self, source_system: str) -> datetime | None:
+        """Newest `valid_time` recorded from `source_system`, for this tenant.
+
+        Lets ingestion ask the source only for what is new. Returns None when
+        nothing has been ingested yet, which callers pass through as "all
+        history".
+        """
+        rows = self._fetchall(
+            "SELECT valid_time FROM mm_events WHERE tenant_id = ? "
+            "AND provenance_source_system = ? ORDER BY valid_time DESC",
+            (self._tenant, source_system),
+        )
+        return _parse_dt(rows[0]["valid_time"]) if rows else None
 
     # ── Session -> mission associations (durable) ────────────────────────
     #

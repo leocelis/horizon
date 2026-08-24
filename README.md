@@ -408,6 +408,32 @@ that tenant's history; unknown or revoked keys get no mission access at all.
 
 </details>
 
+<details>
+<summary>Feeding it from work you already do (artifact ingestion)</summary>
+
+A clock is only as good as what reaches it, and a record that depends on
+remembering to write is worth nothing on the day you forget. So the plane can
+derive events from append-only sources you already produce:
+
+```bash
+python scripts/ingest_artifacts.py --store ~/.horizon/missions.db \
+    --repo /path/to/repo --item-id <mission-id>
+```
+
+Each commit becomes an `ARTIFACT` event carrying the source's own provenance, and
+the event's `valid_time` is the commit's timestamp — not the moment you ingested
+it. Safe to run from cron: it dedupes on the source's native id and asks only for
+what is new.
+
+Two things it will not do. It will not guess which mission an artifact belongs to
+— `--item-id` is required, and the adapter interface has no parameter capable of
+attaching one. And it will not judge what counts as progress. Those are yours.
+
+`GitLocalAdapter` is the reference implementation; trackers and mail metadata fit
+the same `ArtifactAdapter` interface.
+
+</details>
+
 ```python
 from datetime import date, datetime, timezone
 
