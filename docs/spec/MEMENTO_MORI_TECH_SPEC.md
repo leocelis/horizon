@@ -326,6 +326,29 @@ mission link must come from a caller. `item_id` is required and has no default.
   it. That is the whole point: an agent that must remember to record is worth
   nothing on the day it forgets (PRD §4.3).
 
+### 6c. Mission proposals
+
+`propose_missions(store, adapter, *, since=None)` answers the blank page: a
+fresh store asks the operator to author a mission from nothing while their
+repositories already show months of work.
+
+It proposes **structure**, never meaning:
+
+| Derived | Supplied by the operator |
+|---|---|
+| source, artifact count, first/last artifact, observed span | the **title** — what the work *is* |
+| `suggested_created_valid` = the earliest artifact | `stall_days`, TTLs, amounts, the parent horizon |
+
+`MissionProposal` deliberately has **no title field**. Structure is observable;
+meaning is not, and a proposed name would be the plane's first invented fact.
+
+Inert by construction — it performs no write. Registering the mission *is* the
+ratifying act, mirroring TTL proposals, which stay unapplied until an explicit
+`RATIFY`. Nothing is proposed for a source whose artifacts are already recorded,
+since a mission then exists to hold them.
+
+Operator entry point: `scripts/ingest_artifacts.py --propose`.
+
 ## 7. Package Structure
 
 ```

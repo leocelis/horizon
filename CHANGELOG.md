@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Mission proposals — an answer to the blank page.** `propose_missions()` reads a
+  source's artifacts and proposes the structure a mission would have: the count, the
+  observed span, and a `created_valid` equal to the earliest artifact. It proposes
+  **no title** — `MissionProposal` has no such field — because structure is
+  observable and meaning is not, and a guessed name would be the plane's first
+  invented fact. Inert: registering the mission is the ratifying act, as with TTL
+  proposals. `scripts/ingest_artifacts.py --propose`.
 - **Artifact ingestion — capture that does not depend on remembering.**
   `ingest_artifacts(store, adapter, *, item_id)` turns an adapter's records into
   `ARTIFACT` events. The adapters and their interface already shipped, but nothing

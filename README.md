@@ -429,6 +429,18 @@ Two things it will not do. It will not guess which mission an artifact belongs t
 — `--item-id` is required, and the adapter interface has no parameter capable of
 attaching one. And it will not judge what counts as progress. Those are yours.
 
+Not sure what to register in the first place? Ask what your history suggests:
+
+```bash
+python scripts/ingest_artifacts.py --store ~/.horizon/missions.db \
+    --repo /path/to/repo --propose
+```
+
+It reports the shape — how many artifacts, over what span, starting when — and
+proposes a `created_valid` equal to the earliest one. It proposes no title,
+because what the work *is* cannot be read off a commit log. Nothing is written;
+registering the mission is your call.
+
 `GitLocalAdapter` is the reference implementation; trackers and mail metadata fit
 the same `ArtifactAdapter` interface.
 

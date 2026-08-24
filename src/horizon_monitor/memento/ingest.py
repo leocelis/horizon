@@ -32,7 +32,7 @@ from datetime import datetime
 
 from horizon_monitor.memento.models import EventKind
 
-__all__ = ["IngestResult", "ingest_artifacts"]
+__all__ = ["IngestResult", "MissionProposal", "ingest_artifacts", "propose_missions"]
 
 
 @dataclass(frozen=True)
@@ -107,3 +107,83 @@ def ingest_artifacts(store, adapter, *, item_id: str, since: datetime | None = N
         latest_valid_time=store.latest_artifact_time(source),
         pulled=len(raw),
     )
+
+
+@dataclass(frozen=True)
+class MissionProposal:
+    """A candidate mission derived from a source's artifacts. Inert.
+
+    Deliberately carries **no title**. Structure can be derived — how many
+    artifacts a source holds, when they start and stop — but what the work *is*
+    cannot, and a proposal that guessed a name would be the plane's first
+    invented fact. The operator supplies the meaning; ratification is simply
+    registering the mission.
+    """
+
+    source_system: str
+    artifact_count: int
+    first_artifact: datetime
+    last_artifact: datetime
+    span_days: int
+    suggested_created_valid: datetime
+    derivation: str
+
+    def summary(self) -> str:
+        return (
+            f"{self.source_system}: {self.artifact_count} artifacts spanning "
+            f"{self.span_days}d ({self.first_artifact.date()} -> "
+            f"{self.last_artifact.date()}). No mission covers them. Suggested "
+            f"created_valid={self.suggested_created_valid.date()} (the first "
+            f"recorded artifact). You supply the title."
+        )
+
+
+def propose_missions(store, adapter, *, since: datetime | None = None):
+    """Propose missions a source's artifacts suggest, without writing anything.
+
+    Answers the blank page: a fresh store asks the operator to author a mission
+    from nothing, while their repositories already show months of work. This
+    reads the work and proposes the *structure* — a source, a count, an observed
+    span, and a start date that is the earliest artifact rather than a guess.
+
+    It proposes nothing when the source's artifacts are already recorded, since
+    a mission then exists to hold them.
+
+    Inert by construction: it returns data and performs no write. Registering
+    the mission is the ratifying act, and it is the operator's — mirroring the
+    TTL proposals, which stay unapplied until an explicit RATIFY.
+    """
+    raw = adapter.pull(since)
+    if not raw:
+        return ()
+
+    by_source: dict[str, list] = {}
+    for art in raw:
+        by_source.setdefault(art.provenance.source_system, []).append(art)
+
+    proposals = []
+    for source, arts in sorted(by_source.items()):
+        if store.known_artifact_ids(source):
+            # already recorded, so a mission already holds this work
+            continue
+        stamps = sorted(a.provenance.raw_timestamp for a in arts)
+        first, last = stamps[0], stamps[-1]
+        span = (last.date() - first.date()).days
+        proposals.append(
+            MissionProposal(
+                source_system=source,
+                artifact_count=len(arts),
+                first_artifact=first,
+                last_artifact=last,
+                span_days=span,
+                suggested_created_valid=first,
+                derivation=(
+                    f"{len(arts)} artifacts from {source}; first {first.isoformat()}, "
+                    f"last {last.isoformat()}; span = {span}d. "
+                    f"suggested created_valid = first artifact (observed, not estimated). "
+                    f"Title and policy fields (stall_days, TTLs, amounts) are the "
+                    f"operator's - none is proposed here."
+                ),
+            )
+        )
+    return tuple(proposals)

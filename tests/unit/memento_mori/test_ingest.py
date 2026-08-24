@@ -193,3 +193,78 @@ def test_an_artifact_without_full_provenance_is_refused(mission):
     with pytest.raises(ArtifactProvenanceRequiredError):
         ingest_artifacts(store, FakeAdapter((bad,)), item_id=mid)
     assert store.get_events(mid) == [], "a rejected artifact still wrote something"
+
+
+# ── mission proposals: structure derived, meaning supplied ───────────────────
+
+
+def test_a_proposal_derives_structure_from_real_artifacts(tmp_path):
+    from horizon_monitor.memento import propose_missions
+
+    store = MementoStore(tmp_path / "m.db")
+    try:
+        arts = tuple(
+            _artifact(f"c{i}", datetime(2026, 6, 1, tzinfo=UTC) + timedelta(days=i * 10))
+            for i in range(5)
+        )
+        (proposal,) = propose_missions(store, FakeAdapter(arts))
+        assert proposal.artifact_count == 5
+        assert proposal.first_artifact == datetime(2026, 6, 1, tzinfo=UTC)
+        assert proposal.span_days == 40
+        # the start date is OBSERVED — the earliest artifact, not a guess
+        assert proposal.suggested_created_valid == proposal.first_artifact
+        assert "observed, not estimated" in proposal.derivation
+    finally:
+        store.close()
+
+
+def test_a_proposal_never_invents_a_title(tmp_path):
+    """Structure can be derived; meaning cannot. A proposed name would be the
+    plane's first invented fact."""
+    from horizon_monitor.memento import MissionProposal, propose_missions
+
+    assert "title" not in MissionProposal.__dataclass_fields__
+
+    store = MementoStore(tmp_path / "m.db")
+    try:
+        (p,) = propose_missions(
+            store, FakeAdapter((_artifact("c1", datetime(2026, 6, 1, tzinfo=UTC)),))
+        )
+        assert "You supply the title" in p.summary()
+    finally:
+        store.close()
+
+
+def test_a_proposal_writes_nothing(tmp_path):
+    """Inert: registering the mission is the ratifying act, and it is the
+    operator's — as with TTL proposals, which stay unapplied until RATIFY."""
+    from horizon_monitor.memento import propose_missions
+
+    store = MementoStore(tmp_path / "m.db")
+    try:
+        propose_missions(store, FakeAdapter((_artifact("c1", datetime(2026, 6, 1, tzinfo=UTC)),)))
+        assert store.get_items() == []
+        assert store.get_events() == []
+    finally:
+        store.close()
+
+
+def test_nothing_is_proposed_once_the_work_is_already_recorded(mission):
+    """A source whose artifacts are ingested already has a mission holding them."""
+    from horizon_monitor.memento import propose_missions
+
+    store, mid = mission
+    arts = (_artifact("c1", datetime(2026, 7, 2, tzinfo=UTC)),)
+    assert propose_missions(store, FakeAdapter(arts))  # before: proposed
+    ingest_artifacts(store, FakeAdapter(arts), item_id=mid)
+    assert propose_missions(store, FakeAdapter(arts)) == ()  # after: silent
+
+
+def test_an_empty_source_proposes_nothing(tmp_path):
+    from horizon_monitor.memento import propose_missions
+
+    store = MementoStore(tmp_path / "m.db")
+    try:
+        assert propose_missions(store, FakeAdapter(())) == ()
+    finally:
+        store.close()
