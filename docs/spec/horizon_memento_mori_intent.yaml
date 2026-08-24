@@ -508,10 +508,10 @@ intent:
     mode.)
 
     Secondary:
-    - No expired TTL or deferral goes unsurfaced past its next associated session
+    - No expired TTL or deferral goes unsurfaced past the next session of any kind: alerts reach the next associated turn; unassociated sessions receive a once-per-session status sweep of due levels (never firing, so no edge is consumed)
     - Zero undated deferrals and zero root-less items representable in the store (schema-enforced)
     - Every deadline is either paired to internal state or flagged signal.clock_unpaired within one evaluation
-    - A mission with no progress events for its threshold fires signal.mission_stalled in the next associated turn
+    - A mission with no progress events for its threshold fires signal.mission_stalled in the next associated turn, and appears as a due level in an unassociated session's status sweep before then
     - Latency accounting reproduces the operator's known bottlenecks in retrospective replay: given historical stage timestamps, the slowest-entity computation identifies the entity the operator independently names as the blocker (validation exercise for the research phase)
     - Clock computation is reproducible: identical store + identical evaluation date → byte-identical report
   stakeholders:
@@ -669,6 +669,8 @@ non_goals:
 risks:
   - risk: "Instrumentation-as-deferral: building and tuning the clock becomes the activity that defers the highest-latency pending action"
     mitigation: "Named in the primary success metric: the plane justifies itself only by shortening time-to-next-irreversible-external-action, and must report its own failure if it does not"
+  - risk: "Association circularity: signals reach the operator only in a session they already told the system was about that mission, so the plane reminds them of what they had already remembered — the one failure it exists to prevent. Every other risk here assumes engagement; this is the risk that the operator never engages with a given mission at all, which is exactly how a mission is lost."
+    mitigation: "Unassociated sessions receive a once-per-session STATUS sweep of what is due across the tenant (monitor._mission_status_sweep). It reports LEVELS, never changes: it does not call set_fire_state, so it cannot burn a signal's single RAISED edge in a conversation where the operator cannot act, leaving it silent in the associated turn where they could (C2 F4 levels-vs-changes, F5 state machine). Once per session, not per turn, since a repeated level is the flood F4 warns about. Tests: tests/unit/memento_mori/test_unassociated_sweep.py"
   - risk: "Signal fatigue: aging events fire every associated turn and get tuned out"
     mitigation: "Resolved normatively in v0.6 signal_channel firing semantics: edge-triggered events, acknowledgement state machine, one-new-fire-per-turn cap, escalation only on an enumerated new recorded fact, and a shipped alarm-philosophy document; an acknowledged event stays visible in clock_status but stops firing per-turn"
   - risk: "Garbage clock: callers stop recording progress/stage events, so stall and latency signals fire on missions that are actually moving"

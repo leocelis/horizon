@@ -389,7 +389,11 @@ failure mode is instrumentation-as-deferral: building and tuning the clock inste
 executing the highest-latency pending action.
 
 **Secondary:**
-- No expired TTL or deferral goes unsurfaced past its next associated session
+- No expired TTL or deferral goes unsurfaced past the next session of any kind: the
+  alert reaches the next *associated* turn, and an unassociated session receives a
+  once-per-session **status sweep** of what is due across the tenant. The sweep
+  reports levels and never fires, so it cannot consume an alert's single edge in a
+  session where the operator cannot act
 - Zero undated deferrals and zero root-less items representable (schema-enforced)
 - Every deadline paired to internal state or flagged `clock_unpaired` within one evaluation
 - Reproducibility: identical store + evaluation instant → byte-identical report

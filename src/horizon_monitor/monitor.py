@@ -135,6 +135,10 @@ class FidelityMonitor:
         # but this path is a separate consumer and was not. Library callers
         # leave it None and keep the single-store behaviour.
         self._memento_store_resolver = None
+        # Sessions already given the once-per-session status sweep. Ephemeral
+        # on purpose: after a restart a fresh sweep is the correct behaviour,
+        # since the operator is starting over too.
+        self._mission_swept: set[str] = set()
         self._memento_config = memento_config or MementoConfig()
         # Always constructed — pure in-memory bookkeeping with zero effect
         # unless BOTH an association exists AND memento_store is configured
@@ -329,6 +333,71 @@ class FidelityMonitor:
                 human_latency_ms,
             )
 
+    def _mission_status_sweep(self, session_id, turn_number, t_eval, store) -> list[Event]:
+        """What is due across this tenant, once, when no mission is associated.
+
+        This closes a circularity in the association design: signals reached the
+        operator only in a session they had already told the system was about
+        that mission — so the plane reminded them of things they had already
+        remembered, which is the one failure it exists to prevent.
+
+        It reports **levels, never changes** (C2 F4: "alerts are for changes, not
+        for levels that persist"). Nothing here calls ``set_fire_state``: firing
+        an alert into an unassociated session would burn its single edge
+        transition (C2 F5 — RAISED fires once) in a conversation where the
+        operator cannot act, leaving it silent in the session where they could.
+        So a level is surfaced and the edge is left intact for the associated
+        turn.
+
+        Once per session, not per turn: a level repeated every turn is exactly
+        the flood F4 warns about.
+        """
+        if session_id in self._mission_swept:
+            return []
+        self._mission_swept.add(session_id)
+
+        snapshot = store.snapshot()
+        if not snapshot.items:
+            return []
+        report = memento_engine.evaluate(snapshot, t_eval, self._memento_config)
+        signal_report, _discarded_states = memento_signals.evaluate_signals(
+            snapshot, report, t_eval, self._memento_config
+        )
+        # _discarded_states is deliberately dropped — see docstring.
+        pending = [*signal_report.fired, *signal_report.due]
+        if not pending:
+            return []
+
+        ranked = sorted(pending, key=lambda s: ({"P1": 0, "P2": 1, "P3": 2}.get(s.tier, 3),))
+        top = ranked[0]
+        others = len(ranked) - 1
+        more = f" ({others} other item{'s' if others != 1 else ''} also due)" if others else ""
+        return [
+            Event(
+                type=f"status.{top.signal_type}",
+                active=True,
+                confidence=1.0,
+                turn=turn_number,
+                suggested_behavior=(
+                    f"No mission is associated with this session, and something is due: "
+                    f"{top.derivation}{more}. State it to the operator with its numbers, "
+                    f"then offer to associate the mission so its signals reach this "
+                    f"session. This is a status level, not an alert — the alert itself "
+                    f"is still pending for the associated turn."
+                ),
+                mode=None,
+                metadata={
+                    "item_id": top.item_id,
+                    "tier": top.tier,
+                    "derivation": top.derivation,
+                    "surface": "level",
+                    "also_due": others,
+                    "unassociated_sweep": True,
+                },
+                plane="mission",
+            )
+        ]
+
     def _mission_events_for_turn(
         self, session_id: str, turn_number: int, timestamp: str | None
     ) -> list[Event]:
@@ -352,11 +421,14 @@ class FidelityMonitor:
             # library callers with no store-backed association fall back to the
             # in-memory registry
             mission_ids = self._memento_association.missions_for(session_id)
-        if not mission_ids:
-            return []
         if timestamp is None:
             return []
         t_eval = parse_timestamp(timestamp)
+
+        if not mission_ids:
+            # No association. Surface LEVELS, not changes — see
+            # _mission_status_sweep for why this must not fire alerts.
+            return self._mission_status_sweep(session_id, turn_number, t_eval, resolved)
 
         # Resolve the caller's tenant scope for THIS turn. Reading (and writing
         # fire state) through the process-default store would serve one tenant's

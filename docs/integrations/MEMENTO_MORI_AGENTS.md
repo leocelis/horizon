@@ -128,6 +128,25 @@ instructions; mission events (the twelve `signal.*` types of this plane) are sur
 per §3. Events carry their plane in the payload (`plane: "mission" | "conversation"`)
 so hosts and rules can route without name-matching.
 
+## 5a. Status levels vs alerts (`status.*` vs `signal.*`)
+
+A session with no associated mission still receives a **once-per-session status
+sweep** of what is due across the store, tagged `plane: "mission"` with a
+`status.*` type and `metadata.surface == "level"`.
+
+Treat it as information, not as an alarm:
+
+- **State it with its numbers**, as with any mission surface, and offer to
+  associate the mission so its real signals reach the session.
+- **Do not `clock_ack` it.** There is nothing to acknowledge — no signal fired.
+  The alert is still pending for the associated turn, deliberately: firing it
+  here would spend its single RAISED edge in a conversation where the operator
+  cannot act on it.
+- It appears **once per session**. A level repeated every turn is the flood the
+  alarm research warns about.
+
+`signal.*` events are the alerts: edge-triggered, capped, acknowledgeable.
+
 ## 5b. Discoverability (when the rules block has not been pasted yet)
 
 Two affordances carry the essentials on the tool surface itself, so a host that

@@ -21,6 +21,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   arrangement, not a conversational act.
   The mission link stays a caller's decision — `item_id` is required and no
   adapter can supply one, by construction.
+- **Unassociated sessions are no longer silent.** A session with no associated
+  mission now receives a once-per-session **status sweep** of what is due across
+  the store (`status.*` events, `metadata.surface == "level"`). This closes a
+  circularity: signals previously reached the operator only in a session they had
+  already declared to be about that mission, so the plane reminded them of what
+  they had already remembered — the one failure it exists to prevent.
+  The sweep reports **levels, never changes**: it does not write fire state, so it
+  cannot consume a signal's single RAISED edge in a conversation where the
+  operator cannot act, which would leave it silent in the associated turn where
+  they could. Hosts should surface it and offer to associate the mission, and
+  must not acknowledge it — nothing fired.
 - **Setup discoverability.** `clock_status` now returns `setup_guidance`, naming the
   next concrete call while the store has no root horizon or no mission, and going
   quiet once one exists. An unconfigured plane and a broken one previously both
