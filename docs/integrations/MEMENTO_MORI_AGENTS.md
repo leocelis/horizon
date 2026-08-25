@@ -1,7 +1,9 @@
 # Memento Mori for Agents — MCP Tools and Host Instructions
 
-**Status:** design (implementation pending). This document is the **canonical source**
-for the agent-rules block below, the same way `CLAUDE_DESKTOP.md` is canonical for the
+**Status:** implemented and shipping. All six mission tools in §2 are live; the
+`plane: "mission"` routing, the status sweep (§5a) and the discoverability
+affordances (§5b) are in place. This document is the **canonical source** for the
+agent-rules block below, the same way `CLAUDE_DESKTOP.md` is canonical for the
 fidelity plane. Host configuration (Claude Desktop, Claude Code, Cursor, Copilot) is
 identical to the existing plane — same server, same registration; the mission tools
 appear alongside the conversation tools once the plane is configured with a store.

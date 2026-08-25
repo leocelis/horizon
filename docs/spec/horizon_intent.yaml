@@ -727,7 +727,7 @@ risks:
 # IMPLEMENTATION
 # ----------------------------------------------------------------------------
 implementation:
-  current: "not yet implemented"
+  current: "implemented"
   version: 1
   tests:
     - "tests/unit/test_session.py"
