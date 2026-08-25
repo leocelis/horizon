@@ -84,7 +84,7 @@ review. Untagged cases are supporting coverage.
 | G-8 | probe_ready & path_ahead | P1 completion ⇒ probe_ready once; path_ahead fires with payload carrying **both intervals, n=1, derivation** — and no p-value/CI field exists | §7 | [GOLDEN] |
 | G-9 | No person ranking in behaviors | linter over `suggested_behavior` templates + generated payloads: no person-ordered lists; slowest_entity payload uses slot label | §8 | [HUMAN] |
 | G-10 | Backward compat | `store_path=None` ⇒ full existing test suite byte-identical results; memento code path not entered (coverage assertion) | §3.3 | [PROPERTY] |
-| G-11 | Association scoping | session not associated with any mission ⇒ zero memento events even with a store configured | §6 integration | |
+| G-11 | Association scoping | session not associated with any mission ⇒ zero `signal.*` ALERTS even with a store configured; it receives exactly one `status.*` LEVEL (`surface="level"`, once per session — the unassociated sweep), so silence is not the default. Firing a signal here would spend its single CLEAR→RAISED edge where the operator cannot act | §6 integration | |
 | G-13 | `cost_of_delay` fires | with rate + item amount + `cost_of_delay_threshold` all declared, the signal fires; absent any of the three there is no predicate at all (omission, not a default cutoff) | §5.2 | [GOLDEN] |
 | G-14 | `breakeven_passed` fires | a RATIFY event carrying `kind="breakeven"` whose date elapsed with no `measured_improvement` fires once; recorded improvement suppresses it | §5.2 | [GOLDEN] |
 | G-12 | Adapter provenance | git_local adapter emits ARTIFACT events with full provenance; adapter cannot create links (API has no such parameter) | §4.3 | |

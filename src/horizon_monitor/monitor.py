@@ -114,7 +114,10 @@ class FidelityMonitor:
                             M-4). Configuring it does not enable anything on
                             its own — a session must still be bound to a
                             mission via associate_mission() (test plan G-11,
-                            M-3) before any mission signal reaches it.
+                            M-3) before any mission ALERT reaches it. An
+                            unassociated session still gets one status.*
+                            LEVEL per session (the unassociated sweep), so
+                            the default is not silence.
             memento_config: Tunables for the mission plane (stall thresholds,
                             per-turn fire cap, …). Defaults to MementoConfig()
                             when memento_store is set and this is omitted.
@@ -409,6 +412,11 @@ class FidelityMonitor:
         configured, no association for this session, or no host-injected
         timestamp (the evaluation instant is never guessed; see
         memento_engine_intent.yaml::pure_function_injected_time).
+
+        This covers ALERTS only. The once-per-session status sweep for
+        unassociated sessions is emitted separately by
+        _mission_status_sweep(), which never calls set_fire_state and so
+        cannot spend a signal's single CLEAR->RAISED edge.
         """
         if self._memento_store is None:
             return []

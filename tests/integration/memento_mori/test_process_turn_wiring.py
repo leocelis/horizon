@@ -81,10 +81,22 @@ def test_m3_associated_session_receives_the_mission_event(tmp_path) -> None:
     store.close()
 
 
-def test_g11_configured_store_unassociated_session_zero_mission_events(tmp_path) -> None:
-    """G-11 / M-3 pairing, exercised end-to-end (not just at the registry
-    unit): a store IS configured and has due signals, but this session was
-    never associated with any mission — zero memento events reach it."""
+def test_g11_configured_store_unassociated_session_gets_levels_never_alerts(
+    tmp_path,
+) -> None:
+    """G-11 / M-3, restated for the unassociated status sweep.
+
+    G-11 originally read "zero memento events". The status sweep deliberately
+    changed that: an unassociated session receives a once-per-session LEVEL
+    report of what is due, so an operator who never calls associate_mission is
+    not left in silence — the exact failure the plane exists to fix.
+
+    What must NOT change is the alarm semantics, and that is what this asserts:
+    an unassociated session receives zero `signal.*` ALERTS. Firing a real
+    signal here would spend its single CLEAR->RAISED edge in a conversation
+    where the operator cannot act on it, so the alert stays pending for the
+    associated turn. Levels inform; only signals alarm.
+    """
     store = MementoStore(tmp_path / "store.db")
     _build_single_mission_with_expired_ttl(store)
 
@@ -99,8 +111,28 @@ def test_g11_configured_store_unassociated_session_zero_mission_events(tmp_path)
         timestamp="2026-08-18T12:00:00+00:00",
     )
 
-    assert [e for e in result.events if e.plane == "mission"] == []
-    assert all(e.plane == "conversation" for e in result.events)
+    mission_events = [e for e in result.events if e.plane == "mission"]
+
+    # The alarm invariant: no signal.* may fire into an unassociated session.
+    assert [e for e in mission_events if e.type.startswith("signal.")] == []
+
+    # The sweep itself: exactly one level, flagged as such. Asserted positively
+    # so this test cannot pass by the sweep silently disappearing.
+    assert len(mission_events) == 1
+    (level,) = mission_events
+    assert level.type.startswith("status.")
+    assert level.metadata["surface"] == "level"
+    assert level.metadata["unassociated_sweep"] is True
+    assert level.suggested_behavior
+
+    # ...and it is once per session, not per turn: a second turn adds nothing.
+    again = monitor.process_turn(
+        session_id,
+        "and now?",
+        "still checking.",
+        timestamp="2026-08-18T12:05:00+00:00",
+    )
+    assert [e for e in again.events if e.plane == "mission"] == []
 
     store.close()
 
