@@ -88,8 +88,10 @@ integrations:
   - pattern: "IVD compliance-trustlint"
     relationship: "Same offline CLI + CI architecture; Horizon mirrors the IVD integration pattern."
 
-  - pattern: "complyedge-platform/docs/development/oss-trustlint-adoption-guide.md"
-    relationship: "CE canonical adoption guide — IVD reference + Horizon variant."
+  - pattern: "docs/integrations/COMPLYEDGE.md"
+    relationship: "Horizon-local CE TrustLint integration guide (public surfaces only)."
+  - pattern: "https://complyedge.io/docs/trust-badge.html"
+    relationship: "Public CE embed / trust-badge docs."
 
 changelog:
   - version: "1.0"

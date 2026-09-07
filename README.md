@@ -704,7 +704,7 @@ Horizon integrates **[ComplyEdge](https://complyedge.io)** TrustLint on LLM-faci
 | **CI gate** | `.github/workflows/ci.yml` jobs `compliance` + optional `compliance-runtime` |
 | **Agent rule** | `<BEGIN-COMPLYEDGE v1.0>` in `docs/cursor-rules/horizon-monitor.mdc` |
 
-Integration guide: [`docs/integrations/COMPLYEDGE.md`](docs/integrations/COMPLYEDGE.md). CE adoption guide: [`oss-trustlint-adoption-guide.md`](https://github.com/ComplyEdge/complyedge-platform/blob/main/docs/development/oss-trustlint-adoption-guide.md).
+Integration guide: [`docs/integrations/COMPLYEDGE.md`](docs/integrations/COMPLYEDGE.md). Public CE embed docs: [trust badge](https://complyedge.io/docs/trust-badge.html).
 
 ---
 
