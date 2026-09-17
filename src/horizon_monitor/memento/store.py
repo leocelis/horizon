@@ -341,9 +341,9 @@ class MementoStore:
         found: list[str] = []
         frontier = [item_id]
         while frontier:
+            marks = ",".join("?" * len(frontier))
             rows = self._fetchall(
-                "SELECT item_id FROM mm_items WHERE tenant_id = ? AND parent_id IN (%s)"
-                % ",".join("?" * len(frontier)),
+                f"SELECT item_id FROM mm_items WHERE tenant_id = ? AND parent_id IN ({marks})",
                 (self._tenant, *frontier),
             )
             frontier = [r["item_id"] for r in rows]

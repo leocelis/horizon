@@ -257,39 +257,83 @@ def test_m7_clock_close_cascades_and_keeps_rows_visible_on_clock_status(tmp_path
     async def _run() -> dict:
         root = await app.call_tool(
             "clock_register",
-            {"item": {"kind": "horizon", "title": "root",
-                      "created_valid": "2026-01-01T00:00:00+00:00", "end_date": "2030-01-01"}},
+            {
+                "item": {
+                    "kind": "horizon",
+                    "title": "root",
+                    "created_valid": "2026-01-01T00:00:00+00:00",
+                    "end_date": "2030-01-01",
+                }
+            },
         )
         root_id = json.loads(root[0].text)["item_id"]
         old = await app.call_tool(
             "clock_register",
-            {"item": {"kind": "mission", "title": "old $20K", "parent_id": root_id,
-                      "created_valid": "2026-06-01T00:00:00+00:00"}},
+            {
+                "item": {
+                    "kind": "mission",
+                    "title": "old $20K",
+                    "parent_id": root_id,
+                    "created_valid": "2026-06-01T00:00:00+00:00",
+                }
+            },
         )
         old_id = json.loads(old[0].text)["item_id"]
         dl = await app.call_tool(
             "clock_register",
-            {"item": {"kind": "deadline", "title": "old deadline", "parent_id": old_id,
-                      "created_valid": "2026-06-01T00:00:00+00:00",
-                      "deadline_date": "2026-12-31", "deadline_kind": "external"}},
+            {
+                "item": {
+                    "kind": "deadline",
+                    "title": "old deadline",
+                    "parent_id": old_id,
+                    "created_valid": "2026-06-01T00:00:00+00:00",
+                    "deadline_date": "2026-12-31",
+                    "deadline_kind": "external",
+                }
+            },
         )
         dl_id = json.loads(dl[0].text)["item_id"]
         new = await app.call_tool(
             "clock_register",
-            {"item": {"kind": "mission", "title": "new $10K", "parent_id": root_id,
-                      "created_valid": "2026-09-17T00:00:00+00:00"}},
+            {
+                "item": {
+                    "kind": "mission",
+                    "title": "new $10K",
+                    "parent_id": root_id,
+                    "created_valid": "2026-09-17T00:00:00+00:00",
+                }
+            },
         )
         new_id = json.loads(new[0].text)["item_id"]
 
         bad_root = json.loads((await app.call_tool("clock_close", {"item_id": root_id}))[0].text)
-        bad_sup = json.loads((await app.call_tool(
-            "clock_close", {"item_id": old_id, "status": "superseded"}))[0].text)
-        ok = json.loads((await app.call_tool(
-            "clock_close", {"item_id": old_id, "status": "superseded", "superseded_by": new_id}))[0].text)
-        status = json.loads((await app.call_tool(
-            "clock_status", {"timestamp": "2026-12-20T00:00:00+00:00"}))[0].text)
-        return {"bad_root": bad_root, "bad_sup": bad_sup, "ok": ok, "status": status,
-                "old_id": old_id, "dl_id": dl_id, "new_id": new_id}
+        bad_sup = json.loads(
+            (await app.call_tool("clock_close", {"item_id": old_id, "status": "superseded"}))[
+                0
+            ].text
+        )
+        ok = json.loads(
+            (
+                await app.call_tool(
+                    "clock_close",
+                    {"item_id": old_id, "status": "superseded", "superseded_by": new_id},
+                )
+            )[0].text
+        )
+        status = json.loads(
+            (await app.call_tool("clock_status", {"timestamp": "2026-12-20T00:00:00+00:00"}))[
+                0
+            ].text
+        )
+        return {
+            "bad_root": bad_root,
+            "bad_sup": bad_sup,
+            "ok": ok,
+            "status": status,
+            "old_id": old_id,
+            "dl_id": dl_id,
+            "new_id": new_id,
+        }
 
     d = asyncio.run(_run())
     assert "error" in d["bad_root"] and "root" in d["bad_root"]["error"]["rule"]
