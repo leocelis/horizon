@@ -276,6 +276,8 @@ def _evaluate_item(
         derivation="; ".join(derivation_parts),
         n=n,
         omitted=omitted,
+        status=item.status,
+        superseded_by=item.superseded_by,
     )
     return row, stage_days, stage_open
 

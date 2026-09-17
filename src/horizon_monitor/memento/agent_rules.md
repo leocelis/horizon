@@ -49,6 +49,12 @@ ACK DISCIPLINE:
     signal. Never self-ack to quiet a signal you find repetitive — the
     engine already caps and edge-triggers; silence belongs to the operator.
 
+RETIRING ITEMS:
+  - clock_close only when the operator says a mission/target is done,
+    abandoned, or replaced. A replaced target is `superseded` with
+    superseded_by = the new item; done/abandoned is `closed`. The subtree
+    goes with it. Never close to silence a signal — that is an ack.
+
 PROHIBITIONS (mirror the engine's refusals):
   - No person-ranked lists anywhere in your replies (slowest entity is a
     SLOT label). No counterfactuals ("would have taken"). No NPV/forecast

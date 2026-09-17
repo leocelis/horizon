@@ -34,6 +34,7 @@ _MISSION_TOOL_NAMES = frozenset(
         "clock_status",
         "clock_propose",
         "clock_ack",
+        "clock_close",
         "associate_mission",
     }
 )
@@ -51,7 +52,7 @@ def _list_tool_names(app: FastMCP) -> set[str]:
 # ── M-1 [PROPERTY] — Tool discovery gating ──────────────────────────────────
 
 
-def test_m1_six_mission_tools_register_when_store_configured(tmp_path) -> None:
+def test_m1_seven_mission_tools_register_when_store_configured(tmp_path) -> None:
     app = FastMCP("test-configured")
     result = register_memento_tools(app, tmp_path / "store.db")
     assert result is not None
@@ -239,3 +240,63 @@ def test_m6_agents_doc_section_3_names_every_shipped_tool_and_no_other(tmp_path)
         unshipped_but_named == set()
     ), f"§3 names tool(s) that do not exist: {unshipped_but_named}"
     assert named_in_doc == _MISSION_TOOL_NAMES == shipped_mission_tools
+
+
+# ── M-7 — clock_close retires a subtree without deleting it ────────────────
+
+
+def test_m7_clock_close_cascades_and_keeps_rows_visible_on_clock_status(tmp_path) -> None:
+    """Closing a mission retires its deadline with it (the deadline would
+    otherwise keep firing after the mission was replaced — the 2026-09-17
+    drift: a superseded $20K ITV mission and a stale $2K LoreMaster mission
+    kept their deadlines live). Rows stay on clock_status carrying status,
+    and the horizon root refuses to close."""
+    app = FastMCP("test-m7")
+    register_memento_tools(app, tmp_path / "store.db")
+
+    async def _run() -> dict:
+        root = await app.call_tool(
+            "clock_register",
+            {"item": {"kind": "horizon", "title": "root",
+                      "created_valid": "2026-01-01T00:00:00+00:00", "end_date": "2030-01-01"}},
+        )
+        root_id = json.loads(root[0].text)["item_id"]
+        old = await app.call_tool(
+            "clock_register",
+            {"item": {"kind": "mission", "title": "old $20K", "parent_id": root_id,
+                      "created_valid": "2026-06-01T00:00:00+00:00"}},
+        )
+        old_id = json.loads(old[0].text)["item_id"]
+        dl = await app.call_tool(
+            "clock_register",
+            {"item": {"kind": "deadline", "title": "old deadline", "parent_id": old_id,
+                      "created_valid": "2026-06-01T00:00:00+00:00",
+                      "deadline_date": "2026-12-31", "deadline_kind": "external"}},
+        )
+        dl_id = json.loads(dl[0].text)["item_id"]
+        new = await app.call_tool(
+            "clock_register",
+            {"item": {"kind": "mission", "title": "new $10K", "parent_id": root_id,
+                      "created_valid": "2026-09-17T00:00:00+00:00"}},
+        )
+        new_id = json.loads(new[0].text)["item_id"]
+
+        bad_root = json.loads((await app.call_tool("clock_close", {"item_id": root_id}))[0].text)
+        bad_sup = json.loads((await app.call_tool(
+            "clock_close", {"item_id": old_id, "status": "superseded"}))[0].text)
+        ok = json.loads((await app.call_tool(
+            "clock_close", {"item_id": old_id, "status": "superseded", "superseded_by": new_id}))[0].text)
+        status = json.loads((await app.call_tool(
+            "clock_status", {"timestamp": "2026-12-20T00:00:00+00:00"}))[0].text)
+        return {"bad_root": bad_root, "bad_sup": bad_sup, "ok": ok, "status": status,
+                "old_id": old_id, "dl_id": dl_id, "new_id": new_id}
+
+    d = asyncio.run(_run())
+    assert "error" in d["bad_root"] and "root" in d["bad_root"]["error"]["rule"]
+    assert "error" in d["bad_sup"] and "superseded_by" in d["bad_sup"]["error"]["rule"]
+    assert set(d["ok"]["closed"]) == {d["old_id"], d["dl_id"]}
+    rows = {r["item_id"]: r for r in d["status"]["items"]}
+    assert rows[d["old_id"]]["status"] == "superseded"
+    assert rows[d["old_id"]]["superseded_by"] == d["new_id"]
+    assert rows[d["dl_id"]]["status"] == "superseded"
+    assert rows[d["new_id"]]["status"] == "open"

@@ -38,7 +38,7 @@ def test_readme_signal_table_matches_the_code_exactly() -> None:
 
 
 def test_readme_names_every_mission_tool_and_no_other() -> None:
-    """The README claims 'six tools'. That number and the names must be real."""
+    """The README claims 'seven tools'. That number and the names must be real."""
     import asyncio
     import tempfile
 
@@ -49,8 +49,8 @@ def test_readme_names_every_mission_tool_and_no_other() -> None:
     app = FastMCP("readme-check")
     register_memento_tools(app, Path(tempfile.mkdtemp()) / "m.db")
     shipped = {t.name for t in asyncio.run(app.list_tools())}
-    assert len(shipped) == 6, f"README says six tools; code registers {len(shipped)}"
-    assert "six tools" in _mission_section(), "README no longer states the tool count"
+    assert len(shipped) == 7, f"README says seven tools; code registers {len(shipped)}"
+    assert "seven tools" in _mission_section(), "README no longer states the tool count"
 
 
 @pytest.mark.parametrize(

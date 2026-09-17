@@ -349,7 +349,7 @@ a budget that is visibly running out. Without a finite root, deferring work cost
 nothing and "later" is free forever. That is the failure this plane exists to make
 visible.
 
-**It is off by default.** With no store configured, its six tools do not register and
+**It is off by default.** With no store configured, its seven tools do not register and
 nothing in your integration changes.
 
 ### The problem it catches

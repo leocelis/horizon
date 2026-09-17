@@ -33,6 +33,7 @@ exists to fix is silence.
 | `clock_status` | full clock surface: ages, TTL states, latencies, shares, paths, money | `scope?`, `timestamp` (host-injected) | `ClockReport` dict |
 | `clock_propose` | TTL window or break-even date from recorded history; inert | `item_id`, `kind: ttl\|breakeven` | `{value, sample_size, derivation}` |
 | `clock_ack` | acknowledge a fired signal (operator-authorized) | `item_id`, `signal_type`, `actor` | ack |
+| `clock_close` | retire an item and (by default) its subtree as `closed` or `superseded`; rows stay for history, signals stop | `item_id`, `status`, `superseded_by?`, `cascade?` | `{closed: [ids]}` or typed error |
 | `associate_mission` | bind this session to a mission so its events reach `process_turn` | `session_id`, `mission_id` | ack |
 
 Errors are **typed and instructive** (`UndatedDeferralError`, `RefusedComputation`, …):
@@ -100,6 +101,12 @@ ACK DISCIPLINE:
   - clock_ack only on the operator's explicit acknowledgement of that
     signal. Never self-ack to quiet a signal you find repetitive — the
     engine already caps and edge-triggers; silence belongs to the operator.
+
+RETIRING ITEMS:
+  - clock_close only when the operator says a mission/target is done,
+    abandoned, or replaced. A replaced target is `superseded` with
+    superseded_by = the new item; done/abandoned is `closed`. The subtree
+    goes with it. Never close to silence a signal — that is an ack.
 
 PROHIBITIONS (mirror the engine's refusals):
   - No person-ranked lists anywhere in your replies (slowest entity is a

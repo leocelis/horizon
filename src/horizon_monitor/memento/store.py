@@ -335,6 +335,51 @@ class MementoStore:
                 (status, superseded_by, self._tenant, item_id),
             )
 
+    def get_descendant_ids(self, item_id: str) -> list[str]:
+        """Every item under ``item_id`` (children, grandchildren, ...), in
+        breadth-first order. The root itself is not included."""
+        found: list[str] = []
+        frontier = [item_id]
+        while frontier:
+            rows = self._fetchall(
+                "SELECT item_id FROM mm_items WHERE tenant_id = ? AND parent_id IN (%s)"
+                % ",".join("?" * len(frontier)),
+                (self._tenant, *frontier),
+            )
+            frontier = [r["item_id"] for r in rows]
+            found.extend(frontier)
+        return found
+
+    def close_item(
+        self,
+        item_id: str,
+        status: str,
+        superseded_by: str | None = None,
+        cascade: bool = True,
+    ) -> list[str]:
+        """Retire an item (and, by default, everything under it) without
+        deleting anything: the rows stay for history, they stop firing
+        signals (signals._due_predicates skips status != "open").
+
+        The horizon root cannot be closed — it is the one item every other
+        item hangs from. Returns the ids that were closed.
+        """
+        item = self.get_item(item_id)
+        if item is None:
+            raise ValueError(f"unknown item_id {item_id}")
+        if item.kind == ItemKind.HORIZON:
+            raise ValueError("the horizon root cannot be closed; re-date it instead")
+        if status not in ("closed", "superseded"):
+            raise ValueError("status must be 'closed' or 'superseded'")
+        if status == "superseded" and not superseded_by:
+            raise ValueError("status 'superseded' requires superseded_by (the replacing item_id)")
+        if superseded_by and self.get_item(superseded_by) is None:
+            raise ValueError(f"superseded_by {superseded_by} is not a known item_id")
+        targets = [item_id] + (self.get_descendant_ids(item_id) if cascade else [])
+        for tid in targets:
+            self.update_item_status(tid, status=status, superseded_by=superseded_by)
+        return targets
+
     REDACTED_TITLE = "[redacted — retention]"
 
     def redact_person_display_name(self, item_id: str) -> None:

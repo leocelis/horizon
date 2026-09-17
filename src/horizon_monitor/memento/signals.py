@@ -115,6 +115,11 @@ def _due_predicates(
         row = rows_by_id.get(item.item_id)
         if row is None:
             continue
+        # Closed / superseded items stay in the store (append-only) but must not
+        # keep firing deadline/stall/gate signals — otherwise a ratified cut
+        # (e.g. $100k → $20k) keeps alarming forever.
+        if item.status != "open":
+            continue
 
         if item.kind == ItemKind.TASK or item.kind == ItemKind.PROBE:
             if row.ttl_state == "expired":

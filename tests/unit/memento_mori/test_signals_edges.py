@@ -156,3 +156,41 @@ def test_signal_state_enum_has_no_turn_count_member() -> None:
     assert member_names == {"CLEAR", "RAISED", "ACKED", "ESCALATED", "STALE"}
     for name in member_names:
         assert "TURN" not in name and "ELAPSED" not in name
+
+
+def test_superseded_deadline_does_not_fire(store) -> None:
+    """Superseded / closed items stay in the store but must not keep raising
+    deadline_window (ratified target cuts like $100k → $20k)."""
+    root_id = store.register_item(
+        kind=ItemKind.HORIZON,
+        title="root",
+        created_valid=_dt(2026, 1, 1),
+        end_date=date(2500, 1, 1),
+    )
+    mission_id = store.register_item(
+        kind=ItemKind.MISSION,
+        title="old-target",
+        parent_id=root_id,
+        created_valid=_dt(2026, 1, 1),
+        stall_days=3650,
+    )
+    store.record_event(item_id=mission_id, kind=EventKind.PROGRESS, valid_time=_dt(2026, 7, 1))
+    deadline_id = store.register_item(
+        kind=ItemKind.DEADLINE,
+        title="old-deadline",
+        parent_id=mission_id,
+        created_valid=_dt(2026, 7, 1),
+        deadline_date=date(2026, 12, 31),
+        deadline_kind="external",
+    )
+    # Still open → deadline_window true when inside warn window (default 14d)
+    open_eval = _evaluate(store, _dt(2026, 12, 20))
+    assert any(
+        s.item_id == deadline_id and s.signal_type == "deadline_window" for s in open_eval.fired
+    )
+
+    store.update_item_status(deadline_id, status="superseded", superseded_by=mission_id)
+    store.update_item_status(mission_id, status="superseded", superseded_by=mission_id)
+    closed_eval = _evaluate(store, _dt(2026, 12, 21))
+    assert not any(s.item_id == deadline_id for s in closed_eval.fired)
+    assert not any(s.item_id == deadline_id for s in closed_eval.due)

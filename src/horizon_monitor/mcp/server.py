@@ -609,6 +609,36 @@ def register_memento_tools(
             return {"error": _serialize_memento_error(exc)}
 
     @app.tool(
+        name="clock_close",
+        title="Retire a mission item (closed or superseded)",
+        description=(
+            "Mark an item `closed` (done or abandoned) or `superseded` (replaced "
+            "by another item — pass `superseded_by`). By default the whole "
+            "subtree under it is retired too (`cascade=true`), so a mission's "
+            "deadlines, gates and tasks stop firing with it. Nothing is deleted: "
+            "the rows stay on clock_status with their status, for history. The "
+            "horizon root cannot be closed. Call this ONLY on the operator's "
+            "explicit instruction to retire that item — a signal you find "
+            "noisy is acked, never closed. " + _LOUD_CONTRACT_LINE
+        ),
+    )
+    def clock_close(
+        item_id: str,
+        status: str = "closed",
+        superseded_by: str | None = None,
+        cascade: bool = True,
+    ) -> dict:
+        try:
+            closed = _scoped_store().close_item(
+                item_id, status=status, superseded_by=superseded_by, cascade=cascade
+            )
+            return {"closed": closed, "status": status, "superseded_by": superseded_by}
+        except ValueError as exc:
+            return {"error": {"error_type": "InvalidClose", "rule": str(exc), "fix": str(exc)}}
+        except MementoError as exc:
+            return {"error": _serialize_memento_error(exc)}
+
+    @app.tool(
         name="associate_mission",
         title="Bind this session to a mission",
         description=(

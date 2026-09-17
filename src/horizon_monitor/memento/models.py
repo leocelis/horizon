@@ -192,6 +192,12 @@ class ItemClock:
     and why. Never a substituted/guessed value
     (memento_engine_intent.yaml::degrade_by_omission)."""
 
+    status: str = "open"
+    superseded_by: str | None = None
+    """Lifecycle of the item: "open" | "closed" | "superseded". Closed and
+    superseded rows stay in the report (append-only store) so an operator can
+    see what was retired and by what; they no longer fire signals."""
+
     def to_dict(self) -> dict:
         return dataclasses.asdict(self)
 
