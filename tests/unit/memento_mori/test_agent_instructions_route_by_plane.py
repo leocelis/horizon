@@ -36,9 +36,9 @@ def test_instruction_surface_routes_by_plane(path: Path) -> None:
         f"{path.name} never mentions the plane field, so an agent following it "
         "cannot tell a conversation signal from a mission signal"
     )
-    assert "MEMENTO_MORI_AGENTS" in text, (
-        f"{path.name} does not point at the canonical mission-plane rules"
-    )
+    assert (
+        "MEMENTO_MORI_AGENTS" in text
+    ), f"{path.name} does not point at the canonical mission-plane rules"
 
     # The unscoped instruction is the defect: "silently apply" must never appear
     # without a conversation-plane qualifier near it.
@@ -59,9 +59,9 @@ def test_mcp_server_instructions_route_by_plane() -> None:
     assert 'plane "mission"' in _INSTRUCTIONS
     assert 'plane "conversation"' in _INSTRUCTIONS
     assert "MEMENTO_MORI_AGENTS.md" in _INSTRUCTIONS
-    assert "CONVERSATION plane only" in _INSTRUCTIONS, (
-        "the invisibility contract must state which plane it governs"
-    )
+    assert (
+        "CONVERSATION plane only" in _INSTRUCTIONS
+    ), "the invisibility contract must state which plane it governs"
 
 
 def test_integrations_index_lists_the_mission_plane() -> None:

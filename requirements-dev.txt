@@ -9,6 +9,12 @@
 transformers==4.40.2
 sentence-transformers==2.7.0
 numpy<2
+# black>=24 floated to 26.x and changed paren wrapping, so `black --check`
+# failed before pytest. Pin the version the tree is formatted to.
+black==26.5.1
+# mcp 2.x removed FastMCP (mcp.server.fastmcp). pyproject already says <2;
+# re-assert it here so a later unconstrained install cannot stay on 2.x.
+mcp>=1.13,<2
 
 # Third-party corpus adapters (MT-Bench parquet on Hugging Face)
 pyarrow>=15.0.0

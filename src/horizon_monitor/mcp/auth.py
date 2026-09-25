@@ -220,13 +220,17 @@ def _extract_and_validate(scope) -> tuple[dict | None, str | None, str]:
 
     if not VALID_API_KEYS and not AUTH_DISABLED:
         _log.warning("AUTH  no_keys_configured  path=%s  — rejecting (fail-closed)", path)
-        return {
-            "error": (
-                "Server has no API keys configured (HORIZON_API_KEYS is unset). "
-                "Refusing all requests. Set HORIZON_API_KEYS, or "
-                "HORIZON_AUTH_DISABLED=true for local dev only."
-            )
-        }, None, ""
+        return (
+            {
+                "error": (
+                    "Server has no API keys configured (HORIZON_API_KEYS is unset). "
+                    "Refusing all requests. Set HORIZON_API_KEYS, or "
+                    "HORIZON_AUTH_DISABLED=true for local dev only."
+                )
+            },
+            None,
+            "",
+        )
 
     headers: dict[bytes, bytes] = dict(scope.get("headers", []))
     raw_auth: str = headers.get(b"authorization", b"").decode("utf-8", errors="replace")

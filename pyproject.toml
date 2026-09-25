@@ -61,7 +61,7 @@ dev = [
     "pytest-cov>=4.1",
     "pytest-asyncio>=0.23",
     "ruff>=0.4",
-    "black>=24",
+    "black>=26.5.1,<27",
 ]
 full = ["horizon-monitor[geoip,nli,mcp,mysql,langsmith,langfuse,otel,arize]"]
 
