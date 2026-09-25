@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/leocelis/horizon/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/leocelis/horizon/ci.yml?branch=main&style=flat-square&label=tests" alt="Tests"></a>
   <a href="https://trust.complyedge.io/horizon" rel="noopener noreferrer">
-    <img src="https://api.complyedge.io/v1/public/badge/horizon.svg" alt="ComplyEdge — runtime enforcement status" height="26">
+    <img src="https://eu.api.complyedge.io/v1/public/badge/horizon.svg" alt="ComplyEdge — runtime enforcement status" height="26">
   </a>
 </p>
 
@@ -700,7 +700,7 @@ Horizon integrates **[ComplyEdge](https://complyedge.io)** TrustLint on LLM-faci
 | Layer | What |
 |-------|------|
 | **Offline (required)** | `./scripts/compliance/check.sh` — scans `horizon_intent.yaml` + `horizon-monitor.mdc` |
-| **Runtime (BYOK)** | `./scripts/compliance/runtime_check.sh` — feeds [live seal](https://api.complyedge.io/v1/public/badge/horizon.svg) + [trust page](https://trust.complyedge.io/horizon) |
+| **Runtime (BYOK)** | `./scripts/compliance/runtime_check.sh` — feeds [live seal](https://eu.api.complyedge.io/v1/public/badge/horizon.svg) + [trust page](https://trust.complyedge.io/horizon) |
 | **CI gate** | `.github/workflows/ci.yml` jobs `compliance` + optional `compliance-runtime` |
 | **Agent rule** | `<BEGIN-COMPLYEDGE v1.0>` in `docs/cursor-rules/horizon-monitor.mdc` |
 

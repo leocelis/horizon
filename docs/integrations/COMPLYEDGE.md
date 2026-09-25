@@ -26,8 +26,8 @@ edit horizon_intent.yaml / horizon-monitor.mdc → check.sh → CI green
 
 | Surface | URL |
 |---------|-----|
-| Enforcement seal (SVG) | https://api.complyedge.io/v1/public/badge/horizon.svg |
-| Trust JSON | https://api.complyedge.io/v1/public/trust/horizon |
+| Enforcement seal (SVG) | https://eu.api.complyedge.io/v1/public/badge/horizon.svg |
+| Trust JSON | https://eu.api.complyedge.io/v1/public/trust/horizon |
 | Trust page | https://trust.complyedge.io/horizon |
 | Origin site (badge host) | https://github.com/leocelis/horizon |
 

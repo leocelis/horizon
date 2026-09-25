@@ -10,7 +10,7 @@
 #
 # Optional:
 #   COMPLYEDGE_AGENT_ID=horizon-agent  (default)
-#   COMPLYEDGE_API_URL=https://api.complyedge.io
+#   COMPLYEDGE_API_URL=https://eu.api.complyedge.io
 #
 # Exit codes:
 #   0 — allowed (no blocking violations)
@@ -22,7 +22,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
 
-API_URL="${COMPLYEDGE_API_URL:-https://api.complyedge.io}"
+API_URL="${COMPLYEDGE_API_URL:-https://eu.api.complyedge.io}"
 AGENT_ID="${COMPLYEDGE_AGENT_ID:-horizon-agent}"
 PROBE_TEXT="${COMPLYEDGE_RUNTIME_PROBE_TEXT:-Horizon runtime compliance probe — EU check on representative LLM-facing artifact text.}"
 
