@@ -41,13 +41,23 @@ print(json.dumps({
 }))
 ")
 
-response=$(curl -sS -w "\n%{http_code}" -X POST "${API_URL%/}/v1/check" \
-  -H "Authorization: Bearer ${COMPLYEDGE_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d "$payload")
-
-http_code=$(echo "$response" | tail -n1)
-body=$(echo "$response" | sed '$d')
+http_code=""
+body=""
+for attempt in 1 2 3; do
+  response=$(curl -sS -w "\n%{http_code}" -X POST "${API_URL%/}/v1/check" \
+    -H "Authorization: Bearer ${COMPLYEDGE_API_KEY}" \
+    -H "Content-Type: application/json" \
+    -d "$payload")
+  http_code=$(echo "$response" | tail -n1)
+  body=$(echo "$response" | sed '$d')
+  if [ "$http_code" = "200" ]; then
+    break
+  fi
+  echo "WARN: /v1/check HTTP ${http_code} (attempt ${attempt}/3)" >&2
+  if [ "$attempt" -lt 3 ]; then
+    sleep $((attempt * 2))
+  fi
+done
 
 if [ "$http_code" != "200" ]; then
   echo "ERROR: /v1/check returned HTTP ${http_code}" >&2

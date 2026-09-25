@@ -1,6 +1,8 @@
 # Local development + full test suite (pytest, ruff, black, MCP e2e).
 # Production / DO deploy uses requirements.txt ([mcp] only).
--e ".[dev,mcp]"
+# mysql extra: the startup-budget test imports PyMySQL. Without it the
+# constructor raises "install PyMySQL" and never reaches the budget error.
+-e ".[dev,mcp,mysql]"
 
 # ML stack pins — apply AFTER editable install (pyproject allows wide ranges).
 # Unpinned `sentence-transformers>=2.2.0` currently resolves to 5.6.0, which pulls

@@ -12,10 +12,20 @@ or workspace data.
 from __future__ import annotations
 
 import dataclasses
+import sys
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
-from enum import StrEnum
+from enum import Enum
+
+# enum.StrEnum arrived in 3.11. CI still runs 3.10, where this import fails
+# before any test starts. On 3.10, a str mixin keeps members equal to their values.
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+else:
+
+    class StrEnum(str, Enum):
+        """Stand-in for enum.StrEnum on Python 3.10."""
 
 
 class ItemKind(StrEnum):
