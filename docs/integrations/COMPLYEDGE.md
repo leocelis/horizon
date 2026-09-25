@@ -52,7 +52,7 @@ MCP `_INSTRUCTIONS` in `src/horizon/mcp/server.py` is kept aligned with `.mdc` v
 2. Enable public trust:
 
 ```bash
-curl -s -X PATCH https://api.complyedge.io/v1/tenant/trust \
+curl -s -X PATCH https://eu.api.complyedge.io/v1/tenant/trust \
   -H "Authorization: Bearer $COMPLYEDGE_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"trust_public_enabled": true, "public_slug": "horizon", "display_name": "Horizon Fidelity Monitor", "website_url": "https://github.com/leocelis/horizon"}'
