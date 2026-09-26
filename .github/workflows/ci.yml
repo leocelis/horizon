@@ -93,7 +93,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install 'trustlint>=2.0.1'
 
+      - name: Cache TrustLint rules
+        uses: actions/cache@v4
+        with:
+          path: .trustlint-cache/rules
+          key: trustlint-rules-v1
+
       - name: Scan LLM-facing artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: chmod +x scripts/compliance/check.sh && ./scripts/compliance/check.sh
 
   compliance-runtime:

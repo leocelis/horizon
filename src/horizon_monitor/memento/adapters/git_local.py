@@ -20,6 +20,13 @@ _FIELD_SEP = "\x1f"
 _LOG_FORMAT = f"%H{_FIELD_SEP}%aI{_FIELD_SEP}%an{_FIELD_SEP}%s"
 
 
+def _parse_git_timestamp(raw: str) -> datetime:
+    """Parse git ``%aI``. Python 3.10 rejects a trailing Z; 3.11 accepts it."""
+    if raw.endswith(("Z", "z")):
+        raw = raw[:-1] + "+00:00"
+    return datetime.fromisoformat(raw)
+
+
 @dataclass(frozen=True)
 class GitLocalAdapter:
     """Pull-based reader over ``git log`` for one local repository checkout.
@@ -61,7 +68,7 @@ class GitLocalAdapter:
                     provenance=Provenance(
                         source_system=self.source_system,
                         native_id=commit_sha,
-                        raw_timestamp=datetime.fromisoformat(raw_timestamp),
+                        raw_timestamp=_parse_git_timestamp(raw_timestamp),
                     ),
                     payload={"author": author, "subject": subject},
                 )

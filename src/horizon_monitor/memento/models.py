@@ -25,7 +25,17 @@ if sys.version_info >= (3, 11):
 else:
 
     class StrEnum(str, Enum):
-        """Stand-in for enum.StrEnum on Python 3.10."""
+        """Stand-in for enum.StrEnum on Python 3.10.
+
+        3.10's str mixin prints the member name (``ItemKind.HORIZON``).
+        ``StrEnum`` prints the value (``horizon``).
+        """
+
+        def __str__(self) -> str:
+            return str(self.value)
+
+        def __format__(self, spec: str) -> str:
+            return format(str(self.value), spec)
 
 
 class ItemKind(StrEnum):
