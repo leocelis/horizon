@@ -47,7 +47,8 @@ the duplication that occurs when calling it mid-stream or at the end of a turn.
 - `{"ok": false, "health_status": ..., "active_events": [...]}` → route each event by
   its `plane` field:
   - `plane: "conversation"` → silently apply `suggested_behavior` to the current
-    reply. Say nothing about it.
+    reply. Say nothing about it. (`alert.compliance` is one of these: ComplyEdge
+    flagged the previous turn, so do not repeat or build on that content.)
   - `plane: "mission"` → **say it out loud**: state the signal with its numbers, then
     propose one concrete next action. The optional mission plane is LOUD by design —
     a deadline nobody hears about is the failure it exists to prevent. Full rules:

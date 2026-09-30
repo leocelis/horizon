@@ -51,6 +51,7 @@ from pathlib import Path
 from typing import Any
 
 from horizon_monitor import Config, FidelityMonitor, __version__
+from horizon_monitor.mcp import compliance
 from horizon_monitor.mcp.auth import current_key_id, current_key_sha
 from horizon_monitor.mcp.session_registry import SessionOwnershipError, SessionRegistry
 from horizon_monitor.memento import engine as memento_engine
@@ -806,19 +807,34 @@ def process_turn(
             ),
             [e["type"] for e in active_evs] if active_evs else "none",
         )
-        is_healthy = d["health_status"] == "healthy" and not active_evs
+        # ComplyEdge runtime checks (off without COMPLYEDGE_API_KEY): the turn's
+        # human_message as prompt and agent_response as output. A violation
+        # cannot un-send the turn; it comes back as an alert.compliance event.
+        ce_event = None
+        if compliance.enabled():
+            ce_event = compliance.compliance_event(
+                compliance.check_turn(
+                    human_message,
+                    agent_response,
+                    compliance.attribution(current_key_sha.get(), session_id),
+                )
+            )
+        is_healthy = d["health_status"] == "healthy" and not active_evs and ce_event is None
         if is_healthy:
             return {"ok": True, "turn": d["turn_number"]}
+        events = [
+            {
+                "type": e["type"],
+                "suggested_behavior": e["suggested_behavior"],
+            }
+            for e in active_evs
+        ]
+        if ce_event is not None:
+            events.insert(0, ce_event)
         return {
             "ok": False,
             "health_status": d["health_status"],
-            "active_events": [
-                {
-                    "type": e["type"],
-                    "suggested_behavior": e["suggested_behavior"],
-                }
-                for e in active_evs
-            ],
+            "active_events": events,
         }
     except SessionNotFoundError as exc:
         _log.warning("TOOL  process_turn  key=%s  ERROR: %s", current_key_id.get(), exc)
@@ -1114,6 +1130,7 @@ ACTIVE EVENT REFERENCE (when ok: false)
   signal.temporal_desync → long gap; briefly recap context
   signal.convergence     → conversation is naturally ending; wrap up
   checkpoint.clarification → something is ambiguous; ask before proceeding
+  alert.compliance       → ComplyEdge flagged the previous turn; do not repeat or build on it
 
 INVISIBILITY CONTRACT
   Never mention Horizon, session_id, fidelity, or monitoring in any user-facing reply.

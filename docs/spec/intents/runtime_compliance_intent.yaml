@@ -1,0 +1,137 @@
+# runtime_compliance_intent.yaml
+# Task-Level Intent: ComplyEdge runtime checks on process_turn text
+#
+# Co-located: docs/spec/intents/runtime_compliance_intent.yaml
+
+parent_intent: "../horizon_intent.yaml"
+
+scope:
+  level: "task"
+  type: "feature"
+  granularity: "fine"
+
+metadata:
+  feature_id: "runtime_compliance"
+  category: "compliance"
+  tags: ["complyedge", "eu-ai-act", "audit", "process_turn"]
+  status: "implemented"
+  introduced_version: "unreleased"
+
+intent:
+  summary: "Screen each process_turn's human_message and agent_response through ComplyEdge POST /v1/check when the MCP server has a key, so the public enforcement seal reflects real conversation traffic."
+  goal: |
+    The seal counted only a CI probe; no Horizon tool ever sent text to ComplyEdge.
+    process_turn is the only tool that carries model input and output, so it is the
+    one place to check. Horizon records a turn after it happened, so it reports a
+    violation to the agent instead of blocking.
+  success_metric: |
+    - With a key: two /v1/check calls per turn (prompt = human_message, output =
+      agent_response) carrying agent_id, jurisdiction and context {user_id,
+      user_role, session_id}.
+    - A flagged turn returns ok=false with an alert.compliance conversation event.
+    - ComplyEdge down or erroring never changes the turn's normal result.
+    - Without a key, or in the core FidelityMonitor: zero network calls.
+  stakeholders:
+    - "Hosted MCP users (their turn text is screened; privacy policy v1.2 says so)"
+    - "Readers of the public enforcement seal"
+
+constraints:
+  - name: "checks_both_directions"
+    requirement: "With COMPLYEDGE_API_KEY set, the MCP process_turn tool sends human_message as direction 'prompt' and agent_response as direction 'output'."
+    test: "tests/unit/test_runtime_compliance.py::test_turn_is_checked_as_prompt_and_output_with_attribution"
+    test_provenance: "execution_derived"
+    execution_oracle:
+      type: "differential_test"
+      path: "tests/unit/test_runtime_compliance.py"
+      description: "A local HTTP stub records the real request bodies from the real tool."
+    entropy: "near-zero"
+    assumption_status: "KNOWN"
+    consequence_if_violated: "The seal claims screening over conversation text it never saw."
+
+  - name: "attribution_never_a_credential"
+    requirement: "context.user_id is 'hzkey:' + first 12 hex of sha256(bearer key) remotely or 'local:<login>' locally; user_role 'mcp_client' or 'maintainer'; session_id is the Horizon session_id. Neither the bearer key, its full hash, nor the ComplyEdge key appears in any request body."
+    test: "tests/unit/test_runtime_compliance.py::test_turn_is_checked_as_prompt_and_output_with_attribution"
+    regression_tests:
+      - "tests/unit/test_runtime_compliance.py::test_local_turn_is_attributed_to_the_maintainer"
+    test_provenance: "execution_derived"
+    execution_oracle:
+      type: "differential_test"
+      path: "tests/unit/test_runtime_compliance.py"
+      description: "Stub-captured bodies are searched for the key strings."
+    entropy: "near-zero"
+    assumption_status: "KNOWN"
+    consequence_if_violated: "A caller's API key or its tenant-resolving hash lands in a third party's audit log."
+
+  - name: "violation_reaches_the_agent"
+    requirement: "allowed=false on either check makes process_turn return ok=false with an active event {type: 'alert.compliance', plane: 'conversation', rule_ids, event_ids, suggested_behavior} naming which side was flagged."
+    test: "tests/unit/test_runtime_compliance.py::test_flagged_output_comes_back_as_an_active_event"
+    regression_tests:
+      - "tests/unit/test_runtime_compliance.py::test_flagged_prompt_names_the_users_message"
+    test_provenance: "execution_derived"
+    execution_oracle:
+      type: "differential_test"
+      path: "tests/unit/test_runtime_compliance.py"
+      description: "The stub returns a block for one direction; the tool's return value is inspected."
+    entropy: "near-zero"
+    assumption_status: "KNOWN"
+    consequence_if_violated: "A flagged turn is recorded and the agent keeps building on it."
+
+  - name: "fail_open_and_off_by_default"
+    requirement: "An HTTP error, timeout or unreachable ComplyEdge leaves process_turn's normal result unchanged (skip logged). Without COMPLYEDGE_API_KEY no request is made; FidelityMonitor never calls out (no_external_calls_default)."
+    test: "tests/unit/test_runtime_compliance.py::test_unreachable_complyedge_fails_open"
+    regression_tests:
+      - "tests/unit/test_runtime_compliance.py::test_server_error_fails_open"
+      - "tests/unit/test_runtime_compliance.py::test_no_key_means_no_checks"
+      - "tests/unit/test_privacy.py::test_no_external_calls_on_process_turn"
+    test_provenance: "execution_derived"
+    execution_oracle:
+      type: "differential_test"
+      path: "tests/unit/test_runtime_compliance.py"
+      description: "Closed port and HTTP 500 stub; no alert.compliance and a normal turn result."
+    entropy: "near-zero"
+    assumption_status: "KNOWN"
+    consequence_if_violated: "A compliance outage breaks turn recording, or OSS users send text they never opted into."
+
+constraint_satisfiability:
+  conflicts_checked:
+    - "violation_reaches_the_agent vs fail_open: only an explicit allowed=false produces an event; no verdict produces none."
+  simultaneous_satisfaction: "All four hold on one remote turn: both checks sent, attribution clean, allow verdicts return the normal result."
+  priority_order: ["attribution_never_a_credential", "violation_reaches_the_agent", "checks_both_directions", "fail_open_and_off_by_default"]
+  joint_satisfaction_test: "tests/unit/test_runtime_compliance.py::test_turn_is_checked_as_prompt_and_output_with_attribution"
+
+rationale:
+  decision: "Check process_turn text in the MCP layer, in parallel, report violations as an alert.compliance event, fail open, only with COMPLYEDGE_API_KEY."
+  reasoning: |
+    process_turn is the only tool carrying model input and output. The check sits in
+    the MCP layer so the core library keeps its no-external-calls guarantee. Horizon
+    sees a turn after the fact, so blocking is impossible; the useful action is to
+    tell the agent not to build on flagged content, through the event channel agents
+    already route. Fail-open because Horizon is a monitor: availability outranks a
+    missed check.
+  evidence: "complyedge.io/docs/api-reference.html (POST /v1/check); complyedge.io/docs/quick-start.html section 6."
+  date: "2026-09-30"
+
+alternatives:
+  - name: "check_every_tool"
+    rejected_because: "The other tools carry settings and mission records, not model I/O; checking them adds calls and exposure with nothing to screen."
+  - name: "check_inside_FidelityMonitor"
+    rejected_because: "Breaks no_external_calls_default for every library user."
+
+risks:
+  - condition: "Two extra calls per turn add latency."
+    mitigation: "Run in parallel; 5s timeout (COMPLYEDGE_TIMEOUT_S)."
+  - condition: "Hosted users' conversation text leaves Horizon."
+    mitigation: "Privacy Policy and DPA v1.2 list ComplyEdge; it stores a hash of the text, not the text."
+
+implementation:
+  current: "src/horizon_monitor/mcp/compliance.py, src/horizon_monitor/mcp/server.py (process_turn)"
+  tests: "tests/unit/test_runtime_compliance.py"
+
+verification:
+  test_cases:
+    - name: "remote turn with key"
+      expect: "prompt and output checks, hzkey:<hash> attribution, session_id = Horizon session"
+    - name: "output flagged"
+      expect: "ok=false, alert.compliance first, names 'your reply'"
+    - name: "ComplyEdge unreachable"
+      expect: "normal turn result, no alert.compliance"

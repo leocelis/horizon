@@ -4,9 +4,9 @@
 
 <p align="center">
   <a href="https://github.com/leocelis/horizon/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/leocelis/horizon/ci.yml?branch=main&style=flat-square&label=tests" alt="Tests"></a>
-  <a href="https://trust.complyedge.io/horizon" rel="noopener noreferrer">
-    <img src="https://api.complyedge.io/v1/public/badge/horizon.svg" alt="ComplyEdge — runtime enforcement status" height="26">
-  </a>
+<a href="https://trust.complyedge.io/horizon" rel="noopener noreferrer">
+  <img src="https://api.complyedge.io/v1/public/badge/horizon.svg" alt="ComplyEdge Enforcement Seal" height="26" />
+</a>
 </p>
 
 Horizon is a real-time conversation health monitor for AI agents. It tracks the **structural dynamics** of multi-turn conversations — semantic drift, information gain, ontological gap width, temporal desynchronisation, circadian cognitive load, conversation velocity, and causal reachability — dimensions that LLMs do not reliably surface from inside the conversation.
@@ -328,6 +328,10 @@ All events default to **observe mode** (emitted, not acted on). Enable active mo
 | `signal.frame_shift` | Spatial constraint shifts significantly |
 | `signal.pace_shift` | Conversation acceleration above pace threshold |
 | `signal.light_cone_collapse` | Reachable fraction below light-cone threshold |
+
+MCP server only, and only when it has `COMPLYEDGE_API_KEY`: `alert.compliance` (always
+active) — ComplyEdge flagged the turn's `human_message` or `agent_response` under an EU AI
+Act rule; the event names the rule so the next reply does not build on that content.
 | `signal.grounding_required` | Heuristic grounding-need score crosses threshold — agent should hedge or cite grounding evidence |
 | `signal.pace_premature_report` | User replied faster than a previously flagged deferred action could plausibly complete, with no completion signal |
 
@@ -700,6 +704,7 @@ Horizon integrates **[ComplyEdge](https://complyedge.io)** TrustLint on LLM-faci
 | Layer | What |
 |-------|------|
 | **Offline (required)** | `./scripts/compliance/check.sh` — scans `horizon_intent.yaml` + `horizon-monitor.mdc` |
+| **Runtime (MCP)** | With `COMPLYEDGE_API_KEY` in the server env, `process_turn` checks `human_message` (prompt) and `agent_response` (output) via `POST /v1/check`; a violation returns `alert.compliance` |
 | **Runtime (BYOK)** | `./scripts/compliance/runtime_check.sh` — feeds [live seal](https://api.complyedge.io/v1/public/badge/horizon.svg) + [trust page](https://trust.complyedge.io/horizon) |
 | **CI gate** | `.github/workflows/ci.yml` jobs `compliance` + optional `compliance-runtime` |
 | **Agent rule** | `<BEGIN-COMPLYEDGE v1.0>` in `docs/cursor-rules/horizon-monitor.mdc` |

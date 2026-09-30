@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **`process_turn` is screened by ComplyEdge when the MCP server has a key.** The turn's
+  `human_message` (prompt) and `agent_response` (output) go to `POST /v1/check` in
+  parallel with `agent_id`, `jurisdiction` and the audit attribution fields (`user_id` as
+  a hash of the caller's key, `user_role`, `session_id`). A violation returns an
+  `alert.compliance` conversation-plane event naming the rule; an unreachable ComplyEdge
+  lets the turn through. Off without `COMPLYEDGE_API_KEY`; the core monitor still never
+  calls out. Privacy Policy and DPA v1.2 list ComplyEdge as a sub-processor.
+- ComplyEdge runtime probe and integration doc point at the US API
+  (`api.complyedge.io`), where the `horizon` tenant lives.
+
 ### Added
 - **Mission proposals — an answer to the blank page.** `propose_missions()` reads a
   source's artifacts and proposes the structure a mission would have: the count, the

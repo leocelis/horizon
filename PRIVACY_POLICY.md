@@ -1,6 +1,6 @@
 # Privacy Policy
 
-> **Version:** 1.1 · **Effective:** July 19, 2026
+> **Version:** 1.2 · **Effective:** September 30, 2026 (v1.1: July 19, 2026)
 >
 > This Privacy Policy applies to the Horizon Fidelity Monitor website
 > (`horizon.leocelis.com`), the hosted MCP server (`horizon.leocelis.com`), and all
@@ -45,6 +45,21 @@ completes, the raw text is discarded.
 (not raw text), metric history, and event log are held in process memory for the
 duration of the session (until the server restarts or the session is evicted). Server
 restarts clear all session state.
+
+**Compliance screening (ComplyEdge):** When enabled on the hosted server, each
+`process_turn` sends `human_message` and `agent_response` to ComplyEdge, which checks the
+text against its EU AI Act rules. With each check Horizon sends a pseudonymous caller ID
+(a truncated SHA-256 hash of your Horizon API key, never the key itself), the role
+`mcp_client`, and the `session_id`. ComplyEdge keeps a SHA-256 hash of the checked text,
+not the text itself, together with the decision, rule IDs, timestamps and those three
+identifiers, for 180 days, in the United States. These records feed Horizon's public
+[enforcement seal](https://trust.complyedge.io/horizon), which shows only aggregate
+counts. A flagged turn comes back to your agent as an `alert.compliance` event. If
+ComplyEdge is unreachable the turn is recorded without the check. Self-hosted and local
+servers send nothing to ComplyEdge unless their operator sets `COMPLYEDGE_API_KEY`.
+Legal basis: legitimate interests (Art. 6(1)(f)) — keeping the hosted service's
+conversation text within EU AI Act Article 5 limits and keeping a verifiable record of
+those checks.
 
 **Warning:** Do not transmit personal data (names, emails, health information, or
 any data relating to an identified or identifiable person) through `human_message` or
@@ -198,8 +213,9 @@ We do **not** use your conversation data for:
 |---------------|---------|------|-----------------------|
 | DigitalOcean, Inc. | United States | Infrastructure hosting, App Platform | <https://www.digitalocean.com/legal/privacy-policy> / <https://www.digitalocean.com/legal/data-processing-agreement> |
 | Upstash, Inc. | United States | Redis session storage | <https://upstash.com/trust/privacy.pdf> |
+| ComplyEdge | United States | EU AI Act screening of `process_turn` text (stores a hash of the text, not the text); added September 30, 2026; built by the same author as Horizon | <https://complyedge.io/legal/privacy-policy.html> / <https://complyedge.io/legal/data-processing-agreement.html> |
 
-**Note on EU data transfers:** Both sub-processors are US-based. Transmitting personal
+**Note on EU data transfers:** All sub-processors are US-based. Transmitting personal
 data to the hosted server constitutes an international data transfer under GDPR Chapter V
 (Articles 44–46). No Standard Contractual Clauses (SCCs) are currently in place between
 Horizon and its users. **EU data controllers must not transmit personal data to the hosted

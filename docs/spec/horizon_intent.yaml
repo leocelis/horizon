@@ -546,6 +546,8 @@ constraint_satisfiability:
   known_tensions:
     - between: ["latency_core", "v1_proxy_correlation"]
       resolution: "If embedding model needed for rho > 0.5 exceeds 50ms, accept the fastest local model that achieves rho > 0.3 per-turn for core pipeline; expose slower high-accuracy model as opt-in via configure(embedding_model=...)"
+    - between: ["no_external_calls_default", "complyedge_runtime_checks"]
+      resolution: "ComplyEdge checks live in the MCP layer (src/horizon_monitor/mcp/compliance.py), never in FidelityMonitor, and run only when the server operator sets COMPLYEDGE_API_KEY. Default configuration still sends nothing. See docs/spec/intents/runtime_compliance_intent.yaml."
     - between: ["no_external_calls_default", "v1_proxy_correlation"]
       resolution: "Default embedding model is a local sentence-transformer (~30M params, ~20ms). External API embedding is opt-in config only."
     - between: ["latency_core", "v2_signal_precision_recall"]

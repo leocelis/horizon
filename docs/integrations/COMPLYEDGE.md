@@ -26,8 +26,8 @@ edit horizon_intent.yaml / horizon-monitor.mdc → check.sh → CI green
 
 | Surface | URL |
 |---------|-----|
-| Enforcement seal (SVG) | https://eu.api.complyedge.io/v1/public/badge/horizon.svg |
-| Trust JSON | https://eu.api.complyedge.io/v1/public/trust/horizon |
+| Enforcement seal (SVG) | https://api.complyedge.io/v1/public/badge/horizon.svg |
+| Trust JSON | https://api.complyedge.io/v1/public/trust/horizon |
 | Trust page | https://trust.complyedge.io/horizon |
 | Origin site (badge host) | https://github.com/leocelis/horizon |
 
@@ -52,7 +52,7 @@ MCP `_INSTRUCTIONS` in `src/horizon/mcp/server.py` is kept aligned with `.mdc` v
 2. Enable public trust:
 
 ```bash
-curl -s -X PATCH https://eu.api.complyedge.io/v1/tenant/trust \
+curl -s -X PATCH https://api.complyedge.io/v1/tenant/trust \
   -H "Authorization: Bearer $COMPLYEDGE_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"trust_public_enabled": true, "public_slug": "horizon", "display_name": "Horizon Fidelity Monitor", "website_url": "https://github.com/leocelis/horizon"}'
@@ -64,6 +64,34 @@ curl -s -X PATCH https://eu.api.complyedge.io/v1/tenant/trust \
 export COMPLYEDGE_API_KEY=ce_...
 ./scripts/compliance/runtime_check.sh
 ```
+
+---
+
+## MCP tool calls
+
+When the MCP server's environment has `COMPLYEDGE_API_KEY`, the `process_turn` tool sends
+the turn's text to `POST /v1/check`, both calls in parallel
+(`src/horizon_monitor/mcp/compliance.py`):
+
+| Field | `human_message` check | `agent_response` check |
+|-------|-----------------------|------------------------|
+| `direction` | `prompt` | `output` |
+| `agent_id` | `horizon-mcp` | `horizon-mcp` |
+| `jurisdiction` | `EU` | `EU` |
+| `context.user_id` | `hzkey:<first 12 hex of sha256(bearer key)>` remotely (never the key), `local:<login>` over stdio | same |
+| `context.user_role` | `mcp_client` remotely, `maintainer` locally | same |
+| `context.session_id` | the Horizon `session_id` | same |
+
+Horizon records a turn after it happened, so it cannot block it. A violation comes back
+as an active event `{"type": "alert.compliance", "plane": "conversation", "rule_ids",
+"event_ids", "suggested_behavior"}`. If ComplyEdge cannot be reached the turn is recorded
+as usual and the skip is logged (fail-open). Only `process_turn` carries model input and
+output; the other tools carry settings and mission records and are not checked. Without
+the key nothing is sent, and the core `FidelityMonitor` never calls out.
+
+Optional: `COMPLYEDGE_API_URL` (default `https://api.complyedge.io`),
+`COMPLYEDGE_AGENT_ID`, `COMPLYEDGE_JURISDICTION`, `COMPLYEDGE_TIMEOUT_S` (default 5).
+Tests: `tests/unit/test_runtime_compliance.py`.
 
 ---
 

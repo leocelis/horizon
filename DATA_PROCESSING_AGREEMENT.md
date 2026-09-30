@@ -1,6 +1,6 @@
 # Data Processing Agreement
 
-> **Version:** 1.1 · **Template effective:** July 19, 2026
+> **Version:** 1.2 · **Template effective:** September 30, 2026 (v1.1: July 19, 2026)
 >
 > This Data Processing Agreement ("DPA") is entered into between Leo Celis ("Horizon",
 > "Processor") and the organization identified in the signature block below ("Customer",
@@ -141,8 +141,9 @@ to the extent available at the time.
 |---------------|---------|------|-----------------|
 | DigitalOcean, Inc. | United States | Infrastructure hosting | <https://www.digitalocean.com/legal/data-processing-agreement> |
 | Upstash, Inc. | United States | Redis instance provisioned as infrastructure capacity — not currently used by session logic | <https://upstash.com/trust/data-processing-addendum.pdf> |
+| ComplyEdge | United States | EU AI Act screening of `process_turn` text; stores a SHA-256 hash of the text, not the text (added September 30, 2026) | <https://complyedge.io/legal/data-processing-agreement.html> |
 
-**International transfer notice:** Both sub-processors are US-based. The absence of an
+**International transfer notice:** All sub-processors are US-based. The absence of an
 EU adequacy decision for the United States means that personal data transfers to these
 sub-processors require appropriate safeguards under GDPR Chapter V. Horizon relies on
 Standard Contractual Clauses (Commission Implementing Decision (EU) 2021/914) with

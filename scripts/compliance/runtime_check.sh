@@ -13,7 +13,7 @@
 #   COMPLYEDGE_USER_ID    audit user_id   (default: GITHUB_ACTOR in CI, else $USER)
 #   COMPLYEDGE_USER_ROLE  audit user_role (default: ci in GitHub Actions, else maintainer)
 #   COMPLYEDGE_SESSION_ID audit session_id (default: GITHUB_RUN_ID-GITHUB_RUN_ATTEMPT in CI)
-#   COMPLYEDGE_API_URL=https://eu.api.complyedge.io
+#   COMPLYEDGE_API_URL=https://api.complyedge.io
 #
 # Exit codes:
 #   0 — allowed (no blocking violations)
@@ -25,7 +25,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
 
-API_URL="${COMPLYEDGE_API_URL:-https://eu.api.complyedge.io}"
+API_URL="${COMPLYEDGE_API_URL:-https://api.complyedge.io}"
 AGENT_ID="${COMPLYEDGE_AGENT_ID:-horizon-agent}"
 PROBE_TEXT="${COMPLYEDGE_RUNTIME_PROBE_TEXT:-Horizon runtime compliance probe — EU check on representative LLM-facing artifact text.}"
 
