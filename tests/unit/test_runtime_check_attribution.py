@@ -37,13 +37,18 @@ def _run(extra_env: dict) -> dict:
 
     server = HTTPServer(("127.0.0.1", 0), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    env = {k: v for k, v in os.environ.items()
-           if not k.startswith(("GITHUB_", "COMPLYEDGE_"))}
-    env.update({"COMPLYEDGE_API_KEY": "ce_test",
-                "COMPLYEDGE_API_URL": f"http://127.0.0.1:{server.server_port}"})
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("GITHUB_", "COMPLYEDGE_"))}
+    env.update(
+        {
+            "COMPLYEDGE_API_KEY": "ce_test",
+            "COMPLYEDGE_API_URL": f"http://127.0.0.1:{server.server_port}",
+        }
+    )
     env.update(extra_env)
     try:
-        proc = subprocess.run(["bash", str(SCRIPT)], env=env, capture_output=True, text=True, timeout=30)
+        proc = subprocess.run(
+            ["bash", str(SCRIPT)], env=env, capture_output=True, text=True, timeout=30
+        )
     finally:
         server.shutdown()
     assert proc.returncode == 0, proc.stderr
@@ -52,8 +57,14 @@ def _run(extra_env: dict) -> dict:
 
 
 def test_ci_run_sends_actor_role_and_run():
-    body = _run({"GITHUB_ACTIONS": "true", "GITHUB_ACTOR": "octocat",
-                 "GITHUB_RUN_ID": "123", "GITHUB_RUN_ATTEMPT": "2"})
+    body = _run(
+        {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_ACTOR": "octocat",
+            "GITHUB_RUN_ID": "123",
+            "GITHUB_RUN_ATTEMPT": "2",
+        }
+    )
     assert body["context"] == {"user_id": "octocat", "user_role": "ci", "session_id": "123-2"}
 
 
@@ -63,7 +74,18 @@ def test_local_run_sends_the_login_user_as_maintainer():
 
 
 def test_overrides_win():
-    body = _run({"GITHUB_ACTIONS": "true", "GITHUB_ACTOR": "octocat", "GITHUB_RUN_ID": "1",
-                 "COMPLYEDGE_USER_ID": "release-bot", "COMPLYEDGE_USER_ROLE": "release",
-                 "COMPLYEDGE_SESSION_ID": "v1.2.3"})
-    assert body["context"] == {"user_id": "release-bot", "user_role": "release", "session_id": "v1.2.3"}
+    body = _run(
+        {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_ACTOR": "octocat",
+            "GITHUB_RUN_ID": "1",
+            "COMPLYEDGE_USER_ID": "release-bot",
+            "COMPLYEDGE_USER_ROLE": "release",
+            "COMPLYEDGE_SESSION_ID": "v1.2.3",
+        }
+    )
+    assert body["context"] == {
+        "user_id": "release-bot",
+        "user_role": "release",
+        "session_id": "v1.2.3",
+    }

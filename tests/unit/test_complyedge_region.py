@@ -24,12 +24,16 @@ def test_runtime_probe_defaults_to_the_us_api():
 
 
 def test_no_tracked_file_points_at_the_eu_api():
-    files = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True,
-                           text=True, check=True).stdout.split()
-    hits = [f for f in files
-            if f != "tests/unit/test_complyedge_region.py"
-            and (ROOT / f).is_file()
-            and "eu.api.complyedge.io" in (ROOT / f).read_text(errors="ignore")]
+    files = subprocess.run(
+        ["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True
+    ).stdout.split()
+    hits = [
+        f
+        for f in files
+        if f != "tests/unit/test_complyedge_region.py"
+        and (ROOT / f).is_file()
+        and "eu.api.complyedge.io" in (ROOT / f).read_text(errors="ignore")
+    ]
     assert hits == []
 
 

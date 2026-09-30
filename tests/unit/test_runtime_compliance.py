@@ -37,7 +37,9 @@ def stub(monkeypatch):
             state["seen"].append(body)
             state["auth"].append(self.headers.get("Authorization"))
             answer = state["answers"].get(body["direction"], {"allowed": True, "violations": []})
-            out = json.dumps({"event_id": f"evt-{body['direction']}", "latency_ms": 1, **answer}).encode()
+            out = json.dumps(
+                {"event_id": f"evt-{body['direction']}", "latency_ms": 1, **answer}
+            ).encode()
             self.send_response(state["status"])
             self.send_header("Content-Type", "application/json")
             self.end_headers()
@@ -81,13 +83,19 @@ def test_turn_is_checked_as_prompt_and_output_with_attribution(stub):
         }
         assert KEY not in json.dumps(body) and sha not in json.dumps(body)
     assert stub["auth"] == [f"Bearer {KEY}"] * 2
-    assert "active_events" not in out or all(e["type"] != "alert.compliance" for e in out["active_events"])
+    assert "active_events" not in out or all(
+        e["type"] != "alert.compliance" for e in out["active_events"]
+    )
 
 
 def test_local_turn_is_attributed_to_the_maintainer(stub, monkeypatch):
     monkeypatch.setenv("USER", "alice")
     sid, _ = _turn("")
-    assert stub["seen"][0]["context"] == {"user_id": "local:alice", "user_role": "maintainer", "session_id": sid}
+    assert stub["seen"][0]["context"] == {
+        "user_id": "local:alice",
+        "user_role": "maintainer",
+        "session_id": sid,
+    }
 
 
 def test_flagged_output_comes_back_as_an_active_event(stub):
@@ -99,7 +107,10 @@ def test_flagged_output_comes_back_as_an_active_event(stub):
     assert ev["plane"] == "conversation"
     assert ev["rule_ids"] == ["rego-art5-1c-001"]
     assert ev["event_ids"] == ["evt-output"]
-    assert "your reply" in ev["suggested_behavior"] and "user's message" not in ev["suggested_behavior"]
+    assert (
+        "your reply" in ev["suggested_behavior"]
+        and "user's message" not in ev["suggested_behavior"]
+    )
 
 
 def test_flagged_prompt_names_the_users_message(stub):
