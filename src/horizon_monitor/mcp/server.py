@@ -62,6 +62,7 @@ from horizon_monitor.memento.errors import MementoError, TenantResolutionError
 from horizon_monitor.memento.models import EventKind, ItemKind, Provenance
 from horizon_monitor.memento.store import MementoStore
 from horizon_monitor.monitor import SessionNotFoundError
+from horizon_monitor.spacetime.temporal import parse_timestamp
 
 # Per-key session cap on the hosted multi-tenant server (see session_registry.py
 # for why this lives at the server layer, not in FidelityMonitor itself).
@@ -83,7 +84,7 @@ def _resolve_eval_instant(timestamp: str | None) -> tuple[datetime, str]:
     differ; the field is what makes that visible instead of silent.
     """
     if timestamp:
-        return datetime.fromisoformat(timestamp), "injected"
+        return parse_timestamp(timestamp), "injected"
     return datetime.now(timezone.utc), "host_clock"
 
 
@@ -303,7 +304,7 @@ def _parse_item_kwargs(item: dict) -> dict[str, Any]:
     kwargs: dict[str, Any] = {
         "kind": ItemKind(item["kind"]),
         "title": item["title"],
-        "created_valid": datetime.fromisoformat(item["created_valid"]),
+        "created_valid": parse_timestamp(item["created_valid"]),
     }
     if item.get("parent_id") is not None:
         kwargs["parent_id"] = item["parent_id"]
@@ -331,10 +332,10 @@ def _parse_event_kwargs(event: dict) -> dict[str, Any]:
     `MementoStore.record_event`'s keyword arguments."""
     kwargs: dict[str, Any] = {
         "kind": EventKind(event["kind"]),
-        "valid_time": datetime.fromisoformat(event["valid_time"]),
+        "valid_time": parse_timestamp(event["valid_time"]),
     }
     if event.get("tx_time") is not None:
-        kwargs["tx_time"] = datetime.fromisoformat(event["tx_time"])
+        kwargs["tx_time"] = parse_timestamp(event["tx_time"])
     for passthrough in ("stage", "wait_or_touch", "correction_of"):
         if event.get(passthrough) is not None:
             kwargs[passthrough] = event[passthrough]
@@ -346,7 +347,7 @@ def _parse_event_kwargs(event: dict) -> dict[str, Any]:
             source_system=provenance.get("source_system"),
             native_id=provenance.get("native_id"),
             raw_timestamp=(
-                datetime.fromisoformat(provenance["raw_timestamp"])
+                parse_timestamp(provenance["raw_timestamp"])
                 if provenance.get("raw_timestamp")
                 else None
             ),

@@ -68,9 +68,20 @@ def _iso(dt: datetime | date | None) -> str | None:
 
 
 def _parse_dt(s: str | None) -> datetime | None:
+    """Parse a stored ISO string; an offset-less value is read as UTC.
+
+    Rows written before every caller sent an offset hold naive strings next to
+    the store's own +00:00 ones, and the engine sorts and compares them.
+    Mixing the two raised "can't compare offset-naive and offset-aware
+    datetimes" on every clock_status (2026-10-18). Same convention as
+    spacetime.temporal.parse_timestamp.
+    """
     if s is None:
         return None
-    return datetime.fromisoformat(s)
+    dt = datetime.fromisoformat(s)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 def _parse_date(s: str | None) -> date | None:
