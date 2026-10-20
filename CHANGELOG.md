@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`process_turn` events say their `plane`.** Each active event carries `plane`
   (`conversation` | `mission`); mission events also carry `item_id` and `derivation`, so an
   MCP client can surface a due mission with its numbers instead of guessing from the type.
+- **`MementoStore(..., create_schema=False)`** opens an existing store without the
+  `CREATE TABLE IF NOT EXISTS` pass, so a host app's least-privilege identity user (SELECT
+  and INSERT on `horizon_tenants` and `horizon_api_keys` only) can create tenants and
+  register key hashes.
 
 - **Key-less tenant check-or-create for host applications.** `MementoStore.get_tenant(id)`
   reads a tenant (or None) and `MementoStore.ensure_tenant(id, display_label)` creates one

@@ -115,7 +115,12 @@ class MementoStore:
         *,
         dsn: str | None = None,
         tenant_id: str = LOCAL_TENANT,
+        create_schema: bool = True,
     ) -> None:
+        """``create_schema=False`` skips the CREATE TABLE IF NOT EXISTS pass, so
+        a least-privilege user that may only read and insert identity rows
+        (horizon_tenants, horizon_api_keys) can open the store. The tables must
+        already exist; any other call then fails on its own privileges."""
         self.store_path = Path(store_path) if store_path is not None else None
         self._tenant = tenant_id
         # RLock, not Lock: register_item holds the lock and then calls
@@ -129,8 +134,9 @@ class MementoStore:
         # over the same connection (see scoped()), so closing one must not tear
         # the connection out from under the others.
         self._owns_backend = True
-        with self._lock:
-            self._b.init_schema()
+        if create_schema:
+            with self._lock:
+                self._b.init_schema()
 
     @property
     def tenant_id(self) -> str:
@@ -690,9 +696,12 @@ class MementoStore:
         label = str(display_label or "").strip()[:128] or tenant_id
         try:
             with self._txn() as b:
-                if b.execute(
-                    "SELECT tenant_id FROM horizon_tenants WHERE tenant_id = ?", (tenant_id,)
-                ).fetchone() is None:
+                if (
+                    b.execute(
+                        "SELECT tenant_id FROM horizon_tenants WHERE tenant_id = ?", (tenant_id,)
+                    ).fetchone()
+                    is None
+                ):
                     b.execute(
                         "INSERT INTO horizon_tenants (tenant_id, display_label, status, created_at) "
                         "VALUES (?, ?, 'active', ?)",

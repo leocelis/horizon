@@ -668,3 +668,28 @@ def test_no_mcp_tool_can_create_a_tenant():
         text = path.read_text()
         assert "ensure_tenant" not in text, path
         assert "provision_tenant" not in text, path
+
+
+def test_identity_only_open_skips_schema_creation(tmp_path, monkeypatch):
+    """A least-privilege identity user (read + insert on horizon_tenants and
+    horizon_api_keys only) cannot run CREATE TABLE; opening the store with
+    create_schema=False must not try, and identity calls still work."""
+    path = tmp_path / "missions.db"
+    MementoStore(path).close()  # the tables exist, as on the hosted database
+
+    from horizon_monitor.memento.backends import sqlite as sqlite_backend
+
+    def _refuse(self):
+        raise PermissionError("CREATE command denied")
+
+    monkeypatch.setattr(sqlite_backend.SqliteBackend, "init_schema", _refuse)
+    with pytest.raises(PermissionError):
+        MementoStore(path)
+    store = MementoStore(path, create_schema=False)
+    try:
+        sha = hashlib.sha256(b"hzn_identity_only").hexdigest()
+        store.provision_tenant("acme", "Acme", sha)
+        assert store.get_tenant("acme")["status"] == "active"
+        assert store.resolve_tenant_for_key_sha(sha) == "acme"
+    finally:
+        store.close()
