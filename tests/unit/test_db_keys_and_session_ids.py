@@ -93,6 +93,25 @@ def test_revoked_key_is_refused_after_the_cache_window(store):
     assert _get(key).status_code == 401
 
 
+def test_a_key_registered_after_a_refusal_works_within_seconds(store, monkeypatch):
+    """A refusal must not lock a freshly registered key out for the full minute:
+    a host may call once before its sign-up thread registers the key."""
+    auth_mod.VALID_API_KEYS = set()
+    auth_mod.AUTH_DISABLED = False
+    clock = [1000.0]
+    monkeypatch.setattr(auth_mod.time, "monotonic", lambda: clock[0])
+    key = "hzn_acme_registered_late"
+    assert _get(key).status_code == 401
+    store.provision_tenant("acme", "Acme", _sha(key))
+    clock[0] += 6.0
+    assert _get(key).status_code == 200
+    store.revoke_key(_sha(key))
+    clock[0] += 30.0
+    assert _get(key).status_code == 200  # accepted answers stay cached for the minute
+    clock[0] += 31.0
+    assert _get(key).status_code == 401
+
+
 def test_env_keys_still_work_alongside_registered_keys(store):
     auth_mod.VALID_API_KEYS = {"hzn_env_key"}
     auth_mod.AUTH_DISABLED = False

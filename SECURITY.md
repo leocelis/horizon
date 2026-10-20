@@ -146,9 +146,10 @@ key, and tenant provisioning/erasure are never exposed as MCP tools.
 key that is in `HORIZON_API_KEYS` **or** whose sha256 has an active row in
 `horizon_api_keys`. A host application holding the store credentials can therefore register
 a key for a tenant it just created, and the key works without a redeploy. Only the hash is
-stored. Answers are cached for 60 seconds (positive and negative, bounded), so a revoked
-row is refused within a minute; a store error during the lookup is a refusal, never an
-open door.
+stored. An accepted key is cached for 60 seconds, so a revoked row is refused within a
+minute; a refusal is cached for 5 seconds, so a key registered right after a refused call
+works almost at once. The cache is bounded. A store error during the lookup is a refusal,
+never an open door.
 
 **Caller-chosen session ids.** `new_conversation(session_id=...)` accepts a stable id
 (`[A-Za-z0-9:_-]`, max 128). The same key calling again with the same id gets the live

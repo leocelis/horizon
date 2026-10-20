@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Keys registered in the store authenticate.** With a mission store configured, the HTTP
   gate accepts a key whose sha256 has an active `horizon_api_keys` row as well as keys in
   `HORIZON_API_KEYS`, so a host application can register a tenant's key at sign-up and use
-  it at once. 60 s cache; revocation bites within a minute; a lookup error refuses.
+  it at once. Accepted keys cached 60 s (revocation bites within a minute), refusals 5 s
+  (a key registered after a refused call works almost at once); a lookup error refuses.
 - **`new_conversation(session_id=...)`.** An optional caller-chosen, stable id. Idempotent
   for the key that owns it; refused like an unknown session for any other key. After a
   restart the same id is re-created and the mission associations stored under it apply

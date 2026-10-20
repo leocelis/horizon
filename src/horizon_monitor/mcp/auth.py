@@ -61,11 +61,14 @@ VALID_API_KEYS: set[str] = {k.strip() for k in _raw.split(",") if k.strip()}
 # hash with the store credentials (operator script or host library call) and the key
 # works at once, without editing HORIZON_API_KEYS and redeploying. The server
 # installs the lookup when a mission store is configured (server.py); without
-# a store only the env set is consulted. Answers are cached for
-# _KEY_LOOKUP_TTL_S (positive and negative, bounded) so a revoked row bites
-# within a minute and a stream of bogus keys cannot hammer the database.
+# a store only the env set is consulted. An accepted key is cached for
+# _KEY_LOOKUP_TTL_S, so a revoked row bites within a minute. A refusal is
+# cached for _KEY_REFUSED_TTL_S only: long enough that a stream of bogus keys
+# costs one indexed lookup per key every few seconds, short enough that a key
+# registered just after a refused call works almost at once.
 KEY_SHA_LOOKUP = None  # Callable[[str], bool] | None, set by server.py
 _KEY_LOOKUP_TTL_S = 60.0
+_KEY_REFUSED_TTL_S = 5.0
 _KEY_LOOKUP_MAX = 1000
 _key_lookup_cache: collections.OrderedDict[str, tuple[bool, float]] = collections.OrderedDict()
 _key_lookup_lock = threading.Lock()
@@ -79,7 +82,7 @@ def _registered_key(key_sha: str) -> bool:
     now = time.monotonic()
     with _key_lookup_lock:
         hit = _key_lookup_cache.get(key_sha)
-        if hit is not None and now - hit[1] < _KEY_LOOKUP_TTL_S:
+        if hit is not None and now - hit[1] < (_KEY_LOOKUP_TTL_S if hit[0] else _KEY_REFUSED_TTL_S):
             return hit[0]
     try:
         ok = bool(lookup(key_sha))
