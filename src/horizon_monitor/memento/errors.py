@@ -313,6 +313,25 @@ class TenantResolutionError(MementoError):
         )
 
 
+class InvalidTenantIdError(MementoError):
+    """ensure_tenant was given an id outside TENANT_ID_PATTERN.
+
+    Tenant ids are binary-collated: a mixed-case id would be a different tenant
+    from its lowercase twin. Lowercase letters, digits and hyphens only, at most
+    64 characters, so one name can only ever mean one tenant.
+    """
+
+    def __init__(self, tenant_id: object) -> None:
+        self._init_message(
+            "InvalidTenantIdError",
+            fix=(
+                f"tenant id {tenant_id!r} is not valid. Use 1-64 lowercase letters, "
+                "digits or hyphens, starting with a letter or digit."
+            ),
+            rule="hosted tenancy: one tenant id names exactly one tenant, case included.",
+        )
+
+
 class KeyAlreadyBoundError(MementoError):
     """A provisioning attempt tried to bind an API key hash already in use.
 

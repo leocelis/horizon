@@ -61,8 +61,17 @@ constraints:
     assumption_status: "KNOWN"
     consequence_if_violated: "The parent's finite_rooted_tree and no-undated-deferral guarantees become advisory; partial writes corrupt the tree"
 
+  - name: "tenant_check_or_create_keyless"
+    requirement: "ensure_tenant(id, label) returns the existing tenant unchanged or creates it once; ids must match ^[a-z0-9][a-z0-9-]{0,63}$; an erased tenant is never reactivated; no MCP tool can create a tenant, only a caller holding store credentials"
+    test: "tests/unit/memento_mori/test_tenancy.py"
+    test_provenance: "ai_generated"
+    entropy: "near-zero"
+    priority: 1
+    assumption_status: "KNOWN"
+    consequence_if_violated: "An API key could mint tenants, two callers could race into duplicate tenants, or an erased tenant's data could come back"
+
 constraint_satisfiability:
-  analysis: "Four constraints; no pairwise tension — provenance and namespace rules are per-write validations inside the same atomic-rejection discipline."
+  analysis: "Five constraints; no pairwise tension — provenance and namespace rules are per-write validations inside the same atomic-rejection discipline; tenant creation runs in its own transaction before any item write."
   joint_satisfaction_test: "tests/unit/memento_mori/test_store_joint.py::test_all_store_constraints_one_flow"
 
 verification:

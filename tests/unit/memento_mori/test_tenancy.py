@@ -599,3 +599,72 @@ def test_monitor_reads_associations_from_the_store_not_memory(tmp_path, monkeypa
         assert m2._memento_association.missions_for("sess-1") == ()  # not from memory
     finally:
         store.close()
+
+
+# ── key-less tenant check-or-create (host applications) ──────────────────────
+
+
+def test_ensure_tenant_creates_without_a_key_and_is_idempotent(tmp_path):
+    """A host application that owns its users' identity checks-or-creates a
+    tenant with the store credentials alone: no key row, ever."""
+    store = MementoStore(tmp_path / "missions.db")
+    assert store.get_tenant("acme") is None
+
+    first = store.ensure_tenant("acme", "Acme Inc")
+    assert (first["tenant_id"], first["display_label"], first["status"]) == (
+        "acme",
+        "Acme Inc",
+        "active",
+    )
+    again = store.ensure_tenant("acme", "Renamed")
+    assert again == first  # unchanged, no duplicate, label not overwritten
+    assert store._fetchone("SELECT COUNT(*) AS n FROM horizon_tenants")["n"] == 1
+    assert store._fetchone("SELECT COUNT(*) AS n FROM horizon_api_keys")["n"] == 0
+
+
+def test_ensure_tenant_refuses_ids_that_could_alias_another_tenant(tmp_path):
+    from horizon_monitor.memento import InvalidTenantIdError
+
+    store = MementoStore(tmp_path / "missions.db")
+    for bad in ("Acme", "", "-acme", "a" * 65, "acme corp", "acme_1", None):
+        with pytest.raises(InvalidTenantIdError):
+            store.ensure_tenant(bad, "x")
+    assert store._fetchone("SELECT COUNT(*) AS n FROM horizon_tenants")["n"] == 0
+    store.ensure_tenant("a" * 64, "max length")
+    assert store.get_tenant("a" * 64) is not None
+
+
+def test_ensure_tenant_never_reactivates_an_erased_tenant(tmp_path):
+    store = MementoStore(tmp_path / "missions.db")
+    store.ensure_tenant("t-gone", "Gone")
+    store.scoped("t-gone").erase_all()
+    assert store.ensure_tenant("t-gone", "Gone")["status"] == "erased"
+
+
+def test_get_tenant_is_case_sensitive(tmp_path):
+    store = MementoStore(tmp_path / "missions.db")
+    store.ensure_tenant("acme", "Acme")
+    assert store.get_tenant("ACME") is None
+
+
+def test_provision_tenant_still_binds_its_key_through_the_same_create(tmp_path):
+    store = MementoStore(tmp_path / "missions.db")
+    store.ensure_tenant("acme", "Acme")
+    sha = hashlib.sha256(b"hzn_acme").hexdigest()
+    store.provision_tenant("acme", "Acme", sha)
+    assert store.resolve_tenant_for_key_sha(sha) == "acme"
+    assert store._fetchone("SELECT COUNT(*) AS n FROM horizon_tenants")["n"] == 1
+    # A pre-pattern id (provisioned before ensure_tenant existed) still works.
+    legacy = hashlib.sha256(b"hzn_legacy").hexdigest()
+    store.provision_tenant("Legacy_Tenant", "Legacy", legacy)
+    assert store.resolve_tenant_for_key_sha(legacy) == "Legacy_Tenant"
+
+
+def test_no_mcp_tool_can_create_a_tenant():
+    """Tenant creation is never conversational: the MCP surface must not reach
+    ensure_tenant or provision_tenant."""
+    mcp_dir = pathlib.Path(store_module.__file__).resolve().parents[1] / "mcp"
+    for path in mcp_dir.glob("*.py"):
+        text = path.read_text()
+        assert "ensure_tenant" not in text, path
+        assert "provision_tenant" not in text, path

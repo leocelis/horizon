@@ -29,6 +29,7 @@ reads the ambient clock (memento_engine_intent.yaml::pure_function_injected_time
 from __future__ import annotations
 
 import json
+import re
 import threading
 import uuid
 from collections.abc import Generator
@@ -41,6 +42,7 @@ from horizon_monitor.memento.backends import resolve_backend
 from horizon_monitor.memento.errors import (
     ArtifactProvenanceRequiredError,
     DuplicateRootError,
+    InvalidTenantIdError,
     KeyAlreadyBoundError,
     NonFiniteRootError,
     PersonNamespaceUnflaggedError,
@@ -59,6 +61,11 @@ from horizon_monitor.memento.models import (
 )
 
 LOCAL_TENANT = "local"
+
+# A tenant id created through ensure_tenant: lowercase, digits and hyphens, at
+# most 64 chars (horizon_tenants.tenant_id is VARCHAR(64), binary collation, so
+# 'Acme' and 'acme' would be different tenants; lowercase-only removes that trap).
+TENANT_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 
 
 def _iso(dt: datetime | date | None) -> str | None:
@@ -650,8 +657,54 @@ class MementoStore:
     # ── Tenancy (horizon_tenants / horizon_api_keys) ─────────────────────
     #
     # Identity tables are NOT tenant-scoped — they define tenants. They are
-    # written by the operator's provisioning script (scripts/provision_tenant.py),
-    # never by an MCP tool: identity operations are not conversational.
+    # written only by a caller holding the store credentials: the operator's
+    # provisioning script (scripts/provision_tenant.py) or a host application
+    # using this library (ensure_tenant). Never by an MCP tool and never from a
+    # key: identity operations are not conversational.
+
+    def get_tenant(self, tenant_id: str) -> dict | None:
+        """{tenant_id, display_label, status, created_at} or None. Exact,
+        case-sensitive match; reads no key data."""
+        row = self._fetchone(
+            "SELECT tenant_id, display_label, status, created_at FROM horizon_tenants "
+            "WHERE tenant_id = ?",
+            (tenant_id,),
+        )
+        return dict(row) if row else None
+
+    def ensure_tenant(self, tenant_id: str, display_label: str) -> dict:
+        """Return the tenant, creating it ('active') when absent. Never binds a key.
+
+        For host applications that own their users' identity and reach the
+        store with its credentials: they check-or-create a tenant without
+        minting an API key nobody uses. Idempotent, including across processes
+        (the primary key decides a race; the loser re-reads). An existing tenant
+        is returned unchanged, whatever its status: an 'erased' tenant is never
+        silently reactivated, the caller decides what that means.
+        """
+        if not isinstance(tenant_id, str) or not TENANT_ID_PATTERN.match(tenant_id):
+            raise InvalidTenantIdError(tenant_id)
+        existing = self.get_tenant(tenant_id)
+        if existing is not None:
+            return existing
+        label = str(display_label or "").strip()[:128] or tenant_id
+        try:
+            with self._txn() as b:
+                if b.execute(
+                    "SELECT tenant_id FROM horizon_tenants WHERE tenant_id = ?", (tenant_id,)
+                ).fetchone() is None:
+                    b.execute(
+                        "INSERT INTO horizon_tenants (tenant_id, display_label, status, created_at) "
+                        "VALUES (?, ?, 'active', ?)",
+                        (tenant_id, label, datetime.now(timezone.utc).isoformat()),
+                    )
+        except Exception:
+            # Another process inserted it between our read and write.
+            raced = self.get_tenant(tenant_id)
+            if raced is None:
+                raise
+            return raced
+        return self.get_tenant(tenant_id)
 
     def resolve_tenant_for_key_sha(self, key_sha256: str) -> str | None:
         """tenant_id for an ACTIVE (non-revoked) key hash; None otherwise.
@@ -672,8 +725,14 @@ class MementoStore:
         self, tenant_id: str, display_label: str, key_sha256: str, key_label: str | None = None
     ) -> None:
         """Operator-run provisioning: one tenant row + one active key row.
-        Idempotent on the tenant; refuses to re-bind an existing key hash."""
+        Idempotent on the tenant; refuses to re-bind an existing key hash.
+
+        Ids outside TENANT_ID_PATTERN are still accepted here so tenants
+        provisioned before the pattern existed keep working; the tenant half
+        goes through ensure_tenant when the id fits it."""
         now = datetime.now(timezone.utc).isoformat()
+        if isinstance(tenant_id, str) and TENANT_ID_PATTERN.match(tenant_id):
+            self.ensure_tenant(tenant_id, display_label)
         with self._txn() as b:
             existing = b.execute(
                 "SELECT tenant_id FROM horizon_tenants WHERE tenant_id = ?",

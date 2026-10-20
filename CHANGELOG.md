@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Key-less tenant check-or-create for host applications.** `MementoStore.get_tenant(id)`
+  reads a tenant (or None) and `MementoStore.ensure_tenant(id, display_label)` creates one
+  when absent without binding an API key, so an application that owns its users' identity
+  can give each of them a mission-plane tenant through the library. Idempotent across
+  processes; an existing tenant is returned unchanged (an `erased` one is never
+  reactivated). New ids must match `^[a-z0-9][a-z0-9-]{0,63}$` (`InvalidTenantIdError`),
+  because tenant ids are binary-collated and a mixed-case id would be a different tenant.
+  `provision_tenant` creates its tenant through the same path. Neither is an MCP tool.
+
 - **`process_turn` is screened by ComplyEdge when the MCP server has a key.** The turn's
   `human_message` (prompt) and `agent_response` (output) go to `POST /v1/check` in
   parallel with `agent_id`, `jurisdiction` and the audit attribution fields (`user_id` as

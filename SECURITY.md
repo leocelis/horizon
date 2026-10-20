@@ -137,9 +137,10 @@ construction. The two models differ on purpose: sessions are ephemeral, so key r
 correctly ends them; missions are multi-year records, so **rotating a key must retain
 the tenant's history** — revoke the old key, bind the new one, same tenant. A key that
 authenticates but has no active tenant mapping gets no mission access at all (fail
-closed); tenants are provisioned out of band by the operator
-(`scripts/provision_tenant.py`), never auto-created by an inbound request, and tenant
-provisioning/erasure are never exposed as MCP tools.
+closed); tenants are created only by a caller holding the store credentials (the
+operator's `scripts/provision_tenant.py`, or a host application calling
+`MementoStore.ensure_tenant` through the library), never by an inbound request or from a
+key, and tenant provisioning/erasure are never exposed as MCP tools.
 
 **Key issuance and accountability.** Abuse of a hosted-server API key can only be acted on
 (key revocation, and where necessary reporting to the platform an anonymous requester used)

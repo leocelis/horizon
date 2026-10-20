@@ -146,8 +146,11 @@ each traceable to `(amount, rate, measured duration)` in the derivation string.
   **assigned**, never derived from a key: `horizon_api_keys` maps a key's full SHA-256 to
   a tenant, so rotating a key preserves that tenant's history. Unknown or revoked keys
   fail closed. Provisioning is an operator action (`scripts/provision_tenant.py`) and is
-  deliberately not an MCP tool.
-  - Store API: `scoped(tenant_id)`, `provision_tenant(...)`, `revoke_key(key_sha256)`,
+  deliberately not an MCP tool. A host application that owns its users' identity and
+  holds the store credentials can check-or-create a tenant without a key
+  (`get_tenant`, `ensure_tenant`); new ids are lowercase `[a-z0-9-]`, at most 64 chars.
+  - Store API: `scoped(tenant_id)`, `get_tenant(tenant_id)`,
+    `ensure_tenant(tenant_id, display_label)`, `provision_tenant(...)`, `revoke_key(key_sha256)`,
     `resolve_tenant_for_key_sha(...)`, `associate_session(session_id, mission_id)`,
     `missions_for_session(session_id)`, `erase_all()`. Rotation is
     `revoke_key` + `provision_tenant` on the **same** tenant, which is why history
