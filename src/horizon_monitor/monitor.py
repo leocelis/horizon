@@ -195,6 +195,10 @@ class FidelityMonitor:
 
     # ── Session lifecycle ───────────────────────────────────────────────────
 
+    def has_session(self, session_id: str) -> bool:
+        """True when a live conversation with this id is held in memory."""
+        return session_id in self._sessions
+
     def new_conversation(
         self,
         metadata: dict | None = None,

@@ -1,7 +1,9 @@
 """
 Authentication middleware for the Horizon MCP server.
 
-Reads API keys from the HORIZON_API_KEYS environment variable (comma-separated).
+Reads API keys from the HORIZON_API_KEYS environment variable (comma-separated)
+and, when a mission store is configured, accepts any key whose sha256 has an
+active row in horizon_api_keys (registered by the operator or a host app).
 
 For local stdio:  auth not required (process isolation; no HTTP layer).
 For remote HTTP:  Bearer token required in every request except /health.
@@ -51,6 +53,52 @@ _log = logging.getLogger("horizon_monitor.mcp.auth")
 
 _raw = os.environ.get("HORIZON_API_KEYS", "")
 VALID_API_KEYS: set[str] = {k.strip() for k in _raw.split(",") if k.strip()}
+
+# ── DB-registered keys ────────────────────────────────────────────────────────
+#
+# A key is also valid when its sha256 has an ACTIVE row in horizon_api_keys.
+# Host applications that own their users' identity register a tenant's key
+# hash with the store credentials (operator script or host library call) and the key
+# works at once, without editing HORIZON_API_KEYS and redeploying. The server
+# installs the lookup when a mission store is configured (server.py); without
+# a store only the env set is consulted. Answers are cached for
+# _KEY_LOOKUP_TTL_S (positive and negative, bounded) so a revoked row bites
+# within a minute and a stream of bogus keys cannot hammer the database.
+KEY_SHA_LOOKUP = None  # Callable[[str], bool] | None, set by server.py
+_KEY_LOOKUP_TTL_S = 60.0
+_KEY_LOOKUP_MAX = 1000
+_key_lookup_cache: collections.OrderedDict[str, tuple[bool, float]] = collections.OrderedDict()
+_key_lookup_lock = threading.Lock()
+
+
+def _registered_key(key_sha: str) -> bool:
+    """True when the store has an active row for this key hash. Never raises."""
+    lookup = KEY_SHA_LOOKUP
+    if lookup is None:
+        return False
+    now = time.monotonic()
+    with _key_lookup_lock:
+        hit = _key_lookup_cache.get(key_sha)
+        if hit is not None and now - hit[1] < _KEY_LOOKUP_TTL_S:
+            return hit[0]
+    try:
+        ok = bool(lookup(key_sha))
+    except Exception:  # noqa: BLE001 - a store error is a refusal, never a crash
+        _log.warning("AUTH  key_lookup_failed  sha=%s", key_sha[:8])
+        return False
+    with _key_lookup_lock:
+        _key_lookup_cache[key_sha] = (ok, now)
+        _key_lookup_cache.move_to_end(key_sha)
+        while len(_key_lookup_cache) > _KEY_LOOKUP_MAX:
+            _key_lookup_cache.popitem(last=False)
+    return ok
+
+
+def clear_key_lookup_cache() -> None:
+    """Forget cached key answers (tests, and after a revocation drill)."""
+    with _key_lookup_lock:
+        _key_lookup_cache.clear()
+
 
 # Set HORIZON_AUTH_DISABLED=true for local dev / unit tests only.
 AUTH_DISABLED: bool = os.environ.get("HORIZON_AUTH_DISABLED", "false").lower() == "true"
@@ -218,7 +266,7 @@ def _extract_and_validate(scope) -> tuple[dict | None, str | None, str]:
     """
     path = scope.get("path", "")
 
-    if not VALID_API_KEYS and not AUTH_DISABLED:
+    if not VALID_API_KEYS and KEY_SHA_LOOKUP is None and not AUTH_DISABLED:
         _log.warning("AUTH  no_keys_configured  path=%s  — rejecting (fail-closed)", path)
         return (
             {
@@ -249,18 +297,19 @@ def _extract_and_validate(scope) -> tuple[dict | None, str | None, str]:
         _log.warning("AUTH  empty_key  path=%s", path)
         return {"error": "Empty API key"}, None, ""
 
-    if AUTH_DISABLED and not VALID_API_KEYS:
+    if AUTH_DISABLED and not VALID_API_KEYS and KEY_SHA_LOOKUP is None:
         # Explicit dev-mode opt-in with no keys configured — allow.
         _log.warning(
             "AUTH  no_keys_configured  path=%s  — allowed (HORIZON_AUTH_DISABLED=true)", path
         )
         return None, "unconfigured", ""
 
-    if not _key_matches(api_key):
+    key_sha = hashlib.sha256(api_key.encode()).hexdigest()
+    if not _key_matches(api_key) and not _registered_key(key_sha):
         _log.warning("AUTH  invalid_key  key_prefix=%s  path=%s", api_key[:8], path)
         return {"error": "Invalid API key"}, None, ""
 
-    return None, _key_id(api_key), hashlib.sha256(api_key.encode()).hexdigest()
+    return None, _key_id(api_key), key_sha
 
 
 def _key_matches(candidate: str) -> bool:

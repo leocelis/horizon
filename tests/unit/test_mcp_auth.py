@@ -47,9 +47,16 @@ def _restore_auth_globals():
     each other (or into other test files importing this module)."""
     orig_keys = set(auth_module.VALID_API_KEYS)
     orig_disabled = auth_module.AUTH_DISABLED
+    orig_lookup = auth_module.KEY_SHA_LOOKUP
+    # These tests cover the env-key path; a store lookup installed by another
+    # test module (register_memento_tools) must not change their answers.
+    auth_module.KEY_SHA_LOOKUP = None
+    auth_module.clear_key_lookup_cache()
     yield
     auth_module.VALID_API_KEYS = orig_keys
     auth_module.AUTH_DISABLED = orig_disabled
+    auth_module.KEY_SHA_LOOKUP = orig_lookup
+    auth_module.clear_key_lookup_cache()
 
 
 # ── valid configured key ─────────────────────────────────────────────────────

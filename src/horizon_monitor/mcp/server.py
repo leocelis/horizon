@@ -44,6 +44,7 @@ import dataclasses
 import json
 import logging
 import os
+import re
 import time
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -51,6 +52,7 @@ from pathlib import Path
 from typing import Any
 
 from horizon_monitor import Config, FidelityMonitor, __version__
+from horizon_monitor.mcp import auth as _auth
 from horizon_monitor.mcp import compliance
 from horizon_monitor.mcp.auth import current_key_id, current_key_sha
 from horizon_monitor.mcp.session_registry import SessionOwnershipError, SessionRegistry
@@ -425,6 +427,12 @@ def register_memento_tools(
     global _MEMENTO_SCOPE_RESOLVER
     _MEMENTO_SCOPE_RESOLVER = _scoped_store_or_none
 
+    # Keys registered in horizon_api_keys authenticate without a redeploy
+    # (auth.py, DB-registered keys). Only an ACTIVE row counts.
+    _auth.KEY_SHA_LOOKUP = lambda key_sha: (
+        memento_store.resolve_tenant_for_key_sha(key_sha) is not None
+    )
+
     @app.tool(
         name="clock_register",
         title="Register or update a clocked mission item",
@@ -697,6 +705,13 @@ def _get_monitor() -> FidelityMonitor:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+# A caller-chosen session id: letters, digits, ':', '_' and '-', at most 128.
+# Lets a host application keep ONE stable id per chat (e.g. "app-chat:<uuid>")
+# so its mission associations, which the store keys by session id, keep
+# feeding process_turn after this server restarts.
+_SESSION_ID_PATTERN = re.compile(r"^[A-Za-z0-9:_-]{1,128}$")
+
+
 @mcp.tool(
     name="new_conversation",
     title="Start a new Horizon session",
@@ -708,15 +723,39 @@ def _get_monitor() -> FidelityMonitor:
         "these are embedded in trajectory reports but never sent off-device. "
         "Do NOT call for each turn — one session tracks the whole thread. "
         "To reset tracking mid-conversation, call new_conversation again and "
-        "discard the old session_id."
+        "discard the old session_id. "
+        "Optional session_id (letters, digits, ':', '_', '-'; max 128): a stable "
+        "id you choose. Calling again with the same id and the same API key "
+        "returns the live session unchanged (idempotent); after a server restart "
+        "it re-creates it, and mission associations made under that id still "
+        "apply. An id held by another API key is refused like an unknown session."
     ),
 )
 def new_conversation(
     metadata: dict | None = None,
+    session_id: str | None = None,
 ) -> dict:
-    """Create a new Horizon session. Returns {session_id: str}."""
+    """Create (or, for a caller-chosen id the caller already owns, return) a
+    Horizon session. Returns {session_id: str}."""
     monitor = _get_monitor()
-    sid = monitor.new_conversation(metadata=metadata)
+    if session_id is not None:
+        if not isinstance(session_id, str) or not _SESSION_ID_PATTERN.match(session_id):
+            return {
+                "error": "Invalid session_id: use letters, digits, ':', '_' or '-' (max 128).",
+                "hint": "Omit session_id to get a generated one.",
+            }
+        key_id = current_key_id.get()
+        try:
+            _registry.check(session_id, key_id)
+        except SessionOwnershipError:
+            return _session_not_found_response(session_id)
+        if monitor.has_session(session_id):
+            if session_id not in _registry.owned_sessions(key_id):
+                # Live but tracked by nobody (created outside the registry):
+                # never hand it to a caller who did not create it.
+                return _session_not_found_response(session_id)
+            return {"session_id": session_id}
+    sid = monitor.new_conversation(metadata=metadata, session_id=session_id)
     _register_session(sid, monitor)
     _log.info(
         "TOOL  new_conversation  key=%s  session=%s  metadata=%s",

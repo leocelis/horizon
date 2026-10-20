@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Keys registered in the store authenticate.** With a mission store configured, the HTTP
+  gate accepts a key whose sha256 has an active `horizon_api_keys` row as well as keys in
+  `HORIZON_API_KEYS`, so a host application can register a tenant's key at sign-up and use
+  it at once. 60 s cache; revocation bites within a minute; a lookup error refuses.
+- **`new_conversation(session_id=...)`.** An optional caller-chosen, stable id. Idempotent
+  for the key that owns it; refused like an unknown session for any other key. After a
+  restart the same id is re-created and the mission associations stored under it apply
+  again. `FidelityMonitor.has_session(id)` added.
+
 - **Key-less tenant check-or-create for host applications.** `MementoStore.get_tenant(id)`
   reads a tenant (or None) and `MementoStore.ensure_tenant(id, display_label)` creates one
   when absent without binding an API key, so an application that owns its users' identity

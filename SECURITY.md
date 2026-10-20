@@ -142,6 +142,22 @@ operator's `scripts/provision_tenant.py`, or a host application calling
 `MementoStore.ensure_tenant` through the library), never by an inbound request or from a
 key, and tenant provisioning/erasure are never exposed as MCP tools.
 
+**Registered keys.** When a mission store is configured, the HTTP gate accepts a bearer
+key that is in `HORIZON_API_KEYS` **or** whose sha256 has an active row in
+`horizon_api_keys`. A host application holding the store credentials can therefore register
+a key for a tenant it just created, and the key works without a redeploy. Only the hash is
+stored. Answers are cached for 60 seconds (positive and negative, bounded), so a revoked
+row is refused within a minute; a store error during the lookup is a refusal, never an
+open door.
+
+**Caller-chosen session ids.** `new_conversation(session_id=...)` accepts a stable id
+(`[A-Za-z0-9:_-]`, max 128). The same key calling again with the same id gets the live
+session back; an id held by another key, or a live session created outside the
+ownership registry, is refused with the same "unknown session" shape as a missing one, so
+a caller cannot probe which ids exist. After a restart the first caller to re-open an id
+owns it; ids should be unguessable (e.g. a namespaced UUID), and mission associations stay
+tenant-scoped in the store regardless of who holds the in-memory session.
+
 **Key issuance and accountability.** Abuse of a hosted-server API key can only be acted on
 (key revocation, and where necessary reporting to the platform an anonymous requester used)
 if the key can be traced back to a real, identifiable requester at issuance time. See
