@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for the key that owns it; refused like an unknown session for any other key. After a
   restart the same id is re-created and the mission associations stored under it apply
   again. `FidelityMonitor.has_session(id)` added.
+- **`clock_status` is enough for a host app.** Each item row carries `end_date` and
+  `parent_id`, and the response lists `signals` (what is due now, scope-filtered),
+  evaluated and never persisted so a read never spends an alert. `blocking_entities` is
+  now scope-filtered like `slowest_entities`.
 
 - **Key-less tenant check-or-create for host applications.** `MementoStore.get_tenant(id)`
   reads a tenant (or None) and `MementoStore.ensure_tenant(id, display_label)` creates one

@@ -485,7 +485,10 @@ def register_memento_tools(
             "instant; ISO 8601 — omit only when you genuinely have no clock): ages, "
             "TTL states, latencies, horizon shares, path comparisons, and money "
             "(only when a rate is declared). Optional `scope` (a mission_id) "
-            "filters the report to that mission's subtree. Open your first "
+            "filters the report to that mission's subtree. Each item row carries "
+            "its end_date and parent_id; `signals` lists what is due now "
+            "(evaluated, never persisted, so reading never spends an alert). "
+            "Open your first "
             "substantive reply for an associated mission with any red state here, "
             "numbers included. " + _LOUD_CONTRACT_LINE
         ),
@@ -498,8 +501,31 @@ def register_memento_tools(
             d = report.to_dict()
             d["eval_instant_source"] = instant_source
             d["setup_guidance"] = _setup_guidance(d.get("items", []))
+            items_by_id = {i.item_id: i for i in snapshot.items}
+            # The item's own dates and place in the tree, so a host app can
+            # render missions and the root from this one read.
+            for row in d["items"]:
+                item = items_by_id.get(row["item_id"])
+                row["end_date"] = item.end_date.isoformat() if item and item.end_date else None
+                row["parent_id"] = item.parent_id if item else None
+            # What is due right now, evaluated and NEVER persisted: a read must
+            # not spend a signal's single RAISED edge (ledger
+            # MM-ASSOCIATION-CIRCULARITY); only process_turn and clock_ack do.
+            signal_report, _unpersisted = memento_signals.evaluate_signals(
+                snapshot, report, t_eval, memento_config
+            )
+            d["signals"] = [
+                {
+                    "item_id": sig.item_id,
+                    "signal_type": sig.signal_type,
+                    "tier": sig.tier,
+                    "state": sig.state,
+                    "derivation": sig.derivation,
+                }
+                for sig in (*signal_report.fired, *signal_report.due, *signal_report.acked)
+            ]
+            d["signals"].sort(key=lambda r: (r["tier"], r["signal_type"], r["item_id"]))
             if scope:
-                items_by_id = {i.item_id: i for i in snapshot.items}
 
                 def _in_scope(iid: str) -> bool:
                     return (
@@ -508,6 +534,10 @@ def register_memento_tools(
                     )
 
                 d["items"] = [row for row in d["items"] if _in_scope(row["item_id"])]
+                d["signals"] = [r for r in d["signals"] if _in_scope(r["item_id"])]
+                d["blocking_entities"] = [
+                    b for b in d["blocking_entities"] if b["mission_id"] == scope
+                ]
                 d["slowest_entities"] = [
                     s for s in d["slowest_entities"] if s["mission_id"] == scope
                 ]
