@@ -892,13 +892,22 @@ def process_turn(
         is_healthy = d["health_status"] == "healthy" and not active_evs and ce_event is None
         if is_healthy:
             return {"ok": True, "turn": d["turn_number"]}
-        events = [
-            {
+        # `plane` routes the event: "conversation" is applied silently,
+        # "mission" is surfaced to the operator with its numbers
+        # (MEMENTO_MORI_AGENTS.md §1), so mission rows also carry the item and
+        # the derivation those numbers come from.
+        events = []
+        for e in active_evs:
+            row = {
                 "type": e["type"],
                 "suggested_behavior": e["suggested_behavior"],
+                "plane": e.get("plane") or "conversation",
             }
-            for e in active_evs
-        ]
+            if row["plane"] == "mission":
+                meta = e.get("metadata") or {}
+                row["item_id"] = meta.get("item_id")
+                row["derivation"] = meta.get("derivation") or ""
+            events.append(row)
         if ce_event is not None:
             events.insert(0, ce_event)
         return {

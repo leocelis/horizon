@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `parent_id`, and the response lists `signals` (what is due now, scope-filtered),
   evaluated and never persisted so a read never spends an alert. `blocking_entities` is
   now scope-filtered like `slowest_entities`.
+- **`process_turn` events say their `plane`.** Each active event carries `plane`
+  (`conversation` | `mission`); mission events also carry `item_id` and `derivation`, so an
+  MCP client can surface a due mission with its numbers instead of guessing from the type.
 
 - **Key-less tenant check-or-create for host applications.** `MementoStore.get_tenant(id)`
   reads a tenant (or None) and `MementoStore.ensure_tenant(id, display_label)` creates one
