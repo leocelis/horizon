@@ -108,6 +108,7 @@ class TemporalReference:
     expression: str                              # "yesterday", "next Monday"
     resolved: Optional[str]                      # ISO 8601 or None if unresolvable
     type: Literal["DATE", "TIME", "DURATION", "SET", "UNKNOWN"]
+    error: Optional[str] = None                  # type name if parsing crashed; never the text
 
 @dataclass(frozen=True)
 class SpatialConstraint:
@@ -737,7 +738,7 @@ def resolve_deictic_expressions(text: str, reference_timestamp: str
     return refs
 ```
 
-**Edge case**: `dateparser` can return false positives (e.g., "May" as a name, not a month). The consumer should treat `temporal_references` as suggestions, not ground truth. Unresolvable expressions produce `resolved=None`.
+**Edge case**: `dateparser` can return false positives (e.g., "May" as a name, not a month). The consumer should treat `temporal_references` as suggestions, not ground truth. Unresolvable expressions produce `resolved=None`. A parser crash is not an empty list: one reference comes back with an empty expression and `error` set to the exception type name. The message text is not copied. A missing dateparser install still returns an empty list.
 
 ### 6.7 Conversation Velocity and Acceleration
 

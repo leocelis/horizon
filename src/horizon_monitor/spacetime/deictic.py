@@ -16,6 +16,9 @@ def resolve_deictic_expressions(
 
     Uses dateparser with the conversation timestamp as the relative base.
     Returns TemporalReference objects; unresolvable expressions have resolved=None.
+    A missing dateparser install returns an empty list. A parser crash returns
+    one reference with an empty expression and error set to the exception type
+    name. The message text is not copied.
     """
     try:
         import dateparser.search
@@ -33,8 +36,15 @@ def resolve_deictic_expressions(
                 "PREFER_DAY_OF_MONTH": "first",
             },
         )
-    except Exception:
-        return []
+    except Exception as exc:
+        return [
+            TemporalReference(
+                expression="",
+                resolved=None,
+                type="UNKNOWN",
+                error=type(exc).__name__,
+            )
+        ]
 
     if not results:
         return []

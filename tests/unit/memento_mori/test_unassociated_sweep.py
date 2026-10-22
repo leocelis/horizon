@@ -61,6 +61,9 @@ def test_an_unassociated_session_is_told_something_is_due(stalled):
     assert e.metadata["surface"] == "level"
     assert e.metadata["unassociated_sweep"] is True
     assert e.metadata["derivation"], "surfaced without its derivation"
+    assert "something is due" in e.suggested_behavior
+    assert "forgotten mission" not in e.suggested_behavior
+    assert e.metadata["derivation"] not in e.suggested_behavior
 
 
 def test_the_sweep_does_not_burn_the_alert_edge(stalled):

@@ -1,8 +1,8 @@
-"""MySQL backend — env-gated integration tests.
+"""MySQL backend tests.
 
-These run ONLY when HORIZON_TEST_MYSQL_DSN is set (plus the CA env the
-backend requires). CI and contributors without a MySQL server skip them;
-no server address, credential, or deployment detail lives in this file.
+The error classifier runs with no server. Every test that opens a connection
+skips unless HORIZON_TEST_MYSQL_DSN is set, plus the CA file the backend
+requires. No server address, credential, or deployment detail lives in this file.
 
     export HORIZON_TEST_MYSQL_DSN='mysql://user:pass@host:port/dbname'
     export HORIZON_MYSQL_SSL_CA=/path/to/ca.pem
@@ -18,7 +18,7 @@ from datetime import date, datetime, timezone
 import pytest
 
 DSN = os.environ.get("HORIZON_TEST_MYSQL_DSN")
-pytestmark = pytest.mark.skipif(not DSN, reason="HORIZON_TEST_MYSQL_DSN not set")
+needs_server = pytest.mark.skipif(not DSN, reason="HORIZON_TEST_MYSQL_DSN not set")
 
 UTC = timezone.utc
 
@@ -42,6 +42,7 @@ def scope(mysql_store):
     sc.erase_all()
 
 
+@needs_server
 def test_roundtrip_against_real_mysql(scope):
     from horizon_monitor.memento import EventKind, ItemKind, MementoConfig, evaluate
 
@@ -74,6 +75,7 @@ def test_roundtrip_against_real_mysql(scope):
     assert m.days_since_progress == 47
 
 
+@needs_server
 def test_two_tenant_isolation_on_mysql(mysql_store):
     from horizon_monitor.memento import ItemKind
 
@@ -102,6 +104,7 @@ def test_two_tenant_isolation_on_mysql(mysql_store):
         b.erase_all()
 
 
+@needs_server
 def test_ensure_live_reconnects_after_server_side_close(mysql_store):
     """G-1: kill the connection out from under the store; the next call must
     succeed. Without this, the defect is only reachable by waiting out the
@@ -133,6 +136,7 @@ def test_ensure_live_reconnects_after_server_side_close(mysql_store):
         sc.erase_all()
 
 
+@needs_server
 def test_tenant_resolution_and_rotation_on_mysql(mysql_store):
     sha_old = hashlib.sha256(f"key-{uuid.uuid4()}".encode()).hexdigest()
     sha_new = hashlib.sha256(f"key-{uuid.uuid4()}".encode()).hexdigest()
@@ -166,7 +170,7 @@ def test_permanent_errors_are_classified_without_a_server():
     assert not _is_permanent(Exception("something unexpected"))
 
 
-@pytest.mark.skipif(not DSN, reason="HORIZON_TEST_MYSQL_DSN not set")
+@needs_server
 def test_wrong_credentials_fail_fast_not_after_a_retry_storm():
     """EXECUTES the changed branch against the real server.
 
@@ -189,7 +193,7 @@ def test_wrong_credentials_fail_fast_not_after_a_retry_storm():
     assert elapsed < 20, f"took {elapsed:.1f}s — it retried a permanent failure"
 
 
-@pytest.mark.skipif(not DSN, reason="HORIZON_TEST_MYSQL_DSN not set")
+@needs_server
 def test_a_long_lived_reader_sees_writes_from_another_connection():
     """The store holds ONE connection per process with autocommit off.
 
@@ -230,7 +234,7 @@ def test_a_long_lived_reader_sees_writes_from_another_connection():
         writer.close()
 
 
-@pytest.mark.skipif(not DSN, reason="HORIZON_TEST_MYSQL_DSN not set")
+@needs_server
 def test_every_text_column_is_binary_collated_so_tenant_ids_cannot_collide(mysql_store):
     """A case-insensitive collation makes tenant_id='Acme' match rows stored
     under 'acme' — one tenant silently reading another's missions.
@@ -254,7 +258,7 @@ def test_every_text_column_is_binary_collated_so_tenant_ids_cannot_collide(mysql
     assert not bad, f"case-insensitive columns found: {[dict(r) for r in bad]}"
 
 
-@pytest.mark.skipif(not DSN, reason="HORIZON_TEST_MYSQL_DSN not set")
+@needs_server
 def test_tenant_ids_differing_only_in_case_are_different_tenants(mysql_store):
     """The behavioural half of the collation guard."""
     from datetime import date as _date

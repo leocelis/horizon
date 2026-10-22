@@ -378,7 +378,7 @@ class FidelityMonitor:
         ranked = sorted(pending, key=lambda s: ({"P1": 0, "P2": 1, "P3": 2}.get(s.tier, 3),))
         top = ranked[0]
         others = len(ranked) - 1
-        more = f" ({others} other item{'s' if others != 1 else ''} also due)" if others else ""
+        also = f" {others} other items are also due." if others else ""
         return [
             Event(
                 type=f"status.{top.signal_type}",
@@ -386,11 +386,14 @@ class FidelityMonitor:
                 confidence=1.0,
                 turn=turn_number,
                 suggested_behavior=(
-                    f"No mission is associated with this session, and something is due: "
-                    f"{top.derivation}{more}. State it to the operator with its numbers, "
-                    f"then offer to associate the mission so its signals reach this "
-                    f"session. This is a status level, not an alert — the alert itself "
-                    f"is still pending for the associated turn."
+                    "No mission is associated with this session, and something is due."
+                    + also
+                    + (
+                        " State the tier and the numbers to the operator, "
+                        "then offer to associate the mission so its signals reach this "
+                        "session. This is a status level, not an alert. The alert itself "
+                        "is still pending for the associated turn."
+                    )
                 ),
                 mode=None,
                 metadata={
@@ -680,6 +683,7 @@ class FidelityMonitor:
         grounding_evidence: list[str] = []
         grounding_sources: list[str] = []
         grounding_confidence: float = 0.0
+        grounding_error: str | None = None
         if (
             self._grounding_hook is not None
             and grounding_need >= config.grounding_required_threshold
@@ -695,10 +699,15 @@ class FidelityMonitor:
                     grounding_evidence = list(gres.evidence)
                     grounding_sources = list(gres.sources)
                     grounding_confidence = gres.confidence
-            except GroundingHookError:
-                # Don't crash the pipeline — caller can poll get_last_grounding()
-                # to see why. Pipeline keeps the heuristic-only signal.
-                pass
+            except GroundingHookError as exc:
+                # The turn still completes. The name is the exception type.
+                # The message can contain the text sent to the hook, so it
+                # is not stored.
+                grounding_error = type(exc).__name__
+                self._last_grounding[session.session_id] = GroundingResult(
+                    grounded=False,
+                    error=grounding_error,
+                )
 
         # ── Step 12: Preliminary result for event engine ──────────────────
         preliminary = TurnResult(
@@ -734,6 +743,7 @@ class FidelityMonitor:
             grounding_evidence=grounding_evidence,
             grounding_sources=grounding_sources,
             grounding_confidence=grounding_confidence,
+            grounding_error=grounding_error,
         )
 
         # ── Step 13: Events ───────────────────────────────────────────────

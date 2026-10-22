@@ -979,8 +979,8 @@ verification:
       verification: "tests/unit/test_velocity.py::test_velocity_derivation"
 
     - property: "deictic_idempotence"
-      test: "Same message processed twice with same timestamp produces identical temporal_references; unresolvable expressions return null, not error"
-      verification: "tests/unit/test_deictic.py::test_resolution_idempotent"
+      test: "Same message processed twice with the same timestamp produces identical temporal_references. An expression that cannot be resolved has resolved=None and does not raise. A parser crash returns one reference whose error is the exception type name and whose expression is empty. The message text is not copied."
+      verification: "tests/unit/test_deictic.py::test_resolution_idempotent and tests/unit/test_deictic.py::test_parser_crash_names_the_type_and_drops_the_text"
 
 # ----------------------------------------------------------------------------
 # CHANGELOG

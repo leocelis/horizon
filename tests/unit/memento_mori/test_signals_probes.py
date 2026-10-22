@@ -76,6 +76,8 @@ def test_probe_ready_and_path_ahead_fire_with_full_payload(store) -> None:
     assert path_ahead.item_id == mission_id
     assert path_ahead.n == 1
     assert path_ahead.derivation  # traceable, not a bare number
+    assert "channel-b" not in path_ahead.derivation
+    assert "probe 1 " in path_ahead.derivation
     assert path_ahead.payload["probe_sojourn_days"] == 4
     assert path_ahead.payload["incumbent_accrued_delay_days"] == 17
 

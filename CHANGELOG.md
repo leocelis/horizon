@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Instruction text does not include a caller-supplied title.** Derivation sentences carry the measurement. The title stays on `slot_label`, `path_key`, and the clock row.
+- **A failed check is named, and the message text is not copied.** A grounding-hook crash still finishes the turn. `TurnResult.grounding_error` and `GroundingResult.error` are the exception type name. A date-parser crash returns one `TemporalReference` with an empty expression and `error` set to the type name. A missing dateparser install still returns an empty list.
 - **Keys registered in the store authenticate.** With a mission store configured, the HTTP
   gate accepts a key whose sha256 has an active `horizon_api_keys` row as well as keys in
   `HORIZON_API_KEYS`, so a host application can register a tenant's key at sign-up and use

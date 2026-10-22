@@ -99,17 +99,29 @@ def test_no_hook_means_no_outbound_callout() -> None:
 
 
 def test_hook_failure_does_not_crash_pipeline() -> None:
+    secret = "customer note 4412"
+
     def bad_hook(*, human_message: str, agent_draft: str) -> GroundingResult:
-        raise RuntimeError("retrieval index offline")
+        raise RuntimeError(f"retrieval index offline: {secret} {human_message}")
 
     monitor = FidelityMonitor(grounding_hook=bad_hook)
     sid = monitor.new_conversation()
+    human = "Tell me about Postgres."
     result = monitor.process_turn(
         sid,
-        "Tell me about Postgres.",
+        human,
         "Jones et al. (2023) reported 47%; see RFC 9999.",
     )
     assert result.grounding_evidence == []
+    assert result.grounding_error == "GroundingHookError"
+    assert secret not in (result.grounding_error or "")
+    assert human not in (result.grounding_error or "")
+    last = monitor.get_last_grounding(sid)
+    assert last is not None
+    assert last.grounded is False
+    assert last.evidence == []
+    assert last.error == "GroundingHookError"
+    assert secret not in (last.error or "")
     assert any(e.type == "signal.grounding_required" for e in result.events)
 
 

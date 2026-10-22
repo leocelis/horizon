@@ -46,7 +46,7 @@ def build_comparison(
     path_ahead = False
     derivation_parts: list[str] = []
 
-    for probe_item, sojourn_days, is_open in probes:
+    for index, (probe_item, sojourn_days, is_open) in enumerate(probes, start=1):
         accrued = (t_eval - probe_item.created_valid.date()).days
         completed = sojourn_days is not None and not is_open
 
@@ -75,8 +75,9 @@ def build_comparison(
             path_ahead = True
 
         sojourn_text = "not yet completed" if not completed else f"{sojourn_days}d"
+        # Index only. The caller-supplied title stays on path_key.
         derivation_parts.append(
-            f"probe {probe_item.title!r} sojourn={sojourn_text} vs incumbent accrued "
+            f"probe {index} sojourn={sojourn_text} vs incumbent accrued "
             f"delay={accrued}d since registered {probe_item.created_valid.date()}"
         )
 

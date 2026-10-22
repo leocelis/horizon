@@ -328,15 +328,16 @@ def _compute_slowest_entities(
         is_person = winner_item.namespace == "person"
         slot_label = "person" if is_person else winner_item.title
         censored = bool(winner_row.is_open_stage)
+        # Measurement only. The caller-supplied title stays on slot_label.
         derivation = (
             f"slowest_entity = argmax(time_in_stage_days) over {len(measured)} recorded "
-            f"entities (open and closed alike); winner {slot_label!r} "
+            f"entities (open and closed alike); "
             f"time_in_stage_days={winner_row.time_in_stage_days}d, "
             f"is_open={winner_row.is_open_stage}"
             + (
-                " — still accruing, so this is a censored lower bound"
+                ", still accruing, so this is a censored lower bound"
                 if censored
-                else " — closed sojourn, final value"
+                else ", closed sojourn, final value"
             )
         )
         result.append(
@@ -397,8 +398,8 @@ def _compute_blocking_entities(items, rows_by_id) -> list:
                 open_age_days=winner_row.time_in_stage_days,
                 derivation=(
                     f"blocking_entity = argmax(open sojourn age) over {len(open_rows)} "
-                    f"OPEN entities; winner {slot_label!r} open_age_days="
-                    f"{winner_row.time_in_stage_days}d (still accruing)"
+                    f"OPEN entities; open_age_days="
+                    f"{winner_row.time_in_stage_days}d, still accruing"
                 ),
                 n=len(open_rows),
             )

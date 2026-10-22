@@ -72,3 +72,23 @@ def test_resolution_idempotent() -> None:
         assert ra.type == rb.type
 
     assert resolve_deictic_expressions("", REF_TS) == []
+
+
+def test_parser_crash_names_the_type_and_drops_the_text(monkeypatch) -> None:
+    """A parser crash is not an empty list, and the message text is not copied."""
+    import dateparser.search
+
+    secret = "the private note 4412"
+
+    def boom(*_args, **_kwargs):
+        raise RuntimeError(secret)
+
+    monkeypatch.setattr(dateparser.search, "search_dates", boom)
+    refs = resolve_deictic_expressions(secret, REF_TS)
+    assert len(refs) == 1
+    ref = refs[0]
+    assert ref.expression == ""
+    assert ref.resolved is None
+    assert ref.type == "UNKNOWN"
+    assert ref.error == "RuntimeError"
+    assert secret not in f"{ref.expression} {ref.resolved} {ref.error}"

@@ -45,12 +45,15 @@ class GroundingResult:
                     grounding; 1 = strong, verified evidence.
         sources: List of source identifiers (URLs, document IDs, KB rows)
                  the agent can cite alongside the evidence.
+        error: Exception type name when the hook crashed. None otherwise.
+               Never the message text.
     """
 
     grounded: bool
     evidence: list[str] = field(default_factory=list)
     confidence: float = 0.0
     sources: list[str] = field(default_factory=list)
+    error: str | None = None
 
 
 class ToolHook(Protocol):

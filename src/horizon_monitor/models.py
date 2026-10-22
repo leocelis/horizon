@@ -19,6 +19,10 @@ class TemporalReference:
 
     type: Literal["DATE", "TIME", "DURATION", "SET", "UNKNOWN"] = "UNKNOWN"
 
+    error: str | None = None
+    """Exception type name when parsing crashed. None when it did not.
+    Never the message text."""
+
 
 @dataclass(frozen=True)
 class SpatialConstraint:
@@ -134,6 +138,10 @@ class TurnResult:
 
     grounding_confidence: float = 0.0
     """[0, 1] confidence reported by the grounding hook (0 if no hook fired)."""
+
+    grounding_error: str | None = None
+    """Exception type name when the grounding hook crashed. None when it did not.
+    Never the message text."""
 
     def to_dict(self) -> dict:
         """Serialize to JSON-compatible dict."""
