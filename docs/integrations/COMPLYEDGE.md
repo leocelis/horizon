@@ -113,7 +113,7 @@ ID and that text answers whether they match
 Requires `mcp>=1.19`.
 
 Optional: `COMPLYEDGE_API_URL` (default `https://api.complyedge.io`),
-`COMPLYEDGE_AGENT_ID`, `COMPLYEDGE_JURISDICTION`, `COMPLYEDGE_TIMEOUT_S` (default 5).
+`COMPLYEDGE_AGENT_ID`, `COMPLYEDGE_JURISDICTION`, `COMPLYEDGE_TIMEOUT_S` (default 15: a cold ComplyEdge instance can take ~8 s to answer, and a check that times out is skipped, verdict and Log ID with it).
 Tests: `tests/unit/test_runtime_compliance.py`, `tests/unit/test_complyedge_log_ids.py`.
 
 ---
