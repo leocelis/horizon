@@ -211,7 +211,19 @@ REQUIRE HUMAN APPROVAL:
 
 # ── FastMCP app ───────────────────────────────────────────────────────────────
 
-mcp = FastMCP(
+class _HorizonMCP(FastMCP):
+    """FastMCP whose tool results carry the turn's ComplyEdge Log IDs in _meta."""
+
+    async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
+        holder, token = compliance.open_call()
+        try:
+            result = await super().call_tool(name, arguments)
+        finally:
+            compliance.close_call(token)
+        return compliance.with_log_ids(result, holder) if holder else result
+
+
+mcp = _HorizonMCP(
     "horizon-fidelity-monitor",
     instructions=_INSTRUCTIONS,
     transport_security=_transport_security(),
@@ -882,13 +894,13 @@ def process_turn(
         # cannot un-send the turn; it comes back as an alert.compliance event.
         ce_event = None
         if compliance.enabled():
-            ce_event = compliance.compliance_event(
-                compliance.check_turn(
-                    human_message,
-                    agent_response,
-                    compliance.attribution(current_key_sha.get(), session_id),
-                )
+            verdicts = compliance.check_turn(
+                human_message,
+                agent_response,
+                compliance.attribution(current_key_sha.get(), session_id),
             )
+            compliance.note_log_ids(verdicts)
+            ce_event = compliance.compliance_event(verdicts)
         is_healthy = d["health_status"] == "healthy" and not active_evs and ce_event is None
         if is_healthy:
             return {"ok": True, "turn": d["turn_number"]}

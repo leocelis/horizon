@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **ComplyEdge Log IDs reach the caller.** With `COMPLYEDGE_API_KEY` set, every `process_turn`
+  result carries `_meta.complyedge` `{input_event_id, output_event_id}` (the
+  `human_message` and `agent_response` checks), outside the result text. Requires
+  `mcp>=1.19`. Privacy Policy and DPA v1.3: ComplyEdge keeps an HMAC-SHA-256 keyed
+  fingerprint and pseudonymous IDs for 184 days.
 - **Instruction text does not include a caller-supplied title.** Derivation sentences carry the measurement. The title stays on `slot_label`, `path_key`, and the clock row.
 - **A failed check is named, and the message text is not copied.** A grounding-hook crash still finishes the turn. `TurnResult.grounding_error` and `GroundingResult.error` are the exception type name. A date-parser crash returns one `TemporalReference` with an empty expression and `error` set to the type name. A missing dateparser install still returns an empty list.
 - **Keys registered in the store authenticate.** With a mission store configured, the HTTP

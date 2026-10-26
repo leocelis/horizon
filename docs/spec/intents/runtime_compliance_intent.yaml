@@ -92,6 +92,22 @@ constraints:
     assumption_status: "KNOWN"
     consequence_if_violated: "A compliance outage breaks turn recording, or OSS users send text they never opted into."
 
+  - name: "log_ids_reach_the_caller"
+    requirement: "With COMPLYEDGE_API_KEY set, every process_turn result carries _meta.complyedge {input_event_id, output_event_id} (human_message, agent_response checks), null where a check did not run, outside the result text. Without the key there is no _meta; other tools carry none."
+    test: "tests/unit/test_complyedge_log_ids.py::test_allowed_turn_returns_both_log_ids_outside_the_text"
+    regression_tests:
+      - "tests/unit/test_complyedge_log_ids.py::test_fail_open_reports_null_log_ids"
+      - "tests/unit/test_complyedge_log_ids.py::test_no_key_means_no_meta"
+      - "tests/unit/test_complyedge_log_ids.py::test_other_tools_carry_no_meta"
+    test_provenance: "execution_derived"
+    execution_oracle:
+      type: "differential_test"
+      path: "tests/unit/test_complyedge_log_ids.py"
+      description: "Real MCP request handler against a /v1/check stub returning known event_ids; the IDs come back in _meta and never in the text."
+    entropy: "near-zero"
+    assumption_status: "KNOWN"
+    consequence_if_violated: "ComplyEdge keeps only a fingerprint and Horizon keeps no text, so without the Log ID the caller cannot show which audit record covers which turn."
+
 constraint_satisfiability:
   conflicts_checked:
     - "violation_reaches_the_agent vs fail_open: only an explicit allowed=false produces an event; no verdict produces none."

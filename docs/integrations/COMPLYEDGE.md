@@ -89,9 +89,32 @@ as usual and the skip is logged (fail-open). Only `process_turn` carries model i
 output; the other tools carry settings and mission records and are not checked. Without
 the key nothing is sent, and the core `FidelityMonitor` never calls out.
 
+### Log IDs
+
+ComplyEdge keeps a keyed fingerprint of each checked text, never the text. Every check
+returns an `event_id` (the Log ID), and a Log ID only proves something next to a copy of
+the text. Horizon keeps no raw text, so it hands both Log IDs back in the `process_turn`
+result's `_meta`, outside the result text:
+
+```json
+{"complyedge": {"input_event_id": "...", "output_event_id": "..."}}
+```
+
+| Log ID | Text it covers |
+|--------|----------------|
+| `input_event_id` | the `human_message` you sent |
+| `output_event_id` | the `agent_response` you sent |
+
+A Log ID is `null` when that check did not run (ComplyEdge unreachable); without the key
+there is no `_meta`. A text longer than 50,000 characters is checked on its first 50,000.
+Store each Log ID next to your copy of the turn. Later, `POST /v1/audit/verify` with a Log
+ID and that text answers whether they match
+([how audit reconciliation works](https://complyedge.io/docs/audit-reconciliation.html)).
+Requires `mcp>=1.19`.
+
 Optional: `COMPLYEDGE_API_URL` (default `https://api.complyedge.io`),
 `COMPLYEDGE_AGENT_ID`, `COMPLYEDGE_JURISDICTION`, `COMPLYEDGE_TIMEOUT_S` (default 5).
-Tests: `tests/unit/test_runtime_compliance.py`.
+Tests: `tests/unit/test_runtime_compliance.py`, `tests/unit/test_complyedge_log_ids.py`.
 
 ---
 
