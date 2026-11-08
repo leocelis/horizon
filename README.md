@@ -93,7 +93,7 @@ That's it. Reload your MCP client and three tools appear: `new_conversation`, `p
 
 ### Path 2 — pip install (library integration)
 
-Python 3.10–3.12.
+Python 3.10–3.14.
 
 ```bash
 pip install horizon-monitor

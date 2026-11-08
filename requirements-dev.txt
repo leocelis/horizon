@@ -8,9 +8,11 @@
 # Unpinned `sentence-transformers>=2.2.0` currently resolves to 5.6.0, which pulls
 # transformers 5.x while torch stays at 2.2.x → ~62 embedding tests error on model load.
 # numpy>=2 can break the torch 2.2 / scipy stack used in tests.
-transformers==4.40.2
-sentence-transformers==2.7.0
-numpy<2
+# 3.13+ has no wheels for this stack; pyproject's python_version markers pick the
+# newer one there.
+transformers==4.40.2; python_version < "3.13"
+sentence-transformers==2.7.0; python_version < "3.13"
+numpy<2; python_version < "3.13"
 # black>=24 floated to 26.x and changed paren wrapping, so `black --check`
 # failed before pytest. Pin the version the tree is formatted to.
 black==26.5.1

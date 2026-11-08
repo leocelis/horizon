@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-08
+
+- **Installs on Python 3.13 and 3.14.** The 0.2.2 stack (`transformers<4.41`, `numpy<2`)
+  has no wheels there, so 3.13+ now uses transformers 4.57+, sentence-transformers 5.7+
+  and numpy 2.1+ through `python_version` markers. 3.10–3.12 keep the old pins. Scores on
+  the new stack match the old one to 1e-7 on a 5-turn run, with the same events. CI tests
+  3.10 to 3.14.
 ## [0.3.0] - 2026-11-08
 
 - **Python 3.10–3.12 only, stated in the metadata.** `requires-python` is now `>=3.10,<3.13`.
