@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-08
+
+- **Python 3.10–3.12 only, stated in the metadata.** `requires-python` is now `>=3.10,<3.13`.
+  The validated `transformers<4.41` pin needs `tokenizers` 0.19, which ships no wheels for
+  3.13+, so installs there failed to build.
+- **The empty `[nli]` extra is gone.** No code used it. `consistency_method="nli"` is
+  documented as planned; every value runs the fast path.
+- **README matches the code.** PyPI install restored as Path 2, source install clones the repo,
+  the seven mission tools are listed, `TurnResult` has 33 fields (grounding table added), event
+  table rows render, "no LLM calls" replaces "zero model calls", the Laban et al. citation
+  uses the paper's wording, and the layout shows `src/horizon_monitor/`.
+- **Package summary and MCP registry description** describe the monitor instead of THCP.
 - **ComplyEdge checks wait 15 s by default (was 5).** A cold ComplyEdge instance answers in
   about 8 s; with 5 s the check was skipped, so the caller lost the verdict and the Log ID
   of a record ComplyEdge had written. `COMPLYEDGE_TIMEOUT_S` still overrides it.

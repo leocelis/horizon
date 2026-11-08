@@ -8,9 +8,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "horizon-monitor"
 version = "0.3.0"
-description = "THCP Fidelity Monitor — 4D conversation dynamics for AI agents"
+description = "Real-time conversation health monitor for AI agents: drift, desync and causal reachability, with no LLM calls."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 license = "MIT"
 authors = [{name = "Leo Celis"}]
 keywords = ["ai", "conversation", "fidelity", "monitoring", "nlp", "spacetime", "mcp", "agent", "observability", "llm", "conversation-quality"]
@@ -40,7 +40,6 @@ Changelog = "https://github.com/leocelis/horizon/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 geoip = ["geoip2>=4.0"]
-nli = ["torch>=2.0", "transformers>=4.30"]
 mysql = ["PyMySQL>=1.1"]
 mcp = [
     "mcp>=1.19,<2",  # 1.19: FastMCP passes a returned CallToolResult (Log IDs in _meta) through; 2.x renamed FastMCP -> MCPServer
@@ -63,7 +62,7 @@ dev = [
     "ruff>=0.4",
     "black>=26.5.1,<27",
 ]
-full = ["horizon-monitor[geoip,nli,mcp,mysql,langsmith,langfuse,otel,arize]"]
+full = ["horizon-monitor[geoip,mcp,mysql,langsmith,langfuse,otel,arize]"]
 
 [project.scripts]
 horizon = "horizon_monitor.mcp.cli:main"

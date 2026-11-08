@@ -211,6 +211,7 @@ REQUIRE HUMAN APPROVAL:
 
 # ── FastMCP app ───────────────────────────────────────────────────────────────
 
+
 class _HorizonMCP(FastMCP):
     """FastMCP whose tool results carry the turn's ComplyEdge Log IDs in _meta."""
 

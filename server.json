@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.leocelis/horizon-fidelity-monitor",
   "title": "Horizon Fidelity Monitor",
-  "description": "Tracks conversation health in real time \u2014 drift, desync, and causal collapse \u2014 for any AI agent.",
-  "version": "0.2.3",
+  "description": "Real-time conversation health for AI agents: drift, desync, causal collapse, plus mission clocks.",
+  "version": "0.3.0",
   "repository": {
     "url": "https://github.com/leocelis/horizon",
     "source": "github",

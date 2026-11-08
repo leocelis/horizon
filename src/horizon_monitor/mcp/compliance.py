@@ -195,4 +195,6 @@ def with_log_ids(result: Any, ids: dict) -> Any:
     elif isinstance(result, dict):
         structured = result
         result = [TextContent(type="text", text=json.dumps(result, indent=2))]
-    return CallToolResult(content=list(result or []), structuredContent=structured, _meta={META_KEY: ids})
+    return CallToolResult(
+        content=list(result or []), structuredContent=structured, _meta={META_KEY: ids}
+    )

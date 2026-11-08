@@ -63,7 +63,8 @@ class Config:
     projection that required impossible decay rates to fire."""
 
     consistency_method: Literal["fast", "nli"] = "fast"
-    """fast = Tier 1 (bipredictability only); nli = adds Tier 3 cross-encoder."""
+    """fast = Tier 1 (bipredictability only). nli (Tier 3 cross-encoder) is planned and not
+    implemented: every value runs the fast path."""
 
     contradiction_method: Literal["coherence", "claim_tracker"] = "claim_tracker"
     """coherence = v0.1 behaviour (alert.contradiction fires only when

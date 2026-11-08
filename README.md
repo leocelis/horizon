@@ -19,17 +19,17 @@ configure a store. See [Mission plane](#mission-plane-memento-mori).
 
 Horizon is **not** a manipulation, sycophancy, or human-influence detector — it measures conversation *dynamics*, not whether an agent is steering or flattering the user. See [LEGAL.md §1](LEGAL.md#1-what-horizon-is--and-is-not).
 
-Why an external monitor? LLMs have *limited and unreliable* self-knowledge: introspection research shows partial self-access that is brittle and degrades on complex or out-of-distribution tasks ([Binder et al. 2024](https://arxiv.org/abs/2410.13787); [arXiv:2512.12411](https://arxiv.org/abs/2512.12411)). So rather than depend on a model reporting its own conversation dynamics, Horizon measures them externally with cheap, deterministic, always-on arithmetic that does not call the model at all.
+Why an external monitor? LLMs have *limited and unreliable* self-knowledge: introspection research shows partial self-access that is brittle and degrades on complex or out-of-distribution tasks ([Binder et al. 2024](https://arxiv.org/abs/2410.13787); [arXiv:2512.12411](https://arxiv.org/abs/2512.12411)). So rather than depend on a model reporting its own conversation dynamics, Horizon measures them externally with cheap, deterministic, always-on arithmetic over a small local embedding model, with no LLM calls.
 
 ---
 
 ## Why this exists
 
-Multi-turn AI agents lose accuracy. The ICLR 2026 Outstanding Paper ["LLMs Get Lost In Multi-Turn Conversation"](https://iclr.cc/virtual/2026/poster/10009146) (Laban, Hayashi, Zhou & Neville — Microsoft Research / Salesforce Research) reports **39% average accuracy degradation** across multi-turn evaluation — a structural property that standard observability tools (LangSmith, RAGAS, DeepEval) cannot see because they measure responses, not conversations.
+Multi-turn AI agents lose accuracy. The ICLR 2026 oral paper ["LLMs Get Lost In Multi-Turn Conversation"](https://iclr.cc/virtual/2026/poster/10009146) (Laban, Hayashi, Zhou & Neville) reports an **average 39% performance drop** across six generation tasks when instructions arrive over multiple turns — a structural property that standard observability tools (LangSmith, RAGAS, DeepEval) cannot see because they measure responses, not conversations.
 
-Horizon was built to close that gap. **It is observability first:** it surfaces conversation dynamics that response-level tools miss, using cheap deterministic arithmetic with zero model calls. In four controlled A/B scenarios where Horizon events drove a re-grounding intervention we measured a **+15.7% composite quality lift** and **87% fewer hallucination events** — but those are *synthetic, scripted scenarios with a hand-tuned controller*, not a production result. Treat them as promising in-house evidence, not a guaranteed outcome (see [Validation](#validation) and [LEGAL.md §5](LEGAL.md#5-performance-claims--scope-and-substantiation)). Every signal — information gain, divergence, estimated ontological gap width, causal reachability — is a standard information-theory or arithmetic measure computed on text embeddings and timestamps; see [4D Spacetime Signals](#4d-spacetime-signals) for the full definitions.
+Horizon was built to close that gap. **It is observability first:** it surfaces conversation dynamics that response-level tools miss, using cheap deterministic arithmetic and a small local embedding model, with no LLM calls. In four controlled A/B scenarios where Horizon events drove a re-grounding intervention we measured a **+15.7% composite quality lift** and **87% fewer hallucination events** — but those are *synthetic, scripted scenarios with a hand-tuned controller*, not a production result. Treat them as promising in-house evidence, not a guaranteed outcome (see [Validation](#validation) and [LEGAL.md §5](LEGAL.md#5-performance-claims--scope-and-substantiation)). Every signal — information gain, divergence, estimated ontological gap width, causal reachability — is a standard information-theory or arithmetic measure computed on text embeddings and timestamps; see [4D Spacetime Signals](#4d-spacetime-signals) for the full definitions.
 
-- Read the demand proof → [ICLR 2026 Outstanding Paper (Laban et al.)](https://iclr.cc/virtual/2026/poster/10009146)
+- Read the demand proof → [ICLR 2026 oral paper (Laban et al.)](https://iclr.cc/virtual/2026/poster/10009146)
 - Read the category argument → [`docs/content/naming-the-category-conversation-dynamics-monitoring.md`](docs/content/naming-the-category-conversation-dynamics-monitoring.md)
 - Read the engineering case → [`docs/content/why-every-production-agent-needs-conversation-dynamics-monitoring.md`](docs/content/why-every-production-agent-needs-conversation-dynamics-monitoring.md)
 
@@ -87,13 +87,13 @@ Request an alpha key → [open a Discussion](https://github.com/leocelis/horizon
 }
 ```
 
-That's it. Reload your MCP client and three tools appear: `new_conversation`, `process_turn`, `configure_session`.
+That's it. Reload your MCP client and three tools appear: `new_conversation`, `process_turn`, `configure_session`. With a mission store configured, seven more appear: `clock_register`, `clock_progress`, `clock_status`, `clock_propose`, `clock_ack`, `clock_close`, `associate_mission` (see [Mission plane](#mission-plane-memento-mori)).
 
 > **Alpha access:** Horizon's hosted endpoint is in private alpha. Keys are distributed to agent developers who want to monitor real projects. [Open a Discussion](https://github.com/leocelis/horizon/discussions/new?category=q-a) to request one — describe your use case and we'll send a key.
 
 ### Path 2 — pip install (library integration)
 
-**Not yet published to PyPI — until it is, use [Path 3](#path-3--mcp-server-from-source) (install from source) below.**
+Python 3.10–3.12.
 
 ```bash
 pip install horizon-monitor
@@ -108,7 +108,8 @@ horizon-validate
 ### Path 3 — MCP server from source
 
 ```bash
-pip install 'horizon-monitor[mcp]'
+git clone https://github.com/leocelis/horizon && cd horizon
+pip install -e '.[mcp]'
 horizon serve                             # stdio — for Cursor, Claude Desktop
 horizon serve --transport sse --port 3847 # SSE — for web/team deployments
 ```
@@ -251,7 +252,7 @@ for user_message in conversation:
 > depends on the analogy being literally true, and the Lorentzian `interval_class` is emitted as
 > descriptive metadata only — no event or score depends on it.
 
-Every `process_turn()` returns a `TurnResult` with 32 fields across five signal families:
+Every `process_turn()` returns a `TurnResult` with 33 fields across six signal families:
 
 ### Core (always present)
 
@@ -306,9 +307,19 @@ Every `process_turn()` returns a `TurnResult` with 32 fields across five signal 
 | `spatial_constraint` | Attention budget, screen capacity, max response length |
 | `spatial_frame_shift` | Context switch magnitude |
 
+### Grounding (always computed; 0.0 when no claims are detected)
+
+| Signal | Description |
+|---|---|
+| `grounding_need` | Heuristic [0, 1] estimate of how badly the turn needs external grounding |
+| `grounding_evidence` | Evidence strings returned by a registered grounding hook (empty without one) |
+| `grounding_sources` | Source identifiers returned by the hook |
+| `grounding_confidence` | [0, 1] confidence reported by the hook (0 if no hook fired) |
+| `grounding_error` | Exception type name when the hook crashed, else `None` |
+
 ---
 
-## 16 Event Types (conversation plane)
+## 16 Event Types (conversation plane), plus `alert.compliance` from the MCP server
 
 All events default to **observe mode** (emitted, not acted on). Enable active mode via `configure()` once your event achieves ≥ 0.7 precision/recall on your domain.
 
@@ -329,11 +340,12 @@ All events default to **observe mode** (emitted, not acted on). Enable active mo
 | `signal.pace_shift` | Conversation acceleration above pace threshold |
 | `signal.light_cone_collapse` | Reachable fraction below light-cone threshold |
 
+| `signal.grounding_required` | Heuristic grounding-need score crosses threshold — agent should hedge or cite grounding evidence |
+| `signal.pace_premature_report` | User replied faster than a previously flagged deferred action could plausibly complete, with no completion signal |
+
 MCP server only, and only when it has `COMPLYEDGE_API_KEY`: `alert.compliance` (always
 active) — ComplyEdge flagged the turn's `human_message` or `agent_response` under an EU AI
 Act rule; the event names the rule so the next reply does not build on that content.
-| `signal.grounding_required` | Heuristic grounding-need score crosses threshold — agent should hedge or cite grounding evidence |
-| `signal.pace_premature_report` | User replied faster than a previously flagged deferred action could plausibly complete, with no completion signal |
 
 ---
 
@@ -592,8 +604,6 @@ result = monitor.export_to(session_id, target="langsmith",
     connection={"api_key": "ls__..."})
 ```
 
-**Not yet published to PyPI — see [Path 3](#path-3--mcp-server-from-source) for a source install in the meantime.**
-
 ```bash
 pip install horizon-monitor[langsmith]   # or langfuse, otel, arize
 ```
@@ -619,12 +629,12 @@ Core pipeline (< 50ms on CPU):
  15. Event evaluation   — 16 threshold checks
  16. Optional: SQLite persistence
 
-Output: TurnResult dataclass (32 fields)
+Output: TurnResult dataclass (33 fields)
 ```
 
 **Design constraints (test-enforced):**
 - Zero LLM calls — pure arithmetic and local embeddings
-- Zero external network calls by default — fully local
+- Zero external network calls by default after a one-time embedding-model download (pre-cached in Docker) — fully local
 - Zero transitive framework dependencies in core
 - < 50ms core pipeline on CPU — soft target (CI flags regressions past 50ms and hard-fails at 150ms)
 - < 100MB memory for 100-turn conversations — hard-enforced at the claimed value
@@ -642,7 +652,7 @@ proven outcome guarantee. Here is the honest status of each claim:
 |---|---|---|
 | Fidelity correlates with human ratings (in-domain) | ✅ measured (ρ ≈ 0.6–0.7) | gates below |
 | Signal beats naive heuristics | ✅ measured | V3 |
-| Holds on a **third-party** corpus (out-of-domain) | ❌ tested — ρ = **0.039** on MT-Bench expert judgments (n=80; below 0.3 floor); needs direct quality labels | [`V0_2_0_EVIDENCE.md` §Fix 4](docs/reviews/V0_2_0_EVIDENCE.md#fix-4--cross-domain-in-repo), [`adapt_external_corpus.py`](scripts/adapt_external_corpus.py) |
+| Holds on a **third-party** corpus (out-of-domain) | ❌ tested — ρ = **0.039** on MT-Bench expert judgments (n=80; below 0.3 floor); needs direct quality labels | [`V0_2_0_EVIDENCE.md` §Fix 4](docs/reviews/V0_2_0_EVIDENCE.md#fix-4--ood-on-third-party-corpus-2026-06-19), [`adapt_external_corpus.py`](scripts/adapt_external_corpus.py) |
 | Events **predict** degradation (leading, not lagging) | ⚠️ tested on MT-Bench — **insufficient-data** (2-turn chats; events rarely fire); tool works | [`leading_indicator.json`](docs/reviews/leading_indicator.json), [`measure_leading_indicator.py`](scripts/measure_leading_indicator.py) |
 | Acting on events **improves outcomes** (+15.7%) | ⚠️ synthetic A/B only; needs an independent corpus | [`run_interventional_ab.py`](scripts/run_interventional_ab.py), [LEGAL.md §5](LEGAL.md#5-performance-claims--scope-and-substantiation) |
 
@@ -717,12 +727,15 @@ Integration guide: [`docs/integrations/COMPLYEDGE.md`](docs/integrations/COMPLYE
 
 ```
 horizon/
-├── src/horizon/         # package source (PEP 517/518 src/ layout)
+├── src/horizon_monitor/ # package source (PEP 517/518 src/ layout)
 │   ├── engines/         # IGT, D_JS, TWR, coherence, fidelity, epsilon, mode
 │   ├── spacetime/       # temporal, circadian, deictic, velocity, interval, light cone, spatial
 │   ├── events/          # 16-event evaluator
 │   ├── integrations/    # OpenAI, Anthropic, LangChain, export targets
 │   ├── mcp/             # MCP server + CLI
+│   ├── memento/         # mission plane (Memento Mori)
+│   ├── analysis/        # offline trajectory analysis
+│   ├── context/         # context-window tracking
 │   └── storage/         # optional SQLite persistence
 ├── tests/               # unit / integration / e2e / perf / validation
 ├── examples/            # runnable framework demos
