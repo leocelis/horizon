@@ -3,7 +3,7 @@
   "name": "io.github.leocelis/horizon-fidelity-monitor",
   "title": "Horizon Fidelity Monitor",
   "description": "Real-time conversation health for AI agents: drift, desync, causal collapse, plus mission clocks.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "repository": {
     "url": "https://github.com/leocelis/horizon",
     "source": "github",

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-08
+
+- **`horizon-validate` passes on a fresh install.** Since 0.2.0 it reported "1/5 scenarios
+  failed": the convergent scenario set only `convergence_threshold`, which 0.2.0 narrowed to
+  the IGT slope, and left the absolute check at the default `convergence_igt_ceiling` (0.35).
+  The scenario now sets both, as the convergence unit test does. A new test runs every
+  validator scenario, so CI fails if one breaks.
+
 ## [0.3.1] - 2026-11-08
 
 - **Installs on Python 3.13 and 3.14.** The 0.2.2 stack (`transformers<4.41`, `numpy<2`)

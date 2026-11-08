@@ -148,7 +148,11 @@ def scenario_healthy_conversation(monitor: FidelityMonitor) -> list[tuple[str, b
 def scenario_convergent_conversation(monitor: FidelityMonitor) -> list[tuple[str, bool, str]]:
     """A conversation that's wrapping up should show declining IGT and converged health."""
     sid = monitor.new_conversation()
-    monitor.configure(session_id=sid, convergence_threshold=0.95)
+    # Loose on both convergence checks, as in tests/unit/test_events.py. Since
+    # v0.2.0 convergence_threshold governs only the IGT slope; the absolute IGT
+    # check is convergence_igt_ceiling (default 0.35). Setting only the first one
+    # left this scenario failing on every install from v0.2.0 on.
+    monitor.configure(session_id=sid, convergence_threshold=0.95, convergence_igt_ceiling=0.95)
     base = datetime.now(timezone.utc)
 
     turns = [
@@ -339,6 +343,17 @@ def scenario_spatial_context(monitor: FidelityMonitor) -> list[tuple[str, bool, 
 # ── Driver ────────────────────────────────────────────────────────────────
 
 
+SCENARIOS = [
+    ("Healthy technical conversation", scenario_healthy_conversation),
+    ("Convergent conversation (winding down)", scenario_convergent_conversation),
+    ("Drifting conversation (off-topic agent)", scenario_drifting_conversation),
+    ("Temporal desync (3-day gap)", scenario_temporal_desync),
+    ("Spatial context shift (desktop → mobile)", scenario_spatial_context),
+]
+"""The scenarios `horizon-validate` runs, in order. tests/unit/test_validate_scenarios.py
+runs the same list, so a scenario that fails on a fresh install fails CI."""
+
+
 def main() -> int:
     print(f"{BOLD}Horizon Fidelity Monitor — validation harness{RESET}")
     print(
@@ -354,15 +369,7 @@ def main() -> int:
     EmbeddingEngine(model_name=Config().embedding_model).ensure_loaded()
     print(f"{GREEN}done{RESET} ({(time.perf_counter() - t0) * 1000:.0f}ms)")
 
-    scenarios = [
-        ("Healthy technical conversation", scenario_healthy_conversation),
-        ("Convergent conversation (winding down)", scenario_convergent_conversation),
-        ("Drifting conversation (off-topic agent)", scenario_drifting_conversation),
-        ("Temporal desync (3-day gap)", scenario_temporal_desync),
-        ("Spatial context shift (desktop → mobile)", scenario_spatial_context),
-    ]
-
-    results = [run_scenario(name, fn) for name, fn in scenarios]
+    results = [run_scenario(name, fn) for name, fn in SCENARIOS]
 
     print(f"\n{BOLD}{'=' * 60}{RESET}")
     passed = sum(1 for r in results if r.passed)

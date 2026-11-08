@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "horizon-monitor"
-version = "0.3.1"
+version = "0.3.2"
 description = "Real-time conversation health monitor for AI agents: drift, desync and causal reachability, with no LLM calls."
 readme = "README.md"
 requires-python = ">=3.10,<3.15"
