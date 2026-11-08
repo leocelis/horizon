@@ -14,7 +14,7 @@ one Horizon conversation per chat):
 from __future__ import annotations
 
 import hashlib
-from datetime import UTC, date, datetime
+from datetime import date, datetime, timezone
 
 import pytest
 from mcp.server.fastmcp import FastMCP
@@ -212,14 +212,14 @@ def test_reopened_id_after_restart_still_receives_its_mission_association(
         root = scoped.register_item(
             kind=ItemKind.HORIZON,
             title="Acme horizon",
-            created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+            created_valid=datetime(2026, 1, 1, tzinfo=timezone.utc),
             end_date=date(2030, 1, 1),
         )
         mission = scoped.register_item(
             kind=ItemKind.MISSION,
             title="Acme mission",
             parent_id=root,
-            created_valid=datetime(2026, 1, 2, tzinfo=UTC),
+            created_valid=datetime(2026, 1, 2, tzinfo=timezone.utc),
         )
         monkeypatch.setattr(srv, "_memento_store", st)
         sha_tok = auth_mod.current_key_sha.set(sha)

@@ -9,7 +9,7 @@ mission from a drift alert, and the mission's derivation never reached it.
 from __future__ import annotations
 
 import hashlib
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from mcp.server.fastmcp import FastMCP
 
@@ -28,14 +28,14 @@ def test_mission_events_carry_plane_item_and_derivation(tmp_path, monkeypatch):
         root = scoped.register_item(
             kind=ItemKind.HORIZON,
             title="Freedom",
-            created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+            created_valid=datetime(2026, 1, 1, tzinfo=timezone.utc),
             end_date=datetime(2030, 1, 1).date(),
         )
         mission = scoped.register_item(
             kind=ItemKind.MISSION,
             title="Revenue",
             parent_id=root,
-            created_valid=datetime(2026, 1, 2, tzinfo=UTC),
+            created_valid=datetime(2026, 1, 2, tzinfo=timezone.utc),
             stall_days=1,
         )
         monkeypatch.setattr(srv, "_memento_store", store)
