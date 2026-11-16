@@ -159,6 +159,24 @@ class RetentionScopeError(SchemaError):
         )
 
 
+class UnknownItemError(SchemaError):
+    """An event or alarm state was written for an item_id this tenant does not hold."""
+
+    def __init__(self, item_id: str) -> None:
+        self._init_message(
+            "UnknownItemError",
+            fix=(
+                f"no item {item_id!r} exists in this tenant's store; nothing was "
+                "recorded. Use an item_id returned by clock_register or listed by "
+                "clock_status."
+            ),
+            rule=(
+                "memento_store::tenant_scope - every write names an item of the "
+                "calling tenant; an unknown item_id is refused, never stored."
+            ),
+        )
+
+
 class StoreCorruptionError(MementoError):
     """A stored item references a parent_id that no longer resolves.
 

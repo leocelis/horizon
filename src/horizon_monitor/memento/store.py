@@ -50,6 +50,7 @@ from horizon_monitor.memento.errors import (
     RootlessItemError,
     StoreCorruptionError,
     UndatedDeferralError,
+    UnknownItemError,
 )
 from horizon_monitor.memento.models import (
     ClockEvent,
@@ -532,6 +533,7 @@ class MementoStore:
         supersede via correction_of, never overwrite (append_only_bitemporal)."""
         with self._lock:
             self._b.ensure_live()
+            self._require_item(self._b, item_id)
             if kind == EventKind.ARTIFACT:
                 self._validate_provenance(provenance)
 
@@ -568,6 +570,19 @@ class MementoStore:
                 self._b.rollback()
                 raise
             return event_id
+
+    def _require_item(self, b, item_id: str) -> None:
+        """Refuse a write for an item this tenant does not hold (UnknownItemError).
+
+        register_item already refuses a parent outside the tenant (RootlessItemError);
+        events and alarm states name an item the same way and get the same check.
+        """
+        row = b.execute(
+            "SELECT 1 FROM mm_items WHERE tenant_id = ? AND item_id = ?",
+            (self._tenant, item_id),
+        ).fetchone()
+        if row is None:
+            raise UnknownItemError(item_id)
 
     @staticmethod
     def _validate_provenance(provenance: Provenance | None) -> None:
@@ -635,6 +650,7 @@ class MementoStore:
         NOT a dialect upsert (``ON CONFLICT`` is SQLite-only and
         ``ON DUPLICATE KEY UPDATE`` hides insert-vs-update intent)."""
         with self._txn() as b:
+            self._require_item(b, item_id)
             existing = b.execute(
                 "SELECT 1 FROM mm_fires WHERE tenant_id = ? AND item_id = ? AND signal_type = ?",
                 (self._tenant, item_id, signal_type),
