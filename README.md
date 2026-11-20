@@ -11,6 +11,14 @@
 
 Horizon is a real-time conversation health monitor for AI agents. It tracks the **structural dynamics** of multi-turn conversations — semantic drift, information gain, ontological gap width, temporal desynchronisation, circadian cognitive load, conversation velocity, and causal reachability — dimensions that LLMs do not reliably surface from inside the conversation.
 
+In plain terms, it catches three problems in a multi-turn AI agent, turn by turn:
+
+- **Topic drift and off-topic answers.** `alert.drift` fires when conversation health keeps falling for several turns in a row, which is what drift looks like before a user complains.
+- **Long conversations that get worse.** `signal.optimal_length` and `signal.convergence` flag when more turns stop helping, and `signal.session_reset` flags when the context window drops earlier turns.
+- **Time gaps between sessions.** `signal.temporal_desync` fires when a user comes back after a long gap, so the agent stops acting as if no time passed.
+
+It does this with no extra LLM calls, so it can run on every turn.
+
 Horizon ships **two measurement planes**. The **conversation plane** (above, always
 present) measures the health of a dialogue turn by turn. The optional **mission plane**
 — *Memento Mori* — measures elapsed **calendar** time against goals: ages, deadlines,
