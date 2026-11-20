@@ -229,13 +229,13 @@ before deploying Horizon in any of the above domains.
 ## 5. Performance Claims — Scope and Substantiation
 
 Horizon's public materials reference the following quantified claims. The scope and
-evidentiary basis for each is disclosed here:
+evidentiary basis for each is disclosed here. No outcome lift is claimed: the only
+interventional A/B in the repository is a scripted demo on synthetic conversations
+(`scripts/run_interventional_ab.py --demo`).
 
 | Claim | Source | Scope | Limitation |
 |-------|--------|-------|------------|
-| "+15.7% composite quality lift" | A/B evaluation, 4 synthetic scenarios, 200 turns | Controlled lab conditions using reference agent controllers with optimized event handlers | Not validated in production deployments or with real users |
-| "87% fewer hallucination events" | A/B evaluation, 4 synthetic scenarios | Applies when `signal.grounding_required` was activated and the reference hook was invoked | Requires the grounding hook to be configured; passive monitoring alone does not produce this result |
-| "39% accuracy degradation after 5 turns" | [Laban et al., ICLR 2026 Best Paper](https://iclr.cc/virtual/2026/poster/10009146) | Multi-turn evaluation across 15 models (Microsoft Research) | Horizon did not conduct this research; cite the original paper for compliance purposes |
+| "Average 39% performance drop across six generation tasks when instructions arrive over multiple turns" | [Laban et al., ICLR 2026 oral](https://iclr.cc/virtual/2026/poster/10009146) | Multi-turn evaluation across 15 models (Microsoft Research) | Horizon did not conduct this research; cite the original paper for compliance purposes |
 | "ρ = 0.685 (per-conversation), ρ = 0.659 (per-turn)" | V0.2.0 validation corpus (5,602 labelled records) | General-purpose English conversation corpus | Domain-specific results will vary; see §3.3 |
 | "All 16 events ≥ 0.70 precision / recall" | V0.2.0 validation corpus | General-purpose corpus only | Domain-specific validation required before activating events in production |
 | "+202.4% rho lift over heuristic baseline" | V0.2.0 heuristic baseline comparison | General-purpose corpus | Not validated across all deployment contexts |

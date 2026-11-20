@@ -39,7 +39,7 @@ ENV HORIZON_DB_PATH=/data/horizon.db
 
 EXPOSE 3847
 
-# Hits the real /health route (src/horizon/mcp/server.py, @mcp.custom_route)
+# Hits the real /health route (src/horizon_monitor/mcp/server.py, @mcp.custom_route)
 # instead of just checking the import succeeds — catches a dead MCP service
 # even though the interpreter is still alive.
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \

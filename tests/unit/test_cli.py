@@ -130,3 +130,37 @@ def test_version_command_prints_package_version(cli_group) -> None:
     assert result.exit_code == 0
     assert __version__ in result.output
     assert "horizon-monitor" in result.output
+
+
+# ── serve --host / --port reach the server ───────────────────────────────────
+
+
+@pytest.mark.parametrize("transport", ["sse", "streamable-http"])
+def test_serve_binds_the_host_and_port_given(cli_group, monkeypatch, transport) -> None:
+    """`horizon serve --port N` must start FastMCP on port N.
+
+    Regression: cli.py set app._host / app._port, which FastMCP never reads, so
+    `--port 3847` listened on 127.0.0.1:8000 (found 2026-11-20 by running the
+    README command). The assertion is on the settings FastMCP binds from, read
+    at the moment run() is called.
+    """
+    from mcp.server.fastmcp import FastMCP
+
+    from horizon_monitor.mcp import server as server_module
+
+    app = FastMCP("test")
+    seen: dict = {}
+
+    def _record_run(self, transport=None, **kwargs):
+        seen.update(transport=transport, host=self.settings.host, port=self.settings.port)
+
+    monkeypatch.setattr(FastMCP, "run", _record_run)
+    monkeypatch.setattr(server_module, "create_app", lambda: app)
+
+    result = CliRunner().invoke(
+        cli_group,
+        ["serve", "--transport", transport, "--host", "0.0.0.0", "--port", "4321", "--no-preload"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert seen == {"transport": transport, "host": "0.0.0.0", "port": 4321}

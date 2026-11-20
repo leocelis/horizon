@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Runs CI's lint and format checks on the staged Python files, so a commit that
+# would turn main red stops here. Enable once per clone:
+#     git config core.hooksPath .githooks
+set -euo pipefail
+files=$(git diff --cached --name-only --diff-filter=ACMR -- 'src/*.py' 'tests/*.py')
+[ -z "$files" ] && exit 0
+bin="$(git rev-parse --show-toplevel)/.venv/bin"
+ruff="ruff"; black="black"
+[ -x "$bin/ruff" ] && ruff="$bin/ruff"
+[ -x "$bin/black" ] && black="$bin/black"
+# shellcheck disable=SC2086
+"$ruff" check $files
+# shellcheck disable=SC2086
+"$black" --check $files || { echo "pre-commit: run black on the files above, then commit again." >&2; exit 1; }

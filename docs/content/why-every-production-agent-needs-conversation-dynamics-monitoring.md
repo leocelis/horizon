@@ -10,9 +10,9 @@ Meanwhile, your agent is quietly losing the thread.
 
 ## The failure no one is measuring
 
-In April 2026, a paper won the ICLR Best Paper Award. Its title was "LLMs Get Lost In Multi-Turn Conversation." Microsoft Research ran 200,000 simulated conversations across 15 models from eight providers, including GPT-4.1, Claude 3.7 Sonnet, and Gemini 2.5 Pro.
+In April 2026, ICLR presented as an oral a paper titled "LLMs Get Lost In Multi-Turn Conversation." Microsoft Research ran 200,000 simulated conversations across 15 models from eight providers, including GPT-4.1, Claude 3.7 Sonnet, and Gemini 2.5 Pro.
 
-The finding: **every frontier model loses an average of 39% accuracy when evaluated in multi-turn settings versus single-turn benchmarks on identical tasks.**
+The finding: **performance drops by an average of 39% across six generation tasks when the same instructions arrive over multiple turns instead of one.**
 
 That number is already bad. The worse number is what happens to reliability. The paper reports that while average aptitude dropped 16%, **reliability collapsed 112%**. The same task that succeeds brilliantly in one attempt fails completely in the next, with 50 percentage points separating the 90th and 10th percentile outcomes.
 
@@ -62,19 +62,9 @@ Your latency dashboard has no field for this.
 
 ---
 
-## The evidence from controlled experiments
+## What is measured, and what is not
 
-We ran four **synthetic, scripted** controlled A/B scenarios across different agent use cases: a senior engineer building a real-time trading feature over five days of conversation, a game studio director managing a multi-week production launch, an ML engineer building a fraud detection pipeline, and a founder preparing for a fundraising roadshow. Each used reference agent controllers and a hand-tuned re-grounding governor — **lab conditions, not live user traffic**.
-
-Each scenario ran twice: once with no monitoring or intervention (baseline), once with Horizon Fidelity Monitor detecting conversation-level signals and triggering targeted context regroundings when quality degraded.
-
-The results across 165 turns:
-
-- Composite quality lift: **+15.7%** (95% CI: [+12.9%, +18.4%], sign test p = 0.0002)
-- Context preservation lift: **+72% to +664%** depending on scenario depth
-- Hallucinations: **567 in baseline, 76 in governed — 87% reduction**
-
-The confidence interval is entirely above zero under these controlled conditions. This demonstrates the **intervention mechanism** on synthetic data; it is not a production outcome guarantee. Horizon is **observability first** — see [LEGAL.md §5](https://github.com/leocelis/horizon/blob/main/LEGAL.md#5-performance-claims--scope-and-substantiation) for scope and limitations.
+Horizon's signals are validated as **correlates** of conversation quality on a labelled corpus (ρ ≈ 0.6–0.7 in-domain; see the [evidence pack](https://github.com/leocelis/horizon/blob/main/docs/reviews/V0_2_0_EVIDENCE.md)). Whether acting on its events improves outcomes is **not measured yet**: the only interventional A/B in the repository is a scripted demo on six **synthetic** conversations ([`run_interventional_ab.py --demo`](https://github.com/leocelis/horizon/blob/main/scripts/run_interventional_ab.py)), not a production result. Horizon is **observability first** — see [LEGAL.md §5](https://github.com/leocelis/horizon/blob/main/LEGAL.md#5-performance-claims--scope-and-substantiation) for scope and limitations.
 
 The mechanism is straightforward: Horizon detects when context has drifted, when a temporal gap was not acknowledged, when a constraint established early in the conversation has been forgotten. It surfaces that signal. The agent regrounds itself on what was actually established. The hallucination that would have occurred — citing the wrong database, the wrong latency target, the wrong compliance framework — does not occur.
 

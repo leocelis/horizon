@@ -42,7 +42,7 @@ The seal reflects **live runtime audit data** (checks in 24h / 7d). It is not a 
 | `docs/spec/horizon_intent.yaml` | IVD-style intent — constraints agents load |
 | `docs/cursor-rules/horizon-monitor.mdc` | Canonical agent contract (+ `<BEGIN-COMPLYEDGE v1.0>`) |
 
-MCP `_INSTRUCTIONS` in `src/horizon/mcp/server.py` is kept aligned with `.mdc` via `tests/unit/test_cursor_rules_alignment.py`.
+MCP `_INSTRUCTIONS` in `src/horizon_monitor/mcp/server.py` is kept aligned with `.mdc` via `tests/unit/test_cursor_rules_alignment.py`.
 
 ---
 

@@ -73,16 +73,12 @@ def main() -> None:
 
             if transport == "stdio":
                 app.run(transport="stdio")
-            elif transport == "sse":
-                # FastMCP SSE: host/port come from the FastMCP constructor;
-                # override them here by mutating the app settings.
-                app._host = host
-                app._port = port
-                app.run(transport="sse")
-            else:  # streamable-http
-                app._host = host
-                app._port = port
-                app.run(transport="streamable-http")
+            else:
+                # FastMCP binds self.settings.host / self.settings.port when it
+                # starts an HTTP transport, so --host / --port must land there.
+                app.settings.host = host
+                app.settings.port = port
+                app.run(transport=transport)
 
         except ImportError as exc:
             click.echo(

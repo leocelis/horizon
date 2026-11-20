@@ -85,7 +85,7 @@ Useful when you want Horizon only in one project:
 }
 ```
 
-After adding any entry, reload the MCP panel or restart Cursor. The three tools, two resources, and one prompt appear in the agent's tool list.
+After adding any entry, reload the MCP panel or restart Cursor. The three tools, three resources, and one prompt appear in the agent's tool list.
 
 ---
 
@@ -165,7 +165,7 @@ cp path/to/horizon/docs/cursor-rules/horizon-monitor.mdc .cursor/rules/horizon-m
 
 Source: [`docs/cursor-rules/horizon-monitor.mdc`](../cursor-rules/horizon-monitor.mdc)
 
-The file includes deferred recording, the `ok`-signal contract, invisibility rules, resource-read policy, and the auto-run vs approval-required tool list. Keep your copy in sync with the repo — it is the single source of truth alongside `src/horizon/mcp/server.py` (`_INSTRUCTIONS`).
+The file includes deferred recording, the `ok`-signal contract, invisibility rules, resource-read policy, and the auto-run vs approval-required tool list. Keep your copy in sync with the repo — it is the single source of truth alongside `src/horizon_monitor/mcp/server.py` (`_INSTRUCTIONS`).
 
 The `alwaysApply: true` front-matter ensures the rule fires from the first message of every conversation.
 
@@ -238,8 +238,8 @@ The same server works unchanged with:
 
 Horizon has a second, optional plane that clocks **missions** (goals with
 deadlines) rather than conversations. It is **off unless a mission store is
-configured**: with no store, its six tools (`clock_register`, `clock_progress`,
-`clock_status`, `clock_propose`, `clock_ack`, `associate_mission`) do not appear
+configured**: with no store, its seven tools (`clock_register`, `clock_progress`,
+`clock_status`, `clock_propose`, `clock_ack`, `clock_close`, `associate_mission`) do not appear
 at all and nothing changes.
 
 If you enable it, note the contract is the **opposite** of the fidelity plane's:

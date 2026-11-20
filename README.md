@@ -27,7 +27,7 @@ Why an external monitor? LLMs have *limited and unreliable* self-knowledge: intr
 
 Multi-turn AI agents lose accuracy. The ICLR 2026 oral paper ["LLMs Get Lost In Multi-Turn Conversation"](https://iclr.cc/virtual/2026/poster/10009146) (Laban, Hayashi, Zhou & Neville) reports an **average 39% performance drop** across six generation tasks when instructions arrive over multiple turns — a structural property that standard observability tools (LangSmith, RAGAS, DeepEval) cannot see because they measure responses, not conversations.
 
-Horizon was built to close that gap. **It is observability first:** it surfaces conversation dynamics that response-level tools miss, using cheap deterministic arithmetic and a small local embedding model, with no LLM calls. In four controlled A/B scenarios where Horizon events drove a re-grounding intervention we measured a **+15.7% composite quality lift** and **87% fewer hallucination events** — but those are *synthetic, scripted scenarios with a hand-tuned controller*, not a production result. Treat them as promising in-house evidence, not a guaranteed outcome (see [Validation](#validation) and [LEGAL.md §5](LEGAL.md#5-performance-claims--scope-and-substantiation)). Every signal — information gain, divergence, estimated ontological gap width, causal reachability — is a standard information-theory or arithmetic measure computed on text embeddings and timestamps; see [4D Spacetime Signals](#4d-spacetime-signals) for the full definitions.
+Horizon was built to close that gap. **It is observability first:** it surfaces conversation dynamics that response-level tools miss, using cheap deterministic arithmetic and a small local embedding model, with no LLM calls. Whether acting on its events improves outcomes is not measured yet: the only A/B in this repo is a scripted demo on six *synthetic* conversations ([`run_interventional_ab.py --demo`](scripts/run_interventional_ab.py)), not a production result (see [Validation](#validation) and [LEGAL.md §5](LEGAL.md#5-performance-claims--scope-and-substantiation)). Every signal — information gain, divergence, estimated ontological gap width, causal reachability — is a standard information-theory or arithmetic measure computed on text embeddings and timestamps; see [4D Spacetime Signals](#4d-spacetime-signals) for the full definitions.
 
 - Read the demand proof → [ICLR 2026 oral paper (Laban et al.)](https://iclr.cc/virtual/2026/poster/10009146)
 - Read the category argument → [`docs/content/naming-the-category-conversation-dynamics-monitoring.md`](docs/content/naming-the-category-conversation-dynamics-monitoring.md)
@@ -76,12 +76,18 @@ Request an alpha key → [open a Discussion](https://github.com/leocelis/horizon
 
 **Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
+Claude Desktop's config file starts local servers only, so the hosted endpoint goes through the
+[`mcp-remote`](https://github.com/geelen/mcp-remote) bridge (needs Node.js for `npx`). The header
+value has no space after the colon on purpose: Claude Desktop on Windows splits arguments at spaces.
+
 ```json
 {
   "mcpServers": {
     "horizon": {
-      "url": "https://horizon.leocelis.com/sse",
-      "headers": { "Authorization": "Bearer YOUR_KEY_HERE" }
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://horizon.leocelis.com/sse",
+               "--header", "Authorization:${HORIZON_AUTH}"],
+      "env": { "HORIZON_AUTH": "Bearer YOUR_KEY_HERE" }
     }
   }
 }
@@ -98,6 +104,8 @@ Python 3.10–3.14.
 ```bash
 pip install horizon-monitor
 ```
+
+The import is `horizon_monitor`. The PyPI package named `horizon` is OpenStack's dashboard, an unrelated project.
 
 Verify your install (exercises the full pipeline on 5 canonical scenarios, ~25s):
 
@@ -252,7 +260,7 @@ for user_message in conversation:
 > depends on the analogy being literally true, and the Lorentzian `interval_class` is emitted as
 > descriptive metadata only — no event or score depends on it.
 
-Every `process_turn()` returns a `TurnResult` with 33 fields across six signal families:
+Every `process_turn()` returns a `TurnResult` with 33 fields across seven signal families:
 
 ### Core (always present)
 
@@ -326,20 +334,19 @@ All events default to **observe mode** (emitted, not acted on). Enable active mo
 | Event | Fires when |
 |---|---|
 | `checkpoint.clarification` | D_JS above clarification threshold |
-| `checkpoint.comprehension` | Consistency drops below threshold |
+| `checkpoint.comprehension` | Information gain has stalled: IGT is low and falling |
 | `alert.drift` | Fidelity declining for `drift_window` consecutive turns |
-| `alert.contradiction` | Bipredictability below consistency threshold |
+| `alert.contradiction` | The claim tracker finds an agent claim that conflicts with an earlier one (default); with `contradiction_method="coherence"`, bipredictability below the consistency threshold |
 | `alert.verbosity` | Token Waste Ratio above verbosity threshold |
 | `signal.convergence` | IGT trend consistently low — natural endpoint approaching |
 | `signal.optimal_length` | T* (estimated optimal length) reached |
-| `signal.horizon_widening` | IGT trend strongly positive — conversation expanding |
-| `signal.session_reset` | Large temporal gap with low retention |
+| `signal.horizon_widening` | Estimated ontological gap jumps above the previous turn's and stays above a floor |
+| `signal.session_reset` | The context window has just evicted at least one turn |
 | `signal.temporal_desync` | Gap + retention drop below desync threshold |
 | `signal.broken_reference` | Reachable fraction drops below broken-reference threshold |
 | `signal.frame_shift` | Spatial constraint shifts significantly |
 | `signal.pace_shift` | Conversation acceleration above pace threshold |
 | `signal.light_cone_collapse` | Reachable fraction below light-cone threshold |
-
 | `signal.grounding_required` | Heuristic grounding-need score crosses threshold — agent should hedge or cite grounding evidence |
 | `signal.pace_premature_report` | User replied faster than a previously flagged deferred action could plausibly complete, with no completion signal |
 
@@ -519,7 +526,7 @@ arguments, no network, no API key; it uses a fresh temporary store each time).
 
 ### 12 signal types (mission plane)
 
-Separate from the conversation plane's [16 event types](#16-event-types-conversation-plane),
+Separate from the conversation plane's [16 event types](#16-event-types-conversation-plane-plus-alertcompliance-from-the-mcp-server),
 not an extension of them. Each fires **once on an edge** — when its predicate becomes
 true — never again while the condition persists, and at most one new signal per turn, so
 a bad week cannot flood you. Tiers order that cap: **P1** is time-critical, **P2**
@@ -654,7 +661,7 @@ proven outcome guarantee. Here is the honest status of each claim:
 | Signal beats naive heuristics | ✅ measured | V3 |
 | Holds on a **third-party** corpus (out-of-domain) | ❌ tested — ρ = **0.039** on MT-Bench expert judgments (n=80; below 0.3 floor); needs direct quality labels | [`V0_2_0_EVIDENCE.md` §Fix 4](docs/reviews/V0_2_0_EVIDENCE.md#fix-4--ood-on-third-party-corpus-2026-06-19), [`adapt_external_corpus.py`](scripts/adapt_external_corpus.py) |
 | Events **predict** degradation (leading, not lagging) | ⚠️ tested on MT-Bench — **insufficient-data** (2-turn chats; events rarely fire); tool works | [`leading_indicator.json`](docs/reviews/leading_indicator.json), [`measure_leading_indicator.py`](scripts/measure_leading_indicator.py) |
-| Acting on events **improves outcomes** (+15.7%) | ⚠️ synthetic A/B only; needs an independent corpus | [`run_interventional_ab.py`](scripts/run_interventional_ab.py), [LEGAL.md §5](LEGAL.md#5-performance-claims--scope-and-substantiation) |
+| Acting on events **improves outcomes** | ⚠️ not measured: only a scripted demo on 6 synthetic conversations; needs an independent corpus | [`run_interventional_ab.py`](scripts/run_interventional_ab.py), [LEGAL.md §5](LEGAL.md#5-performance-claims--scope-and-substantiation) |
 
 The four gates below pass on a **labelled** 5,602-record corpus (not bundled — see the
 [evidence pack](docs/reviews/V0_2_0_EVIDENCE.md); `scripts/build_validation_corpus.py`
@@ -793,12 +800,10 @@ MIT — see [LICENSE](LICENSE).
 | [DATA_PROCESSING_AGREEMENT.md](DATA_PROCESSING_AGREEMENT.md) | GDPR Art. 28 DPA template for EU enterprise users (request via email) |
 | [SECURITY.md](SECURITY.md) | Responsible disclosure policy; known self-hosted security considerations |
 
-**Performance claims:** The +15.7% quality lift and 87% fewer hallucination events
-figures in this README are from **synthetic, scripted controlled A/B scenarios** with
-hand-tuned reference controllers — not production traffic and not the in-domain
-validation corpus (V1–V5 gates use a separate labelled set). Results may vary by domain,
-model, and deployment configuration. Do not use these figures in external marketing
-without conducting your own domain-specific evaluation. See
+**Performance claims:** This README states no outcome lift. The interventional A/B in
+this repo is a **synthetic, scripted demo** with a hand-tuned reference controller, not
+production traffic and not the in-domain validation corpus (V1–V5 gates use a separate
+labelled set). See
 [LEGAL.md §5](LEGAL.md#5-performance-claims--scope-and-substantiation) for full scope
 and evidentiary basis.
 

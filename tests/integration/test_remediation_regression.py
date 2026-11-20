@@ -182,6 +182,10 @@ def test_landing_og_meta_no_uncaveated_lift(path: Path) -> None:
     [ROOT / "docs" / "site" / "index.html"],
     ids=["site-index"],
 )
-def test_landing_stats_label_synthetic(path: Path) -> None:
+def test_landing_stats_carry_no_unbacked_lift(path: Path) -> None:
+    """The landing page shows no outcome-lift figure: the +15.7% / 87% A/B figures had
+    no reproducing artifact in the repository and were removed (2026-11-20)."""
     text = path.read_text(encoding="utf-8").lower()
-    assert "synthetic a/b" in text
+    assert "+15.7%" not in text
+    assert "87%" not in text
+    assert "synthetic" in text  # the footer still says the only A/B is a synthetic demo

@@ -261,12 +261,12 @@
 
   <div class="stats">
     <div class="stat">
-      <div class="stat-value">+15.7%</div>
-      <div class="stat-label">Quality lift (synthetic A/B, 4 scenarios)</div>
+      <div class="stat-value">16</div>
+      <div class="stat-label">Event types, observe-by-default</div>
     </div>
     <div class="stat">
-      <div class="stat-value">87%</div>
-      <div class="stat-label">Fewer hallucinations (synthetic A/B)</div>
+      <div class="stat-value">ρ 0.685</div>
+      <div class="stat-label">Per-conversation correlation with human ratings (in-domain)</div>
     </div>
     <div class="stat">
       <div class="stat-value">&lt;50ms</div>
@@ -310,7 +310,7 @@ pip install horizon-monitor
 horizon-validate
 
 <span class="comment"># Use in Python</span>
-<span class="kw">from</span> horizon <span class="kw">import</span> FidelityMonitor
+<span class="kw">from</span> horizon_monitor <span class="kw">import</span> FidelityMonitor
 
 monitor = FidelityMonitor()
 session_id = monitor.new_conversation()
@@ -383,7 +383,7 @@ cd deploy/docker &amp;&amp; docker compose up
   </section>
 
   <section>
-    <h2>14 event types <span class="dim">— all observe-by-default</span></h2>
+    <h2>16 event types <span class="dim">— all observe-by-default</span></h2>
     <div class="event-grid">
       <div class="event-card">
         <span class="event-badge badge-alert">alert</span>
@@ -393,7 +393,7 @@ cd deploy/docker &amp;&amp; docker compose up
       <div class="event-card">
         <span class="event-badge badge-alert">alert</span>
         <div class="event-name">alert.contradiction</div>
-        <div class="event-desc">Bipredictability below consistency threshold</div>
+        <div class="event-desc">An agent claim conflicts with an earlier one (claim tracker, default)</div>
       </div>
       <div class="event-card">
         <span class="event-badge badge-alert">alert</span>
@@ -408,7 +408,7 @@ cd deploy/docker &amp;&amp; docker compose up
       <div class="event-card">
         <span class="event-badge badge-check">checkpoint</span>
         <div class="event-name">checkpoint.comprehension</div>
-        <div class="event-desc">Consistency drops below threshold</div>
+        <div class="event-desc">Information gain has stalled: IGT low and falling</div>
       </div>
       <div class="event-card">
         <span class="event-badge badge-signal">signal</span>
@@ -438,7 +438,7 @@ cd deploy/docker &amp;&amp; docker compose up
       <div class="event-card">
         <span class="event-badge badge-signal">signal</span>
         <div class="event-name">signal.horizon_widening</div>
-        <div class="event-desc">IGT trend strongly positive — expanding</div>
+        <div class="event-desc">Estimated ontological gap jumps and stays high</div>
       </div>
       <div class="event-card">
         <span class="event-badge badge-signal">signal</span>
@@ -453,9 +453,27 @@ cd deploy/docker &amp;&amp; docker compose up
       <div class="event-card">
         <span class="event-badge badge-signal">signal</span>
         <div class="event-name">signal.session_reset</div>
-        <div class="event-desc">Large temporal gap with low retention</div>
+        <div class="event-desc">The context window just evicted a turn</div>
+      </div>
+      <div class="event-card">
+        <span class="event-badge badge-signal">signal</span>
+        <div class="event-name">signal.grounding_required</div>
+        <div class="event-desc">Grounding-need score crosses threshold: hedge or cite</div>
+      </div>
+      <div class="event-card">
+        <span class="event-badge badge-signal">signal</span>
+        <div class="event-name">signal.pace_premature_report</div>
+        <div class="event-desc">User replied faster than a deferred action could finish</div>
       </div>
     </div>
+  </section>
+
+  <section>
+    <h2>Mission plane <span class="dim">— optional</span></h2>
+    <p>Memento Mori measures calendar time against goals: ages, deadlines, stalls,
+    per-entity latency and share of a finite horizon. It is inert until you configure a store,
+    then seven <code>clock_*</code> MCP tools appear.
+    <a href="https://github.com/leocelis/horizon#mission-plane-memento-mori" style="color:var(--accent-light)">Read the mission plane docs →</a></p>
   </section>
 
   <section>
@@ -546,7 +564,7 @@ cd deploy/docker &amp;&amp; docker compose up
       <a href="https://github.com/leocelis/horizon/blob/main/PRIVACY_POLICY.md">Privacy Policy</a>
     </div>
     <p>Horizon Fidelity Monitor — built by <a href="https://github.com/leocelis">Leo Celis</a></p>
-    <p style="font-size:0.75rem; color:var(--muted); margin-top:8px;">Performance figures (+15.7% quality lift, 87% fewer hallucination events) are from <strong>synthetic, scripted</strong> controlled A/B scenarios with hand-tuned controllers — not production traffic. Correlational validation gates (ρ ≈ 0.6–0.7 in-domain) use a separate labelled corpus. See <a href="https://github.com/leocelis/horizon/blob/main/LEGAL.md#5-performance-claims--scope-and-substantiation" style="color:var(--muted)">LEGAL.md §5</a> for full scope and limitations.</p>
+    <p style="font-size:0.75rem; color:var(--muted); margin-top:8px;">No outcome lift is claimed: the only interventional A/B in the repository is a <strong>synthetic, scripted</strong> demo. Correlational validation gates (ρ ≈ 0.6–0.7 in-domain) use a separate labelled corpus. See <a href="https://github.com/leocelis/horizon/blob/main/LEGAL.md#5-performance-claims--scope-and-substantiation" style="color:var(--muted)">LEGAL.md §5</a> for full scope and limitations.</p>
   </footer>
 </div>
 

@@ -1,6 +1,6 @@
 # Memento Mori for Agents — MCP Tools and Host Instructions
 
-**Status:** implemented and shipping. All six mission tools in §2 are live; the
+**Status:** implemented and shipping. All seven mission tools in §2 are live; the
 `plane: "mission"` routing, the status sweep (§5a) and the discoverability
 affordances (§5b) are in place. This document is the **canonical source** for the
 agent-rules block below, the same way `CLAUDE_DESKTOP.md` is canonical for the

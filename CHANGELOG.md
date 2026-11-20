@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **`horizon serve --host/--port` are honoured.** The SSE and Streamable HTTP transports bound 127.0.0.1:8000 whatever the flags said, because the CLI set attributes FastMCP never reads; the Docker image's 3847 mapping and healthcheck pointed at nothing. Regression test in `tests/unit/test_cli.py`.
+- **`python -m horizon_monitor.mcp.server` registers every resource before it starts.** The `__main__` block now sits at the end of the module; the `memento/agent-rules` resource was registered after it.
+- **Docs match the code.** Landing page import is `horizon_monitor`; 16 event types (two rows were dropped from the README table) with descriptions taken from the evaluator; seven mission tools and three resources in the integration guides; the Claude Desktop hosted setup uses the `mcp-remote` bridge; `claude mcp add --scope user` before the name; old `src/horizon/` paths updated.
+- **No outcome-lift figure is published.** The +15.7% / 87% figures had no reproducing artifact in the repository and are removed from the README, landing page, LEGAL.md and articles. The ICLR citation reads "oral" and "performance drop across six generation tasks" everywhere.
+- **Pre-commit hook** in `.githooks/` runs CI's ruff and black on staged files (`git config core.hooksPath .githooks`).
+
 ## [0.3.2] - 2026-11-08
 
 - **`horizon-validate` passes on a fresh install.** Since 0.2.0 it reported "1/5 scenarios
@@ -341,9 +347,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`__version__` reads from package metadata** (single-sourced from `pyproject.toml`)
   instead of a hand-duplicated string.
 
-## [0.2.1] - 2026-07-17
+### Earlier 0.2.1 changes (2026-07-17)
 
-### Changed
+#### Changed
 - **Public docs scope:** full internal PRD, research essays, and session handoffs removed
   from this repo — the OSS tree ships product overview, spec, integrations, validation
   evidence, and public content only.
@@ -357,7 +363,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   action required returns `{"ok": false, "health_status", "active_events"}` — full metrics
   via trajectory/events resources ([design-flaw/silent-agent-response]).
 
-### Added
+#### Added
 - **`docs/cursor-rules/horizon-monitor.mdc`** — canonical Cursor rule (synced with MCP
   `_INSTRUCTIONS`).
 - **`requirements-dev.txt`** — dev/test install (`[dev,mcp]` + ML pins + `pyarrow`).
@@ -372,7 +378,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sessions); Bearer auth via `HORIZON_API_KEYS`; `/health` unauthenticated.
 - **Deploy:** `deploy/Procfile`, `deploy/build.sh`, `deploy/runtime.txt`, `deploy/wsgi.py`.
 
-### Documentation
+#### Documentation
 - README: three getting-started paths (hosted MCP, pip install, source); ICLR 2026 demand
   citation; content pieces cross-linked; LEGAL manipulation/sycophancy scope disclaimer.
 - Integrations: hosted endpoint options in Cursor, Claude Desktop, Claude Code guides.

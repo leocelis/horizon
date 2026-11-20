@@ -81,7 +81,7 @@ The named definition is above.
 
 The measurable distinction: conversation dynamics monitoring measures session-level fidelity trajectory, multi-turn consistency, temporal gap signals, and context eviction events — deterministically, with zero LLM calls, on every turn. Adjacent categories that touch multi-turn quality (DeepEval's sampled conversational metrics, Langfuse's and Phoenix's session-level LLM-judge evaluation) do so via LLM-judge sampling: cost per sample, typically offline or async, not real time. This is verifiable by reading the product documentation of any incumbent tool.
 
-The validated evidence: four **synthetic, scripted** controlled A/B scenarios (165 turns, hand-tuned re-grounding controller — not production traffic) show a composite quality lift of +15.7% (CI95 entirely above zero, p = 0.0002) and an 87% reduction in constraint hallucinations when conversation dynamics signals drive targeted interventions. Treat this as promising in-house mechanism evidence, not a guaranteed production outcome. Separately, the underlying library passes four independent **correlational** validation gates including cross-domain generalization to five held-out domains not used during development.
+The validated evidence is correlational: whether acting on the signals improves outcomes is not measured yet beyond a scripted demo on six **synthetic** conversations. The underlying library passes four independent **correlational** validation gates including cross-domain generalization to five held-out domains not used during development.
 
 The category exists. The evidence exists. The market spending exists. The analyst coverage does not yet exist.
 

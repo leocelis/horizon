@@ -6,7 +6,7 @@ Thanks for your interest in contributing!
 
 ```
 horizon/
-├── src/horizon/        # Library source (installable package)
+├── src/horizon_monitor/  # Library source (installable package)
 ├── tests/              # Unit, integration, E2E, perf, validation tests
 ├── examples/           # Runnable end-to-end examples
 ├── docs/               # Public documentation
@@ -84,6 +84,8 @@ CI job `compliance` runs the same gate on every push/PR. Recipe:
 
 - `ruff` for linting (`ruff check src tests`)
 - `black` for formatting (`black src tests`, line length 100)
+- The pre-commit hook runs both on the files you stage, so a commit that would fail
+  CI stops locally. Enable it once per clone: `git config core.hooksPath .githooks`
 - Type hints required on all public APIs; `py.typed` ships with the package.
 
 ## Pull request checklist
@@ -91,8 +93,8 @@ CI job `compliance` runs the same gate on every push/PR. Recipe:
 - [ ] Tests added or updated for the change
 - [ ] `pytest` passes locally
 - [ ] `./scripts/compliance/check.sh` passes when LLM-facing YAML or `.mdc` changed
-- [ ] `ruff check` passes
+- [ ] `ruff check` and `black --check` pass
 - [ ] Public API changes documented in `CHANGELOG.md` (under `[Unreleased]`)
 - [ ] No outbound network calls added to the core library (privacy constraint)
-- [ ] No new framework imports in the core library (`src/horizon/` stays
-      framework-agnostic; integrations live in `src/horizon/integrations/`)
+- [ ] No new framework imports in the core library (`src/horizon_monitor/` stays
+      framework-agnostic; integrations live in `src/horizon_monitor/integrations/`)

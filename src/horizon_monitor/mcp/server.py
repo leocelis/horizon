@@ -1317,14 +1317,6 @@ def create_app(config: Config | None = None) -> FastMCP:
     return mcp
 
 
-if __name__ == "__main__":
-    _log.info("=" * 60)
-    _log.info("Horizon MCP server started  (stdio transport)")
-    _log.info("Log: %s", _LOG_PATH)
-    _log.info("=" * 60)
-    mcp.run(transport="stdio")
-
-
 @mcp.resource(
     uri="horizon://memento/agent-rules",
     name="memento_agent_rules",
@@ -1353,3 +1345,12 @@ def get_memento_agent_rules() -> str:
         .joinpath("agent_rules.md")
         .read_text(encoding="utf-8")
     )
+
+
+# Last, so every tool and resource above is registered before stdio starts.
+if __name__ == "__main__":
+    _log.info("=" * 60)
+    _log.info("Horizon MCP server started  (stdio transport)")
+    _log.info("Log: %s", _LOG_PATH)
+    _log.info("=" * 60)
+    mcp.run(transport="stdio")

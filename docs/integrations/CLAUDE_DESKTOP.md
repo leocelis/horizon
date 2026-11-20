@@ -15,12 +15,18 @@ Edit `claude_desktop_config.json`:
 
 No Python install required. Request an alpha key via [GitHub Discussions](https://github.com/leocelis/horizon/discussions), then add:
 
+Claude Desktop's config file starts local servers only, so the hosted endpoint goes through the
+[`mcp-remote`](https://github.com/geelen/mcp-remote) bridge (needs Node.js for `npx`). The header
+value has no space after the colon on purpose: Claude Desktop on Windows splits arguments at spaces.
+
 ```json
 {
   "mcpServers": {
     "horizon": {
-      "url": "https://horizon.leocelis.com/sse",
-      "headers": { "Authorization": "Bearer YOUR_KEY_HERE" }
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://horizon.leocelis.com/sse",
+               "--header", "Authorization:${HORIZON_AUTH}"],
+      "env": { "HORIZON_AUTH": "Bearer YOUR_KEY_HERE" }
     }
   }
 }
@@ -46,7 +52,7 @@ pip install 'horizon-monitor[mcp]'
 }
 ```
 
-Restart Claude Desktop. The three tools (`new_conversation`, `process_turn`, `configure_session`), two resources, and one prompt appear in the MCP tools panel.
+Restart Claude Desktop. The three tools (`new_conversation`, `process_turn`, `configure_session`), three resources, and one prompt appear in the MCP tools panel.
 
 ---
 
@@ -117,8 +123,8 @@ The MCP server is tested in `tests/e2e/test_mcp_server_e2e.py`, which exercises 
 
 Horizon has a second, optional plane that clocks **missions** (goals with
 deadlines) rather than conversations. It is **off unless a mission store is
-configured**: with no store, its six tools (`clock_register`, `clock_progress`,
-`clock_status`, `clock_propose`, `clock_ack`, `associate_mission`) do not appear
+configured**: with no store, its seven tools (`clock_register`, `clock_progress`,
+`clock_status`, `clock_propose`, `clock_ack`, `clock_close`, `associate_mission`) do not appear
 at all and nothing changes.
 
 If you enable it, note the contract is the **opposite** of the fidelity plane's:

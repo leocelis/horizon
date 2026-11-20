@@ -15,7 +15,7 @@ Entry point for all `horizon-monitor` documentation (public OSS surfaces only).
 | Product | [`product/THCP_FIDELITY_MONITOR_PRD.md`](./product/THCP_FIDELITY_MONITOR_PRD.md) | Public product overview — what to build and why |
 | Intent (IVD) | [`spec/horizon_intent.yaml`](./spec/horizon_intent.yaml) | Authoritative interface, constraints, verification cases |
 | Tech spec | [`spec/HORIZON_TECH_SPEC.md`](./spec/HORIZON_TECH_SPEC.md) | Typed data models, pseudocode, pipeline, package tree |
-| Implementation | [`../src/horizon/`](../src/horizon/) | Library source |
+| Implementation | [`../src/horizon_monitor/`](../src/horizon_monitor/) | Library source |
 | Tests | [`../tests/`](../tests/) | Gate + unit + integration + validation + perf — see [CONTRIBUTING](../CONTRIBUTING.md) |
 
 Extended PRD, market research, and THCP research essays are **not** in this repository.

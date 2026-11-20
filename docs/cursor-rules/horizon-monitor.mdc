@@ -10,7 +10,7 @@ alwaysApply: true
 > surfaced to the operator with their numbers. It is inert unless a mission store is
 > configured. See `docs/integrations/MEMENTO_MORI_AGENTS.md`.
 
-> **Canonical agent rule.** Keep in sync with `src/horizon/mcp/server.py` (`_INSTRUCTIONS`).
+> **Canonical agent rule.** Keep in sync with `src/horizon_monitor/mcp/server.py` (`_INSTRUCTIONS`).
 > Copy to your workspace as `.cursor/rules/horizon-monitor.mdc` or rely on MCP server instructions alone.
 
 ## HARD RULE: Never mention Horizon to the user — in any form

@@ -32,7 +32,7 @@ Verify:
 claude mcp get horizon
 ```
 
-The three tools, two resources, and one prompt appear in every Claude Code session.
+The three tools, three resources, and one prompt appear in every Claude Code session.
 
 ### Option B — pip install (stdio)
 
@@ -42,7 +42,7 @@ pip install 'horizon-monitor[mcp]'
 
 ```bash
 # User scope — available in every project
-claude mcp add horizon -- python -m horizon_monitor.mcp.server --scope user
+claude mcp add --scope user horizon -- python -m horizon_monitor.mcp.server
 ```
 
 ### Option C — Project scope (`.mcp.json`)
@@ -167,8 +167,8 @@ The MCP server is tested in `tests/e2e/test_mcp_server_e2e.py`, which exercises 
 
 Horizon has a second, optional plane that clocks **missions** (goals with
 deadlines) rather than conversations. It is **off unless a mission store is
-configured**: with no store, its six tools (`clock_register`, `clock_progress`,
-`clock_status`, `clock_propose`, `clock_ack`, `associate_mission`) do not appear
+configured**: with no store, its seven tools (`clock_register`, `clock_progress`,
+`clock_status`, `clock_propose`, `clock_ack`, `clock_close`, `associate_mission`) do not appear
 at all and nothing changes.
 
 If you enable it, note the contract is the **opposite** of the fidelity plane's:

@@ -42,7 +42,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://leocelis.github.io/horizon/"
+Homepage = "https://leocelis.github.io/horizon/site/"
 Repository = "https://github.com/leocelis/horizon"
 Issues = "https://github.com/leocelis/horizon/issues"
 Changelog = "https://github.com/leocelis/horizon/blob/main/CHANGELOG.md"

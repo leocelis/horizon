@@ -23,19 +23,33 @@ UTC = timezone.utc
 def two_tenants(tmp_path):
     store = MementoStore(tmp_path / "missions.db")
     a, b = store.scoped("tenant-a"), store.scoped("tenant-b")
-    root_a = a.register_item(kind=ItemKind.HORIZON, title="root-a",
-                             created_valid=datetime(2026, 1, 1, tzinfo=UTC), end_date=date(2030, 1, 1))
-    task_a = a.register_item(kind=ItemKind.TASK, title="task-a", parent_id=root_a,
-                             created_valid=datetime(2026, 1, 2, tzinfo=UTC))
-    b.register_item(kind=ItemKind.HORIZON, title="root-b",
-                    created_valid=datetime(2026, 1, 1, tzinfo=UTC), end_date=date(2030, 1, 1))
+    root_a = a.register_item(
+        kind=ItemKind.HORIZON,
+        title="root-a",
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+        end_date=date(2030, 1, 1),
+    )
+    task_a = a.register_item(
+        kind=ItemKind.TASK,
+        title="task-a",
+        parent_id=root_a,
+        created_valid=datetime(2026, 1, 2, tzinfo=UTC),
+    )
+    b.register_item(
+        kind=ItemKind.HORIZON,
+        title="root-b",
+        created_valid=datetime(2026, 1, 1, tzinfo=UTC),
+        end_date=date(2030, 1, 1),
+    )
     return a, b, task_a
 
 
 def test_event_for_another_tenants_item_is_refused(two_tenants):
     a, b, task_a = two_tenants
     with pytest.raises(UnknownItemError):
-        b.record_event(item_id=task_a, kind=EventKind.PROGRESS, valid_time=datetime(2026, 2, 1, tzinfo=UTC))
+        b.record_event(
+            item_id=task_a, kind=EventKind.PROGRESS, valid_time=datetime(2026, 2, 1, tzinfo=UTC)
+        )
     assert b.get_events() == []
     assert a.get_events(task_a) == []
 
@@ -43,7 +57,11 @@ def test_event_for_another_tenants_item_is_refused(two_tenants):
 def test_event_for_a_mistyped_id_is_refused(two_tenants):
     a, _b, _task = two_tenants
     with pytest.raises(UnknownItemError):
-        a.record_event(item_id="no-such-item", kind=EventKind.PROGRESS, valid_time=datetime(2026, 2, 1, tzinfo=UTC))
+        a.record_event(
+            item_id="no-such-item",
+            kind=EventKind.PROGRESS,
+            valid_time=datetime(2026, 2, 1, tzinfo=UTC),
+        )
     assert a.get_events() == []
 
 
@@ -56,7 +74,9 @@ def test_fire_state_for_another_tenants_item_is_refused(two_tenants):
 
 def test_own_item_still_records(two_tenants):
     a, _b, task_a = two_tenants
-    a.record_event(item_id=task_a, kind=EventKind.PROGRESS, valid_time=datetime(2026, 2, 1, tzinfo=UTC))
+    a.record_event(
+        item_id=task_a, kind=EventKind.PROGRESS, valid_time=datetime(2026, 2, 1, tzinfo=UTC)
+    )
     a.set_fire_state(task_a, "deadline_window", {"state": "acked"})
     assert len(a.get_events(task_a)) == 1
     assert len(a.get_all_fire_states()) == 1
