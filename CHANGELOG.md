@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-11-20
+
 - **`horizon serve --host/--port` are honoured.** The SSE and Streamable HTTP transports bound 127.0.0.1:8000 whatever the flags said, because the CLI set attributes FastMCP never reads; the Docker image's 3847 mapping and healthcheck pointed at nothing. Regression test in `tests/unit/test_cli.py`.
 - **`python -m horizon_monitor.mcp.server` registers every resource before it starts.** The `__main__` block now sits at the end of the module; the `memento/agent-rules` resource was registered after it.
 - **Docs match the code.** Landing page import is `horizon_monitor`; 16 event types (two rows were dropped from the README table) with descriptions taken from the evaluator; seven mission tools and three resources in the integration guides; the Claude Desktop hosted setup uses the `mcp-remote` bridge; `claude mcp add --scope user` before the name; old `src/horizon/` paths updated.
