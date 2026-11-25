@@ -120,13 +120,19 @@ secure and reliable operation of the service.
 **Retention:** Infrastructure logs are retained according to DigitalOcean and Upstash
 policies (typically 30 days).
 
-### 1.5 Website (horizon.leocelis.com)
+### 1.5 Website (leocelis.github.io/horizon)
 
-The Horizon website is a static HTML file served by DigitalOcean App Platform. No
-analytics, tracking pixels, cookies, or fingerprinting scripts are included on the
-website. The website does not collect any personal data directly.
-
-Your IP address may appear in DigitalOcean's access logs as described in §1.4.
+The Horizon website is a static HTML page served by GitHub Pages, which keeps its own
+request logs. It loads a visit log: pages viewed (with any tags in the link you
+followed), the site that linked you here, links you click, whether you stayed on a
+page, your browser, device and language, your IP address, and the time. The visit log
+recognizes a returning visitor from their IP address, browser and browser language,
+and stores nothing in your browser (no cookies). It records each visit on servers run
+by DigitalOcean, with Cloudflare passing the requests. The same visit log also
+measures other sites Leo Celis runs, so visits from the same IP address, browser and
+browser language are linked across them. In the visit log, IP addresses are shortened
+after 90 days. There is no third-party analytics or advertising. Turning off
+JavaScript for the site stops the visit log.
 
 ---
 
